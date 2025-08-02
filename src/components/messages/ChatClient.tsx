@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
 import type { Profile } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 
-// Define a new type for messages that includes the sender's profile
 type MessageWithSender = {
     id: number;
     content: string;
@@ -26,45 +24,56 @@ interface ChatClientProps {
 }
 
 export function ChatClient({ initialMessages, currentUser, otherUser }: ChatClientProps) {
-    const router = useRouter();
     const [messages, setMessages] = useState(initialMessages);
     const [newMessage, setNewMessage] = useState("");
+    const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Scroll to the bottom of the message list whenever new messages are added
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
-
-    // Set up a real-time subscription to the messages table
+    
     useEffect(() => {
-        const channel = supabase
-            .channel(`chat:${currentUser.id}-${otherUser.id}`)
-            .on(
-                "postgres_changes",
-                {
-                    event: "INSERT",
-                    schema: "public",
-                    table: "messages",
-                    // Filter for messages between these two users
-                    filter: `sender_id=in.(${currentUser.id},${otherUser.id})`,
+        const chatChannelId = `chat:${Math.min(currentUser.id, otherUser.id)}-${Math.max(currentUser.id, otherUser.id)}`;
+        
+        const channel = supabase.channel(chatChannelId, {
+            config: {
+                presence: {
+                    key: currentUser.id, // Track this user's presence using their ID
                 },
-                (payload) => {
-                    // When a new message arrives, add it to our local state
-                    const newMessage = {
-                        ...payload.new,
-                        profiles: payload.new.sender_id === currentUser.id ? currentUser : otherUser,
-                    } as MessageWithSender;
-                    setMessages((currentMessages) => [...currentMessages, newMessage]);
-                }
-            )
-            .subscribe();
+            },
+        });
 
-        // Clean up the subscription when the component unmounts
+        // --- Realtime Message Subscription ---
+        channel.on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "messages", filter: `receiver_id=in.(${currentUser.id},${otherUser.id})`},
+            (payload) => {
+                const newMessagePayload = {
+                    ...payload.new,
+                    profiles: payload.new.sender_id === currentUser.id ? currentUser : otherUser,
+                } as MessageWithSender;
+                setMessages((currentMessages) => [...currentMessages, newMessagePayload]);
+            }
+        );
+
+        // --- Presence Subscription ---
+        channel.on("presence", { event: "sync" }, () => {
+            const presenceState = channel.presenceState();
+            const otherUserPresence = presenceState[otherUser.id];
+            setIsOtherUserOnline(!!otherUserPresence);
+        });
+        
+        channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.track({ online_at: new Date().toISOString() });
+            }
+        });
+
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [supabase, currentUser, otherUser]);
+    }, [currentUser.id, otherUser.id]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -84,21 +93,29 @@ export function ChatClient({ initialMessages, currentUser, otherUser }: ChatClie
 
     return (
         <div className="flex h-[calc(100vh-4rem)] flex-col">
-            {/* Chat Header */}
             <div className="flex items-center gap-4 border-b p-4">
                 <Link href="/discover">
                     <ArrowLeft className="h-6 w-6" />
                 </Link>
-                <Avatar>
-                    <AvatarImage src={`https://placehold.co/40x40/E2E8F0/475569?text=${otherUserInitials}`} />
-                    <AvatarFallback>{otherUserInitials}</AvatarFallback>
-                </Avatar>
-                <h2 className="text-lg font-semibold">
-                    {otherUser.first_name} {otherUser.last_name}
-                </h2>
+                <div className="relative">
+                    <Avatar>
+                        <AvatarImage src={`https://placehold.co/40x40/E2E8F0/475569?text=${otherUserInitials}`} />
+                        <AvatarFallback>{otherUserInitials}</AvatarFallback>
+                    </Avatar>
+                     {isOtherUserOnline && (
+                        <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-background" />
+                    )}
+                </div>
+                <div>
+                    <h2 className="text-lg font-semibold">
+                        {otherUser.first_name} {otherUser.last_name}
+                    </h2>
+                     <p className="text-xs text-muted-foreground">
+                        {isOtherUserOnline ? 'Online' : 'Offline'}
+                    </p>
+                </div>
             </div>
-
-            {/* Message List */}
+            
             <div className="flex-grow space-y-4 overflow-y-auto p-4">
                 {messages.map((message) => (
                     <div
@@ -121,7 +138,6 @@ export function ChatClient({ initialMessages, currentUser, otherUser }: ChatClie
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input Form */}
             <div className="border-t p-4">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                     <Input

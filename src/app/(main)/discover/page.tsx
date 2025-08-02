@@ -1,84 +1,53 @@
-import { createServerComponentClient } from "@/lib/supabase/server";
+// Import createServerClient directly from the ssr package
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
 import { DiscoverFilters } from "@/components/discover/DiscoverFilters";
-import {
-    ProfileCard,
-    ProfileWithPassions,
-} from "@/components/profile/ProfileCard";
-import { Separator } from "@/components/ui/separator";
+import { ProfileCard } from "@/components/profile/ProfileCard";
+import { Database } from "@/lib/database.types";
 
-interface DiscoverPageProps {
-    searchParams: {
-        name?: string;
-        location?: string;
-        age?: string;
-        languages?: string;
-    };
-}
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
-export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
-    const supabase = createServerComponentClient();
-
-    let query = supabase.from("profiles").select("*, passions(*)");
-
-    // Apply filters based on searchParams
-    if (searchParams.name) {
-        // Using ilike for case-insensitive search
-        query = query.ilike("first_name", `%${searchParams.name}%`);
+export default async function DiscoverPage() {
+  // Move the cookieStore and Supabase client creation inside the component
+  const cookieStore = cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+      },
     }
+  )
 
-    if (searchParams.location) {
-        query = query.ilike("location", `%${searchParams.location}%`);
-    }
+  const { data: { user } } = await supabase.auth.getUser();
 
-    if (searchParams.age) {
-        query = query.eq("age", parseInt(searchParams.age, 10));
-    }
+  const { data: users } = await supabase
+    .from("profiles")
+    .select(
+      `*,
+      passions (
+        id,
+        name
+      )`
+    )
+    .neq("id", user?.id);
 
-    if (searchParams.languages) {
-        // 'cs' operator checks if the array contains the specified value(s)
-        query = query.cs("languages", `{${searchParams.languages}}`);
-    }
-
-    const { data: profiles, error } = await query;
-
-    if (error) {
-        console.error("Error fetching profiles:", error);
-        // Optionally, render an error message to the user
-    }
-
-    // Cast the fetched data to the correct type
-    const profilesWithPassions: ProfileWithPassions[] = profiles || [];
-
-    return (
-        <div className="container mx-auto py-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <aside className="md:col-span-1">
-                    <h2 className="text-2xl font-bold">Discover Filters</h2>
-                    <Separator className="my-4" />
-                    <DiscoverFilters />
-                </aside>
-                <main className="md:col-span-3">
-                    <h1 className="text-3xl font-bold">Find New Connections</h1>
-                    <p className="mt-2 text-muted-foreground">
-                        Browse profiles to find people with similar passions.
-                    </p>
-                    <Separator className="my-6" />
-                    {profilesWithPassions.length > 0 ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {profilesWithPassions.map((profile) => (
-                                <ProfileCard key={profile.id} profile={profile} />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <h3 className="text-xl font-semibold">No Profiles Found</h3>
-                            <p className="text-muted-foreground mt-2">
-                                Try adjusting your filters to find more people.
-                            </p>
-                        </div>
-                    )}
-                </main>
-            </div>
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="p-4 border-b">
+        <DiscoverFilters />
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {users?.map((u: Profile) => (
+            <ProfileCard user={u} key={u.id} />
+          ))}
         </div>
-    );
+      </div>
+    </div>
+  );
 }
