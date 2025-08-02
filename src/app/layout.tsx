@@ -1,21 +1,30 @@
-import { Inter } from "next/font/google";
-import "./globals.css";
+// src/app/layout.tsx
 
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata = {
-    title: "Skillogue",
-    description: "Connect Through Passions",
-};
+import { Toaster } from 'react-hot-toast';
+import './globals.css';
 
 export default function RootLayout({
-                                       children,
-                                   }: {
-    children: React.ReactNode;
+  children,
+}: {
+  children: React.ReactNode
 }) {
-    return (
-        <html lang="en" className={inter.className}>
-        <body>{children}</body>
-        </html>
-    );
+  return (
+    <html lang="en">
+      <body>
+        {/* The Toaster component will render all toast notifications */}
+        <Toaster
+          position="top-center"
+          reverseOrder={false}
+          toastOptions={{
+            duration: 5000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+          }}
+        />
+        <main>{children}</main>
+      </body>
+    </html>
+  )
 }
