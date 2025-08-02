@@ -5,8 +5,16 @@ import {
     type ProfileWithPassions,
 } from "@/components/profile/ProfileCard";
 import type { Passion } from "@/types";
+import { DiscoverFilters } from "@/components/discover/DiscoverFilters";
 
-export default async function DiscoverPage() {
+export default async function DiscoverPage({
+                                               searchParams,
+                                           }: {
+    searchParams?: {
+        name?: string;
+        passionId?: string;
+    };
+}) {
     const cookieStore = cookies();
 
     const supabase = createServerClient(
@@ -22,9 +30,8 @@ export default async function DiscoverPage() {
     );
 
     // This is a more complex query to fetch profiles and their associated passions
-    const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select(`
+    let query = supabase.from("profiles").select(
+        `
       *,
       user_passions (
         passions (
@@ -32,7 +39,41 @@ export default async function DiscoverPage() {
           name
         )
       )
-    `);
+    `
+    );
+
+    if (searchParams?.name) {
+        query = query.ilike("first_name", `%${searchParams.name}%`);
+    }
+
+    if (searchParams?.passionId) {
+        query = query
+            .from("user_passions")
+            .select(
+                `
+        profiles (
+          *,
+          user_passions (
+            passions (
+              id,
+              name
+            )
+          )
+        )
+      `
+            )
+            .eq("passion_id", searchParams.passionId)
+            .neq("profiles", null)
+            .returns<any[]>();
+    }
+
+    const { data: profiles, error } = await query;
+
+    const { data: allPassionsData } = await supabase
+        .from("passions")
+        .select("*");
+
+    const allPassions: Passion[] = allPassionsData || [];
 
     if (error) {
         console.error("Error fetching profiles:", error);
@@ -41,8 +82,8 @@ export default async function DiscoverPage() {
 
     // Transform the data to match our ProfileWithPassions type
     const profilesWithPassions: ProfileWithPassions[] = profiles.map(
-        (profile) => ({
-            ...profile,
+        (profile: any) => ({
+            ...(profile.profiles ? profile.profiles : profile),
             passions: profile.user_passions.map(
                 (up: any) => up.passions
             ) as Passion[],
@@ -58,7 +99,7 @@ export default async function DiscoverPage() {
                 </p>
             </div>
 
-            {/* TODO: Add search and filter controls here */}
+            <DiscoverFilters allPassions={allPassions} />
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {profilesWithPassions.map((profile) => (

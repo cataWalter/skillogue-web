@@ -3,9 +3,9 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Profile, Passion } from "@/types";
+import { StartChatButton } from "@/components/profile/StartChatButton";
 
 // This tells Next.js what the 'params' object will look like for this page
 interface UserProfilePageProps {
@@ -27,6 +27,10 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             },
         }
     );
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
     // Fetch the specific user's profile and their passions
     const { data: profile } = await supabase
@@ -57,14 +61,18 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     };
 
     const initials =
-        `${transformedProfile.first_name?.charAt(0) ?? ""}${transformedProfile.last_name?.charAt(0) ?? ""}`.toUpperCase();
+        `${transformedProfile.first_name?.charAt(0) ?? ""}${
+            transformedProfile.last_name?.charAt(0) ?? ""
+        }`.toUpperCase();
 
     return (
         <div className="mx-auto max-w-4xl space-y-8">
             <Card>
                 <CardHeader className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
                     <Avatar className="h-24 w-24">
-                        <AvatarImage src={`https://placehold.co/96x96/E2E8F0/475569?text=${initials}`} />
+                        <AvatarImage
+                            src={`https://placehold.co/96x96/E2E8F0/475569?text=${initials}`}
+                        />
                         <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-grow">
@@ -72,10 +80,15 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
                             {transformedProfile.first_name} {transformedProfile.last_name}
                         </h1>
                         <p className="text-muted-foreground">
-                            Joined on {new Date(transformedProfile.created_at).toLocaleDateString()}
+                            Joined on{" "}
+                            {new Date(transformedProfile.created_at).toLocaleDateString()}
                         </p>
-                        {/* TODO: Add a button to initiate a chat here later */}
-                        <Button className="mt-4">Send Message</Button>
+                        {user && (
+                            <StartChatButton
+                                currentUserId={user.id}
+                                otherUserId={transformedProfile.id}
+                            />
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -95,7 +108,9 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
                                     </Badge>
                                 ))
                             ) : (
-                                <p className="text-sm text-muted-foreground">No passions listed.</p>
+                                <p className="text-sm text-muted-foreground">
+                                    No passions listed.
+                                </p>
                             )}
                         </div>
                     </div>
