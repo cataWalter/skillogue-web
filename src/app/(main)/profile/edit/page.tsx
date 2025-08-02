@@ -1,24 +1,11 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ProfileForm } from "@/components/profile/ProfileForm";
-import { PassionManager } from "@/components/profile/PassionManager";
-import type { Profile, Passion, UserPassion } from "@/types";
+import { createServerComponentClient } from "@/lib/supabase/server";
+import { EditProfileForm } from "@/components/profile/EditProfileForm";
+import { VerifyProfile } from "@/components/profile/VerifyProfile";
+import { Separator } from "@/components/ui/separator";
 
 export default async function EditProfilePage() {
-    const cookieStore = cookies();
-
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return cookieStore.get(name)?.value;
-                },
-            },
-        }
-    );
+    const supabase = createServerComponentClient();
 
     const {
         data: { session },
@@ -28,43 +15,30 @@ export default async function EditProfilePage() {
         redirect("/login");
     }
 
-    // Fetch all necessary data in parallel
     const { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", session.user.id)
-        .single<Profile>();
+        .single();
 
-    const { data: allPassionsData } = await supabase
-        .from("passions")
-        .select("*");
-
-    const { data: userPassionsData } = await supabase
-        .from("user_passions")
-        .select("*")
-        .eq("user_id", session.user.id);
-
-    const allPassions: Passion[] = allPassionsData || [];
-    const userPassions: UserPassion[] = userPassionsData || [];
+    if (!profile) {
+        return <div>Profile not found.</div>;
+    }
 
     return (
-        <div className="space-y-12">
+        <div className="container mx-auto max-w-2xl py-8 space-y-8">
             <div>
                 <h1 className="text-3xl font-bold">Edit Your Profile</h1>
-                <p className="text-muted-foreground mt-2">
-                    This information will be visible to other users on the platform.
+                <p className="mt-2 text-muted-foreground">
+                    Update your personal information and passions.
                 </p>
-                <div className="mt-8">
-                    <ProfileForm profile={profile} />
-                </div>
+                <Separator className="my-6" />
+                <EditProfileForm profile={profile} />
             </div>
-
             <div>
-                <PassionManager
-                    allPassions={allPassions}
-                    userPassions={userPassions}
-                    userId={session.user.id}
-                />
+                <h2 className="text-2xl font-bold">Account Settings</h2>
+                 <Separator className="my-4" />
+                <VerifyProfile isVerified={profile.verified} />
             </div>
         </div>
     );

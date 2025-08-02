@@ -1,110 +1,83 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createServerComponentClient } from "@/lib/supabase/server";
+import { DiscoverFilters } from "@/components/discover/DiscoverFilters";
 import {
     ProfileCard,
-    type ProfileWithPassions,
+    ProfileWithPassions,
 } from "@/components/profile/ProfileCard";
-import type { Passion } from "@/types";
-import { DiscoverFilters } from "@/components/discover/DiscoverFilters";
+import { Separator } from "@/components/ui/separator";
 
-export default async function DiscoverPage({
-                                               searchParams,
-                                           }: {
-    searchParams?: {
+interface DiscoverPageProps {
+    searchParams: {
         name?: string;
-        passionId?: string;
+        location?: string;
+        age?: string;
+        languages?: string;
     };
-}) {
-    const cookieStore = cookies();
+}
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return cookieStore.get(name)?.value;
-                },
-            },
-        }
-    );
+export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
+    const supabase = createServerComponentClient();
 
-    // This is a more complex query to fetch profiles and their associated passions
-    let query = supabase.from("profiles").select(
-        `
-      *,
-      user_passions (
-        passions (
-          id,
-          name
-        )
-      )
-    `
-    );
+    let query = supabase.from("profiles").select("*, passions(*)");
 
-    if (searchParams?.name) {
+    // Apply filters based on searchParams
+    if (searchParams.name) {
+        // Using ilike for case-insensitive search
         query = query.ilike("first_name", `%${searchParams.name}%`);
     }
 
-    if (searchParams?.passionId) {
-        query = query
-            .from("user_passions")
-            .select(
-                `
-        profiles (
-          *,
-          user_passions (
-            passions (
-              id,
-              name
-            )
-          )
-        )
-      `
-            )
-            .eq("passion_id", searchParams.passionId)
-            .neq("profiles", null)
-            .returns<any[]>();
+    if (searchParams.location) {
+        query = query.ilike("location", `%${searchParams.location}%`);
+    }
+
+    if (searchParams.age) {
+        query = query.eq("age", parseInt(searchParams.age, 10));
+    }
+
+    if (searchParams.languages) {
+        // 'cs' operator checks if the array contains the specified value(s)
+        query = query.cs("languages", `{${searchParams.languages}}`);
     }
 
     const { data: profiles, error } = await query;
 
-    const { data: allPassionsData } = await supabase
-        .from("passions")
-        .select("*");
-
-    const allPassions: Passion[] = allPassionsData || [];
-
     if (error) {
         console.error("Error fetching profiles:", error);
-        return <p>Could not load profiles.</p>;
+        // Optionally, render an error message to the user
     }
 
-    // Transform the data to match our ProfileWithPassions type
-    const profilesWithPassions: ProfileWithPassions[] = profiles.map(
-        (profile: any) => ({
-            ...(profile.profiles ? profile.profiles : profile),
-            passions: profile.user_passions.map(
-                (up: any) => up.passions
-            ) as Passion[],
-        })
-    );
+    // Cast the fetched data to the correct type
+    const profilesWithPassions: ProfileWithPassions[] = profiles || [];
 
     return (
-        <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold">Discover People</h1>
-                <p className="text-muted-foreground mt-2">
-                    Find and connect with others who share your passions.
-                </p>
-            </div>
-
-            <DiscoverFilters allPassions={allPassions} />
-
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {profilesWithPassions.map((profile) => (
-                    <ProfileCard key={profile.id} profile={profile} />
-                ))}
+        <div className="container mx-auto py-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <aside className="md:col-span-1">
+                    <h2 className="text-2xl font-bold">Discover Filters</h2>
+                    <Separator className="my-4" />
+                    <DiscoverFilters />
+                </aside>
+                <main className="md:col-span-3">
+                    <h1 className="text-3xl font-bold">Find New Connections</h1>
+                    <p className="mt-2 text-muted-foreground">
+                        Browse profiles to find people with similar passions.
+                    </p>
+                    <Separator className="my-6" />
+                    {profilesWithPassions.length > 0 ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {profilesWithPassions.map((profile) => (
+                                <ProfileCard key={profile.id} profile={profile} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <h3 className="text-xl font-semibold">No Profiles Found</h3>
+                            <p className="text-muted-foreground mt-2">
+                                Try adjusting your filters to find more people.
+                            </p>
+                        </div>
+                    )}
+                </main>
             </div>
         </div>
     );
