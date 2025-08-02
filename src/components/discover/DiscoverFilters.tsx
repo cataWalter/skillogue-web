@@ -2,69 +2,69 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import type { Passion } from "@/types";
-import { useDebouncedCallback } from "use-debounce";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
-interface DiscoverFiltersProps {
-    allPassions: Passion[];
-}
-
-export function DiscoverFilters({ allPassions }: DiscoverFiltersProps) {
-    const searchParams = useSearchParams();
+export function DiscoverFilters() {
+    const router = useRouter();
     const pathname = usePathname();
-    const { replace } = useRouter();
+    const searchParams = useSearchParams();
 
-    const handleNameSearch = useDebouncedCallback((term: string) => {
-        const params = new URLSearchParams(searchParams);
-        if (term) {
-            params.set("name", term);
-        } else {
-            params.delete("name");
-        }
-        replace(`${pathname}?${params.toString()}`);
-    }, 300); // Wait 300ms after user stops typing
+    // Handlers for updating search parameters
+    const handleFilterChange = (key: string, value: string) => {
+        const current = new URLSearchParams(Array.from(searchParams.entries()));
 
-    const handlePassionSelect = (passionId: string) => {
-        const params = new URLSearchParams(searchParams);
-        if (passionId && passionId !== "all") {
-            params.set("passionId", passionId);
+        if (!value) {
+            current.delete(key);
         } else {
-            params.delete("passionId");
+            current.set(key, value);
         }
-        replace(`${pathname}?${params.toString()}`);
+
+        const search = current.toString();
+        const query = search ? `?${search}` : "";
+
+        router.push(`${pathname}${query}`);
     };
 
     return (
-        <div className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row">
-            <Input
-                placeholder="Search by name..."
-                className="flex-grow"
-                onChange={(e) => handleNameSearch(e.target.value)}
-                defaultValue={searchParams.get("name")?.toString()}
-            />
-            <Select
-                onValueChange={handlePassionSelect}
-                defaultValue={searchParams.get("passionId")?.toString() || "all"}
-            >
-                <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Filter by passion" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Passions</SelectItem>
-                    {allPassions.map((passion) => (
-                        <SelectItem key={passion.id} value={passion.id.toString()}>
-                            {passion.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+        <div className="space-y-4">
+            <div>
+                <Label htmlFor="name">Name</Label>
+                <Input
+                    id="name"
+                    placeholder="Search by name..."
+                    defaultValue={searchParams.get("name") || ""}
+                    onChange={(e) => handleFilterChange("name", e.target.value)}
+                />
+            </div>
+            <div>
+                <Label htmlFor="location">Location</Label>
+                <Input
+                    id="location"
+                    placeholder="Search by location..."
+                    defaultValue={searchParams.get("location") || ""}
+                    onChange={(e) => handleFilterChange("location", e.target.value)}
+                />
+            </div>
+            <div>
+                <Label htmlFor="age">Age</Label>
+                <Input
+                    id="age"
+                    type="number"
+                    placeholder="Filter by age..."
+                    defaultValue={searchParams.get("age") || ""}
+                    onChange={(e) => handleFilterChange("age", e.target.value)}
+                />
+            </div>
+            <div>
+                <Label htmlFor="languages">Languages</Label>
+                <Input
+                    id="languages"
+                    placeholder="Filter by language (e.g., English)..."
+                    defaultValue={searchParams.get("languages") || ""}
+                    onChange={(e) => handleFilterChange("languages", e.target.value)}
+                />
+            </div>
         </div>
     );
 }

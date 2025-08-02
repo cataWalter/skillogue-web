@@ -1,116 +1,93 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { createServerComponentClient } from "@/lib/supabase/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Profile, Passion } from "@/types";
-import { StartChatButton } from "@/components/profile/StartChatButton";
+import { ReportUserButton } from "@/components/profile/ReportUserButton";
+import type { Passion } from "@/types";
 
-// This tells Next.js what the 'params' object will look like for this page
 interface UserProfilePageProps {
     params: {
         userId: string;
     };
 }
 
+const getRandomAvatar = () => {
+    const avatarCount = 2;
+    const randomIndex = Math.floor(Math.random() * avatarCount) + 1;
+    return `/default-avatars/avatar${randomIndex}.png`;
+};
+
 export default async function UserProfilePage({ params }: UserProfilePageProps) {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return cookieStore.get(name)?.value;
-                },
-            },
-        }
-    );
+    const supabase = createServerComponentClient();
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
 
-    // Fetch the specific user's profile and their passions
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabase
         .from("profiles")
-        .select(
-            `
-      *,
-      user_passions (
-        passions (
-          id,
-          name
-        )
-      )
-    `
-        )
+        .select("*, passions(*)")
         .eq("id", params.userId)
         .single();
 
-    // If no profile is found for the given ID, show a 404 page
-    if (!profile) {
+    if (error || !profile) {
         notFound();
     }
 
-    // Transform the data to make it easier to work with
-    const transformedProfile = {
-        ...profile,
-        passions: profile.user_passions.map((up: any) => up.passions) as Passion[],
-    };
-
-    const initials =
-        `${transformedProfile.first_name?.charAt(0) ?? ""}${
-            transformedProfile.last_name?.charAt(0) ?? ""
-        }`.toUpperCase();
+    const initials = `${profile.first_name?.charAt(0) ?? ""}${profile.last_name?.charAt(0) ?? ""}`.toUpperCase();
+    const avatarUrl = getRandomAvatar();
+    const passions = profile.passions as Passion[];
 
     return (
-        <div className="mx-auto max-w-4xl space-y-8">
+        <div className="container mx-auto max-w-4xl py-8">
             <Card>
-                <CardHeader className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-                    <Avatar className="h-24 w-24">
-                        <AvatarImage
-                            src={`https://placehold.co/96x96/E2E8F0/475569?text=${initials}`}
-                        />
-                        <AvatarFallback>{initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-grow">
-                        <h1 className="text-3xl font-bold">
-                            {transformedProfile.first_name} {transformedProfile.last_name}
-                        </h1>
-                        <p className="text-muted-foreground">
-                            Joined on{" "}
-                            {new Date(transformedProfile.created_at).toLocaleDateString()}
-                        </p>
-                        {user && (
-                            <StartChatButton
-                                currentUserId={user.id}
-                                otherUserId={transformedProfile.id}
+                <CardHeader>
+                    <div className="flex flex-col sm:flex-row items-start gap-6">
+                        <Avatar className="h-24 w-24">
+                            <AvatarImage src={avatarUrl} alt={`${profile.first_name} ${profile.last_name}`} />
+                            <AvatarFallback className="text-3xl">{initials}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-grow">
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-3xl">
+                                    {profile.first_name} {profile.last_name}
+                                </CardTitle>
+                                {profile.verified && (
+                                    <Badge className="bg-green-500">Verified</Badge>
+                                )}
+                            </div>
+                            <p className="text-muted-foreground">
+                                Joined on {new Date(profile.created_at).toLocaleDateString()}
+                            </p>
+                            <p className="text-muted-foreground">
+                                {profile.location}
+                            </p>
+                        </div>
+                        {session && session.user.id !== profile.id && (
+                             <ReportUserButton
+                                reporterId={session.user.id}
+                                reportedUserId={profile.id}
                             />
                         )}
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div>
-                        <h2 className="text-xl font-semibold">About</h2>
+                        <h3 className="text-lg font-semibold">About Me</h3>
                         <p className="mt-2 text-muted-foreground">
-                            {transformedProfile.about_me || "No bio provided."}
+                            {profile.about_me || "No bio provided."}
                         </p>
                     </div>
                     <div>
-                        <h2 className="text-xl font-semibold">Passions</h2>
+                        <h3 className="text-lg font-semibold">Passions</h3>
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {transformedProfile.passions.length > 0 ? (
-                                transformedProfile.passions.map((passion) => (
+                            {passions && passions.length > 0 ? (
+                                passions.map((passion) => (
                                     <Badge key={passion.id} variant="secondary">
                                         {passion.name}
                                     </Badge>
                                 ))
                             ) : (
-                                <p className="text-sm text-muted-foreground">
-                                    No passions listed.
-                                </p>
+                                <p className="text-sm text-muted-foreground">No passions listed.</p>
                             )}
                         </div>
                     </div>

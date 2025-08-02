@@ -7,11 +7,10 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
-import {Badge} from "@/components/ui/badge";
-import type {Profile, Passion} from "@/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import type { Profile, Passion } from "@/types";
 
-// We need to define a new type that combines profile data with passion names
 export type ProfileWithPassions = Profile & {
     passions: Passion[];
 };
@@ -20,25 +19,34 @@ interface ProfileCardProps {
     profile: ProfileWithPassions;
 }
 
-export function ProfileCard({profile}: ProfileCardProps) {
-    const initials =
-        `${profile.first_name?.charAt(0) ?? ""}${profile.last_name?.charAt(0) ?? ""}`.toUpperCase();
+const getRandomAvatar = () => {
+    const avatarCount = 2;
+    const randomIndex = Math.floor(Math.random() * avatarCount) + 1;
+    return `/default-avatars/avatar${randomIndex}.png`;
+};
+
+export function ProfileCard({ profile }: ProfileCardProps) {
+    const initials = `${profile.first_name?.charAt(0) ?? ""}${profile.last_name?.charAt(0) ?? ""}`.toUpperCase();
+    const avatarUrl = getRandomAvatar();
 
     return (
-        <Card className="flex flex-col">
+        <Card className="flex flex-col h-full">
             <CardHeader>
                 <div className="flex items-center gap-4">
                     <Avatar>
-                        {/* In the future, this will be a randomly generated image */}
-                        <AvatarImage src={`https://placehold.co/40x40/E2E8F0/475569?text=${initials}`}/>
+                        <AvatarImage src={avatarUrl} alt={`${profile.first_name} ${profile.last_name}`} />
                         <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
-                    <div>
-                        <CardTitle>
-                            {profile.first_name} {profile.last_name}
-                        </CardTitle>
+                    <div className="flex-grow">
+                         <div className="flex items-center gap-2">
+                             <CardTitle>
+                                {profile.first_name} {profile.last_name}
+                            </CardTitle>
+                             {profile.verified && (
+                                <Badge className="bg-green-500 text-xs" style={{ padding: '0.25rem 0.5rem' }}>Verified</Badge>
+                            )}
+                         </div>
                         <CardDescription>
-                            {/* We can add location here later */}
                             Joined on {new Date(profile.created_at).toLocaleDateString()}
                         </CardDescription>
                     </div>
@@ -60,7 +68,7 @@ export function ProfileCard({profile}: ProfileCardProps) {
                         <Badge variant="outline">+{profile.passions.length - 5} more</Badge>
                     )}
                 </div>
-                <Link href={`/user/${profile.id}`} className="text-sm font-semibold">
+                <Link href={`/user/${profile.id}`} className="text-sm font-semibold text-primary hover:underline">
                     View Profile &rarr;
                 </Link>
             </CardFooter>
