@@ -1,5 +1,3 @@
-// src/app/(main)/profile/edit/ProfileEditForm.tsx
-
 'use client'
 
 import { useState, useTransition } from 'react';
@@ -35,7 +33,7 @@ export function ProfileEditForm({ profile, allPassions, initialSelectedPassions 
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        
+
         startTransition(async () => {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
@@ -44,13 +42,19 @@ export function ProfileEditForm({ profile, allPassions, initialSelectedPassions 
                 return;
             }
 
+            // --- LOGGING THE PAYLOAD ---
+            console.log(`Attempting to update profile for user: ${user.id}`);
+            console.log("Payload for 'profiles' table update:", { bio });
+            // --- END LOGGING ---
+
             // 1. Update the bio in the profiles table
             const { error: profileError } = await supabase
                 .from('profiles')
-                .update({ bio })
+                .update({ about_me: bio }) // Corrected column name to 'about_me'
                 .eq('id', user.id);
 
             if (profileError) {
+                console.error("Supabase profile update error:", profileError);
                 toast.error('Failed to update profile.');
                 return;
             }
@@ -61,20 +65,28 @@ export function ProfileEditForm({ profile, allPassions, initialSelectedPassions 
                 passion_id
             }));
 
+            // --- LOGGING THE PAYLOAD ---
+            console.log("Payload for 'profile_passions' table insert:", passionsToInsert);
+            // --- END LOGGING ---
+
+
             // Delete old passions first, then insert the new set
             const { error: deleteError } = await supabase.from('profile_passions').delete().eq('profile_id', user.id);
             if (deleteError) {
-                 toast.error('Failed to update passions. Please try again.');
-                 return;
+                console.error("Supabase passion delete error:", deleteError);
+                toast.error('Failed to update passions. Please try again.');
+                return;
             }
+
             if (passionsToInsert.length > 0) {
-                 const { error: insertError } = await supabase.from('profile_passions').insert(passionsToInsert);
-                 if (insertError) {
+                const { error: insertError } = await supabase.from('profile_passions').insert(passionsToInsert);
+                if (insertError) {
+                    console.error("Supabase passion insert error:", insertError);
                     toast.error('Failed to save some passions. Please try again.');
                     return;
                 }
             }
-            
+
             toast.success("Profile updated successfully!");
             router.push('/profile');
         });

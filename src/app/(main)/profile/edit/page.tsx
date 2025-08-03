@@ -1,31 +1,52 @@
-// src/app/(main)/profile/edit/page.tsx
-
 import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
-import { ProfileEditForm } from './ProfileEditForm'; // We will create this client component
+import { ProfileEditForm } from './ProfileEditForm';
 
-// Define types for clarity
+// --- Type Definitions ---
 type Passion = {
     id: number;
     name: string;
 };
 
-type ProfileData = {
+// This type now matches what ProfileEditForm expects, based on the error.
+type ProfileForEdit = {
     username: string;
     bio: string | null;
-    selectedPassions: number[];
 };
 
-// Server function to get all necessary data
-async function getProfileData() {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+// This type can be used for the data returned from the server function
+type ProfilePageData = {
+    profile: ProfileForEdit;
+    allPassions: Passion[];
+    selectedPassions: number[];
+}
 
-    // Fetch profile and user's current passions simultaneously
-    const profilePromise = await supabase.from('profiles').select('username, bio').eq('id', user.id).single();
-    const passionsPromise = await supabase.from('passions').select('id, name');
-    const selectedPassionsPromise = await supabase.from('profile_passions').select('passion_id').eq('profile_id', user.id);
+// --- Server function to get all necessary data (with corrected error handling) ---
+async function getProfileData(): Promise<ProfilePageData | null> {
+    console.log("Attempting to fetch profile data for edit page...");
+    const supabase = await createClient();
+
+    // Safer way to get the user to prevent crash on error
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+        console.error("No authenticated user found or error fetching user. Aborting.", userError);
+        return null;
+    }
+    console.log("Authenticated user found:", user.id);
+
+    // --- LOGGING THE QUERIES ---
+    console.log("Preparing to query Supabase with the following requests:");
+    console.log(`1. Fetch profile: from('profiles').select('first_name, last_name, about_me').eq('id', '${user.id}')`);
+    console.log("2. Fetch all passions: from('passions').select('id, name')");
+    console.log(`3. Fetch user's passions: from('profile_passions').select('passion_id').eq('profile_id', '${user.id}')`);
+    // --- END LOGGING ---
+
+    // Fetch profile, all passions, and user's current passions simultaneously
+    // We fetch the real column names from the database.
+    const profilePromise = supabase.from('profiles').select('first_name, last_name, about_me').eq('id', user.id).single();
+    const passionsPromise = supabase.from('passions').select('id, name');
+    const selectedPassionsPromise = supabase.from('profile_passions').select('passion_id').eq('profile_id', user.id);
 
     const [
         { data: profile, error: profileError },
@@ -33,20 +54,39 @@ async function getProfileData() {
         { data: selectedPassionsData, error: selectedPassionsError }
     ] = await Promise.all([profilePromise, passionsPromise, selectedPassionsPromise]);
 
-    if (profileError || !profile) return null;
-    if (passionsError) console.error("Error fetching passions:", passionsError);
-    if (selectedPassionsError) console.error("Error fetching selected passions:", selectedPassionsError);
+    if (profileError || !profile) {
+        console.error("Error fetching profile for edit page:", profileError);
+        return null;
+    }
+    console.log("Successfully fetched profile:", profile);
 
+    if (passionsError) {
+        console.error("Error fetching all passions:", passionsError);
+    } else {
+        console.log("Successfully fetched all passions:", allPassions);
+    }
+
+    if (selectedPassionsError) {
+        console.error("Error fetching selected passions:", selectedPassionsError);
+    } else {
+        console.log("Successfully fetched user's selected passions:", selectedPassionsData);
+    }
+
+    // Safely map the data
     const selectedPassions = selectedPassionsData ? selectedPassionsData.map(p => p.passion_id) : [];
 
-    return {
+    // Transform the fetched data to match the expected ProfileForEdit type
+    const dataToReturn: ProfilePageData = {
         profile: {
-            username: profile.username,
-            bio: profile.bio
+            username: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+            bio: profile.about_me
         },
-        allPassions: allPassions as Passion[],
+        allPassions: allPassions || [], // Ensure allPassions is an array
         selectedPassions,
     };
+
+    console.log("Returning data for edit page:", dataToReturn);
+    return dataToReturn;
 }
 
 export default async function ProfileEditPage() {
