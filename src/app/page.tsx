@@ -1,25 +1,12 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
-      {/* Header */}
-      <header className="py-4 px-6 md:px-12 border-b bg-white">
-        <nav className="container mx-auto flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-gray-800">
-            Skillogue
-          </Link>
-          <div className="space-x-4">
-            <Button asChild variant="ghost">
-              <Link href="/login">Login</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">Sign Up</Link>
-            </Button>
-          </div>
-        </nav>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="flex-grow">
@@ -70,12 +57,7 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="py-6 bg-white border-t">
-        <div className="container mx-auto text-center text-gray-500">
-          <p>&copy; {new Date().getFullYear()} Skillogue. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

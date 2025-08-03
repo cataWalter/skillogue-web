@@ -36,7 +36,7 @@ export function ChatClient({ initialMessages, currentUser, otherUser }: ChatClie
     useEffect(() => {
         const chatChannelId = `chat:${Math.min(currentUser.id, otherUser.id)}-${Math.max(currentUser.id, otherUser.id)}`;
         
-        const channel = supabase.channel(chatChannelId, {
+        const channel = await supabase.channel(chatChannelId, {
             config: {
                 presence: {
                     key: currentUser.id, // Track this user's presence using their ID

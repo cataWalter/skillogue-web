@@ -1,61 +1,72 @@
-// src/components/profile/actions.ts
+'use server';
 
-'use server'
+import { createClient } from '@/utils/supabase/server';
+import { revalidatePath } from 'next/cache';
 
-import { createClient } from "@/utils/supabase/server";
-import { revalidatePath } from "next/cache";
+export async function getProfileById(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*, profile_passions(*)') // Use the actual relationship name from your schema
+    .eq('id', userId)
+    .single();
 
-// --- FOLLOW USER ---
-export async function followUser(profileId: string) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'You must be logged in.' };
+  if (error) {
+    console.error('Error fetching profile:', error);
+    return null;
+  }
 
-    const { error } = await supabase.from('followers').insert({ user_id: user.id, following_id: profileId });
-    if (error) return { error: 'Failed to follow user.' };
+  const profileWithAvatarPath = {
+    ...data,
+    avatar_url: Array.isArray(data.avatar) ? data.avatar[0]?.file_path : data.avatar?.file_path,
+  };
 
-    revalidatePath(`/user/${profileId}`);
-    return { success: true };
+  return profileWithAvatarPath;
 }
 
-// --- UNFOLLOW USER ---
-export async function unfollowUser(profileId: string) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'You must be logged in.' };
+export async function getPassionsByUserId(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('passions')
+    .select(
+      `
+      passions (id, name, category)
+      `
+    )
+    .eq('user_id', userId);
 
-    const { error } = await supabase.from('followers').delete().match({ user_id: user.id, following_id: profileId });
-    if (error) return { error: 'Failed to unfollow user.' };
-    
-    revalidatePath(`/user/${profileId}`);
-    return { success: true };
+  if (error) {
+    console.error('Error fetching passions:', error);
+    return [];
+  }
+
+  return data.map((item: any) => item.passions);
 }
 
-// --- BLOCK USER ---
-export async function blockUser(profileId: string) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "You must be logged in." };
-    if (user.id === profileId) return { error: "You cannot block yourself." };
-
-    const { error } = await supabase.from('blocks').insert({ user_id: user.id, blocked_user_id: profileId });
-    if (error) return { error: 'User is already blocked.' };
-
-    revalidatePath('/discover');
-    revalidatePath(`/user/${profileId}`);
-    return { success: true };
+export async function followUser(followerId: string, followingId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('follows').insert({ follower_id: followerId, following_id: followingId });
+  if (error) console.error('Error following user:', error);
+  revalidatePath(`/user/${followingId}`);
 }
 
-// --- UNBLOCK USER ---
-export async function unblockUser(profileId: string) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "You must be logged in." };
+export async function unfollowUser(followerId: string, followingId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('follows').delete().match({ follower_id: followerId, following_id: followingId });
+  if (error) console.error('Error unfollowing user:', error);
+  revalidatePath(`/user/${followingId}`);
+}
 
-    const { error } = await supabase.from('blocks').delete().match({ user_id: user.id, blocked_user_id: profileId });
-    if (error) return { error: 'Failed to unblock user.' };
+export async function blockUser(blockerId: string, blockedId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('blocks').insert({ blocker_id: blockerId, blocked_id: blockedId });
+  if (error) console.error('Error blocking user:', error);
+  revalidatePath(`/user/${blockedId}`);
+}
 
-    revalidatePath('/discover');
-    revalidatePath(`/user/${profileId}`);
-    return { success: true };
+export async function unblockUser(blockerId: string, blockedId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('blocks').delete().match({ blocker_id: blockerId, blocked_id: blockedId });
+  if (error) console.error('Error unblocking user:', error);
+  revalidatePath(`/user/${blockedId}`);
 }
