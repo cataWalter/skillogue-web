@@ -23,9 +23,9 @@ async function getProfileData() {
     if (!user) return null;
 
     // Fetch profile and user's current passions simultaneously
-    const profilePromise = supabase.from('profiles').select('username, bio').eq('id', user.id).single();
-    const passionsPromise = supabase.from('passions').select('id, name');
-    const selectedPassionsPromise = supabase.from('profile_passions').select('passion_id').eq('profile_id', user.id);
+    const profilePromise = await supabase.from('profiles').select('username, bio').eq('id', user.id).single();
+    const passionsPromise = await supabase.from('passions').select('id, name');
+    const selectedPassionsPromise = await supabase.from('profile_passions').select('passion_id').eq('profile_id', user.id);
 
     const [
         { data: profile, error: profileError },

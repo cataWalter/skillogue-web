@@ -17,7 +17,7 @@ export default function ResetPasswordPage() {
 
     useEffect(() => {
         // Supabase sends a `password_recovery` event when the user lands on this page from the email link.
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = await supabase.auth.onAuthStateChange((event, session) => {
             if (event === "PASSWORD_RECOVERY") {
                 setMessage("You can now set a new password.");
             }
