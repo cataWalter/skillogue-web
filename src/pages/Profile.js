@@ -2,7 +2,9 @@
 import React, {useEffect, useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {Link} from 'react-router-dom';
-import {ArrowLeft, Edit, ShieldCheck} from 'lucide-react';
+import {Edit, ShieldCheck} from 'lucide-react';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 function Profile() {
     const [profile, setProfile] = useState(null);
@@ -59,41 +61,30 @@ function Profile() {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white">
-            {/* Header */}
-            <header className="p-6 border-b border-gray-800 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link
-                        to="/dashboard"
-                        className="text-gray-400 hover:text-white transition"
-                    >
-                        <ArrowLeft size={20}/>
-                    </Link>
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                        Your Profile
-                    </h1>
-                </div>
-                <Link
-                    to="/edit-profile"
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 transition"
-                >
-                    <Edit size={16}/> Edit
-                </Link>
-            </header>
+        <div className="flex flex-col min-h-screen bg-black text-white">
+            <Navbar />
 
             {/* Profile Content */}
-            <main className="p-6 max-w-4xl mx-auto">
+            <main className="flex-grow p-6 max-w-4xl mx-auto w-full">
                 <div className="bg-gray-900/70 p-8 rounded-2xl border border-gray-800 shadow-xl">
-                    {/* Name & Verified Badge */}
+                    {/* Name & Edit Button */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-                        <h2 className="text-3xl font-bold">
-                            {profile.first_name} {profile.last_name}
-                        </h2>
-                        {profile.verified && (
-                            <span className="flex items-center mt-2 sm:mt-0 text-green-400 text-sm font-medium">
-                                <ShieldCheck size={16} className="mr-1"/> Verified
-                            </span>
-                        )}
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-3xl font-bold">
+                                {profile.first_name} {profile.last_name}
+                            </h2>
+                            {profile.verified && (
+                                <span className="flex items-center text-green-400 text-sm font-medium">
+                                    <ShieldCheck size={16} className="mr-1"/> Verified
+                                </span>
+                            )}
+                        </div>
+                        <Link
+                            to="/edit-profile"
+                            className="flex items-center gap-2 mt-4 sm:mt-0 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 transition"
+                        >
+                            <Edit size={16}/> Edit Profile
+                        </Link>
                     </div>
 
                     {/* About Me */}
@@ -155,6 +146,7 @@ function Profile() {
                     </div>
                 </div>
             </main>
+            <Footer />
         </div>
     );
 }
