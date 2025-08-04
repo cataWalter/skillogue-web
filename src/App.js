@@ -11,6 +11,8 @@ import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Connections from "./pages/Connections";
+import EditProfile from "./pages/EditProfile";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
     return (
@@ -21,6 +23,8 @@ function App() {
                 <Route path="/login" element={<Login/>}/>
                 <Route path="/signup" element={<SignUp/>}/>
                 <Route path="/connections" element={<Connections />} />
+                <Route path="/edit-profile" element={<EditProfile />} /> {/* ✅ Add this */}
+                <Route path="/reset-password" element={<ResetPassword />} />
 
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard/></ProtectedRoute>}/>
                 <Route path="/profile" element={<ProtectedRoute><Profile/></ProtectedRoute>}/>
