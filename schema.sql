@@ -1,6 +1,3 @@
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
-
 CREATE TABLE public.blocks
 (
     user_id         uuid                     NOT NULL,
@@ -26,6 +23,15 @@ CREATE TABLE public.languages
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT languages_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.locations
+(
+    id         bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+    city       text,
+    region     text,
+    country    text                                NOT NULL,
+    created_at timestamp with time zone            NOT NULL DEFAULT now(),
+    CONSTRAINT locations_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.messages
 (
     id          bigint                   NOT NULL DEFAULT nextval('messages_id_seq'::regclass),
@@ -35,8 +41,8 @@ CREATE TABLE public.messages
     content     text                     NOT NULL,
     is_read     boolean                           DEFAULT false,
     CONSTRAINT messages_pkey PRIMARY KEY (id),
-    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.profiles (id),
-    CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles (id)
+    CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles (id),
+    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.profiles (id)
 );
 CREATE TABLE public.notifications
 (
@@ -78,17 +84,18 @@ CREATE TABLE public.profile_passions
 );
 CREATE TABLE public.profiles
 (
-    id         uuid                     NOT NULL,
-    first_name text,
-    last_name  text,
-    about_me   text,
-    created_at timestamp with time zone NOT NULL DEFAULT now(),
-    gender     text,
-    location   text,
-    age        integer,
-    verified   boolean                  NOT NULL DEFAULT false,
-    role       text                              DEFAULT 'user'::text,
+    id          uuid                     NOT NULL,
+    first_name  text,
+    last_name   text,
+    about_me    text,
+    created_at  timestamp with time zone NOT NULL DEFAULT now(),
+    gender      text,
+    age         integer,
+    verified    boolean                  NOT NULL DEFAULT false,
+    role        text                              DEFAULT 'user'::text,
+    location_id bigint,
     CONSTRAINT profiles_pkey PRIMARY KEY (id),
+    CONSTRAINT profiles_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations (id),
     CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users (id)
 );
 CREATE TABLE public.reports
@@ -99,8 +106,8 @@ CREATE TABLE public.reports
     reason           text                     NOT NULL,
     created_at       timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT reports_pkey PRIMARY KEY (id),
-    CONSTRAINT reports_reported_user_id_fkey FOREIGN KEY (reported_user_id) REFERENCES public.profiles (id),
-    CONSTRAINT reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles (id)
+    CONSTRAINT reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles (id),
+    CONSTRAINT reports_reported_user_id_fkey FOREIGN KEY (reported_user_id) REFERENCES public.profiles (id)
 );
 CREATE TABLE public.user_passions
 (
