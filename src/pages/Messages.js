@@ -1,8 +1,8 @@
 // src/pages/Messages.js
-import React, {useState, useEffect, useRef} from 'react';
-import {supabase} from '../supabaseClient';
-import {Link, useSearchParams} from 'react-router-dom';
-import {Send, ArrowLeft, User} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../supabaseClient';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Send, ArrowLeft, User } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -18,127 +18,106 @@ const Messages = () => {
 
     const lastPollTime = useRef(null);
     const pollingInterval = useRef(null);
-    const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
+    const userScrolledUp = useRef(false); // Tracks if user has scrolled up manually
 
-    // 🔍 Debug: Log URL param
-    useEffect(() => {
-        console.log('🔍 URL Param: chatWith =', chatWith);
-    }, [chatWith]);
-
-    // 🧑 Get current user
+    // Get current user
     useEffect(() => {
         const getUser = async () => {
-            const {data} = await supabase.auth.getUser();
-            console.log('🔐 Auth getUser response:', data?.user);
+            const { data } = await supabase.auth.getUser();
             if (data?.user) {
                 setUser(data.user);
             } else {
-                console.warn('🚫 No user. Redirecting to login...');
                 window.location.href = '/login';
             }
         };
         getUser();
     }, []);
 
-    // 📋 Load conversations (people you've chatted with)
+    // Load conversations
     const loadConversations = async () => {
         if (!user) return;
-
-        console.log('🔄 Loading conversations for user:', user.id);
-        const {data, error} = await supabase.rpc('get_conversations', {
+        const { data, error } = await supabase.rpc('get_conversations', {
             current_user_id: user.id,
         });
-
         if (error) {
-            console.error('❌ Error loading conversations:', error);
+            console.error('Error loading conversations:', error);
         } else {
-            console.log('✅ Conversations loaded:', data);
             setConversations(data);
         }
     };
 
-    // 💬 Load messages for a specific chat
+    // Load messages for a chat
     const loadMessages = async (otherUserId) => {
-        console.log('📩 Loading messages with user:', otherUserId);
-        const {data, error} = await supabase
+        const { data, error } = await supabase
             .from('messages')
             .select(`
-            *,
-            sender:sender_id (id, first_name, last_name),
-            receiver:receiver_id (id, first_name, last_name)
-        `)
-            // ✅ Single .or() with correct logic
+                *,
+                sender:sender_id (id, first_name, last_name),
+                receiver:receiver_id (id, first_name, last_name)
+            `)
             .or(
                 `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
             )
-            .order('created_at', {ascending: true});
+            .order('created_at', { ascending: true });
 
         if (error) {
-            console.error('❌ Error loading messages:', error);
+            console.error('Error loading messages:', error);
         } else {
-            console.log('✅ Messages loaded:', data);
             setMessages(data);
             setSelectedChat(otherUserId);
             lastPollTime.current = new Date().toISOString();
         }
     };
-    // 🔄 Start polling for new messages every 3 seconds
+
+    // Poll for new messages
     const startPolling = (otherUserId) => {
-        console.log('🔁 Starting message polling every 3s');
         lastPollTime.current = new Date().toISOString();
 
         pollingInterval.current = setInterval(async () => {
             if (!lastPollTime.current || !selectedChat) return;
 
-            const newerThan = lastPollTime.current;
-            console.log('⏳ Polling for messages newer than:', newerThan);
-
-            const {data, error} = await supabase
+            const { data, error } = await supabase
                 .from('messages')
                 .select(`
-        *,
-        sender:sender_id (id, first_name, last_name),
-        receiver:receiver_id (id, first_name, last_name)
-    `)
+                    *,
+                    sender:sender_id (id, first_name, last_name),
+                    receiver:receiver_id (id, first_name, last_name)
+                `)
                 .or(
                     `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
                 )
-                .gt('created_at', newerThan)
-                .order('created_at', {ascending: true});
+                .gt('created_at', lastPollTime.current)
+                .order('created_at', { ascending: true });
 
             if (error) {
-                console.error('❌ Polling error:', error);
+                console.error('Polling error:', error);
                 return;
             }
 
             if (data.length > 0) {
-                console.log('📥 New messages received:', data);
                 setMessages((prev) => [...prev, ...data]);
                 lastPollTime.current = new Date().toISOString();
-            } else {
-                console.log('📭 No new messages.');
             }
         }, 3000);
     };
 
-    // 🛑 Stop polling
+    // Stop polling
     const stopPolling = () => {
         if (pollingInterval.current) {
-            console.log('🛑 Stopping polling');
             clearInterval(pollingInterval.current);
             pollingInterval.current = null;
         }
     };
 
-    // 🚀 Auto-load chat if ?chatWith=... is in URL
+    // Auto-load chat from URL
     useEffect(() => {
         if (user && chatWith && !selectedChat) {
-            console.log('🚀 Auto-opening chat from URL');
             loadMessages(chatWith);
         }
     }, [user, chatWith, selectedChat]);
 
-    // 🔄 Start/stop polling when chat is selected
+    // Start/stop polling
     useEffect(() => {
         if (selectedChat) {
             startPolling(selectedChat);
@@ -147,27 +126,46 @@ const Messages = () => {
         return () => stopPolling();
     }, [selectedChat]);
 
-    // 🕐 Refresh conversations every 10s
+    // Refresh conversations
     useEffect(() => {
         if (user) {
             loadConversations();
-            const interval = setInterval(() => {
-                console.log('🔁 Auto-refreshing conversations...');
-                loadConversations();
-            }, 10000);
+            const interval = setInterval(loadConversations, 10000);
             return () => clearInterval(interval);
         }
     }, [user]);
 
-    // 📌 Scroll to bottom of messages
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
-    };
+    // Handle scroll to control auto-scroll behavior
     useEffect(() => {
-        scrollToBottom();
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const handleScroll = () => {
+            const threshold = 100;
+            const isAtBottom =
+                container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+            userScrolledUp.current = !isAtBottom;
+        };
+
+        container.addEventListener('scroll', handleScroll);
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    // Scroll to bottom if user is near bottom
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        // Only auto-scroll if user was already at the bottom
+        if (!userScrolledUp.current) {
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth',
+            });
+        }
     }, [messages]);
 
-    // ✉️ Send a new message
+    // Send message
     const sendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim() || !selectedChat) return;
@@ -178,50 +176,43 @@ const Messages = () => {
             content: newMessage.trim(),
         };
 
-        console.log('📤 Sending message:', message);
-        const {error} = await supabase.from('messages').insert([message]);
+        const { error } = await supabase.from('messages').insert([message]);
 
         if (error) {
-            console.error('❌ Failed to send message:', error);
+            console.error('Failed to send message:', error);
         } else {
-            console.log('✅ Message sent successfully');
             setNewMessage('');
             // Will appear on next poll
         }
     };
 
-    // 👤 Get the other user's full name
+    // Helpers for rendering
     const getOtherUser = (msg) => {
         return msg.sender_id === user.id ? msg.receiver : msg.sender;
     };
 
     const getFullName = (person) => {
-        if (!person) return 'Unknown User';
-        return `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Unknown User';
+        if (!person) return 'User';
+        return `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'User';
     };
 
-    // 💬 Open a chat from sidebar
     const openChat = (otherUserId) => {
-        console.log('💬 Opening chat with:', otherUserId);
         stopPolling();
         loadMessages(otherUserId);
     };
 
-    if (!user) {
-        return <div className="text-white">Loading user...</div>;
-    }
+    if (!user) return null; // Will redirect in useEffect
 
     return (
         <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar/>
+            <Navbar />
 
             <main className="flex-grow flex overflow-hidden">
-                {/* Sidebar: Conversations */}
+                {/* Sidebar */}
                 <div className="w-80 bg-gray-900 border-r border-gray-800 flex flex-col">
                     <div className="p-4 border-b border-gray-800">
                         <h2 className="text-xl font-semibold">Messages</h2>
                     </div>
-
                     <div className="flex-grow overflow-y-auto">
                         {conversations.length === 0 ? (
                             <p className="text-gray-500 p-4">No conversations yet.</p>
@@ -235,8 +226,7 @@ const Messages = () => {
                                             selectedChat === conv.user_id ? 'bg-gray-800' : ''
                                         }`}
                                     >
-                                        <div
-                                            className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-medium">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-medium">
                                             {conv.full_name?.charAt(0).toUpperCase() || 'U'}
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -257,10 +247,10 @@ const Messages = () => {
                 <div className="flex-1 flex flex-col">
                     {selectedChat ? (
                         <>
-                            {/* Chat Header */}
+                            {/* Header */}
                             <div className="p-4 border-b border-gray-800 bg-gray-900/50">
                                 <div className="flex items-center gap-3">
-                                    <User className="w-8 h-8 text-gray-400"/>
+                                    <User className="w-8 h-8 text-gray-400" />
                                     <span className="font-medium">
                                         {conversations.find((c) => c.user_id === selectedChat)?.full_name || 'User'}
                                     </span>
@@ -268,7 +258,11 @@ const Messages = () => {
                             </div>
 
                             {/* Messages */}
-                            <div className="flex-grow p-4 overflow-y-auto space-y-4">
+                            <div
+                                ref={messagesContainerRef}
+                                className="flex-grow p-4 overflow-y-auto space-y-4"
+                                style={{ scrollBehavior: 'smooth' }}
+                            >
                                 {messages.length === 0 ? (
                                     <p className="text-gray-500 text-center mt-8">No messages yet. Say hello!</p>
                                 ) : (
@@ -302,10 +296,9 @@ const Messages = () => {
                                         );
                                     })
                                 )}
-                                <div ref={messagesEndRef}/>
                             </div>
 
-                            {/* Message Input */}
+                            {/* Input */}
                             <div className="p-4 border-t border-gray-800">
                                 <form onSubmit={sendMessage} className="flex gap-2">
                                     <input
@@ -320,7 +313,7 @@ const Messages = () => {
                                         disabled={!newMessage.trim()}
                                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg flex items-center"
                                     >
-                                        <Send size={18}/>
+                                        <Send size={18} />
                                     </button>
                                 </form>
                             </div>
@@ -328,12 +321,12 @@ const Messages = () => {
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
                             <h3 className="text-xl font-semibold mb-2">Select a conversation</h3>
-                            <p className="text-gray-500 mb-6">Start a chat from the sidebar or go back.</p>
+                            <p className="text-gray-500 mb-6">Start a chat from the sidebar.</p>
                             <Link
                                 to="/dashboard"
                                 className="flex items-center gap-2 text-indigo-400 hover:underline"
                             >
-                                <ArrowLeft size={16}/>
+                                <ArrowLeft size={16} />
                                 Back to Dashboard
                             </Link>
                         </div>
@@ -341,7 +334,7 @@ const Messages = () => {
                 </div>
             </main>
 
-            <Footer/>
+            <Footer />
         </div>
     );
 };
