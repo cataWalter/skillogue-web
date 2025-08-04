@@ -19,7 +19,7 @@ const Messages = () => {
     const lastPollTime = useRef(null);
     const pollingInterval = useRef(null);
     const messagesContainerRef = useRef(null);
-    const userScrolledUp = useRef(false); // Tracks if user has scrolled up manually
+    const userScrolledUp = useRef(false); // Tracks if user has scrolled up
 
     // Get current user
     useEffect(() => {
@@ -47,7 +47,7 @@ const Messages = () => {
         }
     };
 
-    // Load messages for a chat
+    // Load messages for selected chat
     const loadMessages = async (otherUserId) => {
         const { data, error } = await supabase
             .from('messages')
@@ -135,7 +135,7 @@ const Messages = () => {
         }
     }, [user]);
 
-    // Handle scroll to control auto-scroll behavior
+    // Handle scroll to detect user intent
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
@@ -151,18 +151,15 @@ const Messages = () => {
         return () => container.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Scroll to bottom if user is near bottom
+    // Auto-scroll to bottom if user is near bottom
     useEffect(() => {
         const container = messagesContainerRef.current;
-        if (!container) return;
+        if (!container || userScrolledUp.current) return;
 
-        // Only auto-scroll if user was already at the bottom
-        if (!userScrolledUp.current) {
-            container.scrollTo({
-                top: container.scrollHeight,
-                behavior: 'smooth',
-            });
-        }
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth',
+        });
     }, [messages]);
 
     // Send message
@@ -182,11 +179,11 @@ const Messages = () => {
             console.error('Failed to send message:', error);
         } else {
             setNewMessage('');
-            // Will appear on next poll
+            // Will appear in poll or immediately in UI if you re-fetch
         }
     };
 
-    // Helpers for rendering
+    // Helpers
     const getOtherUser = (msg) => {
         return msg.sender_id === user.id ? msg.receiver : msg.sender;
     };
@@ -201,14 +198,14 @@ const Messages = () => {
         loadMessages(otherUserId);
     };
 
-    if (!user) return null; // Will redirect in useEffect
+    if (!user) return null;
 
     return (
         <div className="min-h-screen bg-black text-white flex flex-col">
             <Navbar />
 
             <main className="flex-grow flex overflow-hidden">
-                {/* Sidebar */}
+                {/* Sidebar: Conversations */}
                 <div className="w-80 bg-gray-900 border-r border-gray-800 flex flex-col">
                     <div className="p-4 border-b border-gray-800">
                         <h2 className="text-xl font-semibold">Messages</h2>
@@ -247,7 +244,7 @@ const Messages = () => {
                 <div className="flex-1 flex flex-col">
                     {selectedChat ? (
                         <>
-                            {/* Header */}
+                            {/* Chat Header */}
                             <div className="p-4 border-b border-gray-800 bg-gray-900/50">
                                 <div className="flex items-center gap-3">
                                     <User className="w-8 h-8 text-gray-400" />
@@ -257,49 +254,51 @@ const Messages = () => {
                                 </div>
                             </div>
 
-                            {/* Messages */}
-                            <div
-                                ref={messagesContainerRef}
-                                className="flex-grow p-4 overflow-y-auto space-y-4"
-                                style={{ scrollBehavior: 'smooth' }}
-                            >
-                                {messages.length === 0 ? (
-                                    <p className="text-gray-500 text-center mt-8">No messages yet. Say hello!</p>
-                                ) : (
-                                    messages.map((msg) => {
-                                        const isMe = msg.sender_id === user.id;
-                                        const otherUser = getOtherUser(msg);
-                                        return (
-                                            <div
-                                                key={msg.id}
-                                                className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
-                                            >
+                            {/* Fixed-Height Scrollable Message Container */}
+                            <div className="flex-1 overflow-hidden flex flex-col">
+                                <div
+                                    ref={messagesContainerRef}
+                                    className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+                                    style={{ scrollBehavior: 'smooth' }}
+                                >
+                                    {messages.length === 0 ? (
+                                        <p className="text-gray-500 text-center">No messages yet. Say hello!</p>
+                                    ) : (
+                                        messages.map((msg) => {
+                                            const isMe = msg.sender_id === user.id;
+                                            const otherUser = getOtherUser(msg);
+                                            return (
                                                 <div
-                                                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                                                        isMe ? 'bg-indigo-600' : 'bg-gray-800'
-                                                    }`}
+                                                    key={msg.id}
+                                                    className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                                                 >
-                                                    {!isMe && (
-                                                        <div className="text-xs opacity-70 mb-1">
-                                                            {getFullName(otherUser)}
-                                                        </div>
-                                                    )}
-                                                    <p className="text-sm">{msg.content}</p>
-                                                    <span className="text-xs opacity-70 mt-1 block">
-                                                        {new Date(msg.created_at).toLocaleTimeString([], {
-                                                            hour: '2-digit',
-                                                            minute: '2-digit',
-                                                        })}
-                                                    </span>
+                                                    <div
+                                                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                                                            isMe ? 'bg-indigo-600' : 'bg-gray-800'
+                                                        }`}
+                                                    >
+                                                        {!isMe && (
+                                                            <div className="text-xs opacity-70 mb-1">
+                                                                {getFullName(otherUser)}
+                                                            </div>
+                                                        )}
+                                                        <p className="text-sm">{msg.content}</p>
+                                                        <span className="text-xs opacity-70 mt-1 block">
+                                                            {new Date(msg.created_at).toLocaleTimeString([], {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                            })}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })
-                                )}
+                                            );
+                                        })
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Input */}
-                            <div className="p-4 border-t border-gray-800">
+                            {/* Message Input (Fixed at Bottom) */}
+                            <div className="p-4 border-t border-gray-800 bg-gray-900/70">
                                 <form onSubmit={sendMessage} className="flex gap-2">
                                     <input
                                         type="text"
