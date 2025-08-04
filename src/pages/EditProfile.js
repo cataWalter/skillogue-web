@@ -1,12 +1,13 @@
 // src/pages/EditProfile.js
-import React, {useEffect, useState} from 'react';
-import {supabase} from '../supabaseClient';
-import {useNavigate} from 'react-router-dom';
-import {ArrowLeft} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import MultiSelect from '../components/MultiSelect';
 
 const EditProfile = () => {
+    // --- States for profile data ---
     const [loading, setLoading] = useState(true);
-    // Separate states for different parts of the profile
     const [profile, setProfile] = useState({
         first_name: '',
         last_name: '',
@@ -22,84 +23,75 @@ const EditProfile = () => {
     const [selectedLanguages, setSelectedLanguages] = useState([]);
     const [selectedPassions, setSelectedPassions] = useState([]);
 
-    // State for available options from the database
+    // --- States for dropdown options ---
     const [availablePassions, setAvailablePassions] = useState([]);
     const [availableLanguages, setAvailableLanguages] = useState([]);
+    const [countries, setCountries] = useState([]);
+    const [regions, setRegions] = useState([]);
+    const [cities, setCities] = useState([]);
 
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    // Fetch all necessary data on component mount
+    // --- EFFECT 1: Load all initial data for the form ---
     useEffect(() => {
         const loadInitialData = async () => {
             setLoading(true);
-            const {data: {user}} = await supabase.auth.getUser();
+            const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 navigate('/login');
                 return;
             }
 
-            // --- 1. Fetch Profile and Location Data ---
-            const {data: profileData, error: profileError} = await supabase
+            // Fetch profile data including the linked location
+            const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select(`
-                    *,
-                    locations (city, region, country)
-                `)
+                .select(`*, locations(*)`)
                 .eq('id', user.id)
                 .single();
 
-            if (profileError) {
+            if (profileError && profileError.code !== 'PGRST116') {
                 setError('Failed to load profile.');
                 console.error(profileError);
                 setLoading(false);
                 return;
             }
 
-            setProfile({
-                first_name: profileData.first_name || '',
-                last_name: profileData.last_name || '',
-                about_me: profileData.about_me || '',
-                age: profileData.age || '',
-                gender: profileData.gender || '',
-            });
-
-            if (profileData.locations) {
-                setLocation({
-                    city: profileData.locations.city || '',
-                    region: profileData.locations.region || '',
-                    country: profileData.locations.country || '',
+            // Pre-fill form with existing data
+            if (profileData) {
+                setProfile({
+                    first_name: profileData.first_name || '',
+                    last_name: profileData.last_name || '',
+                    about_me: profileData.about_me || '',
+                    age: profileData.age || '',
+                    gender: profileData.gender || '',
                 });
+                if (profileData.locations) {
+                    setLocation({
+                        city: profileData.locations.city || '',
+                        region: profileData.locations.region || '',
+                        country: profileData.locations.country || '',
+                    });
+                }
             }
 
-            // --- 2. Fetch User's Selected Languages ---
-            const {data: languageData, error: languageError} = await supabase
-                .from('profile_languages')
-                .select('languages (name)')
-                .eq('profile_id', user.id);
+            // Fetch selected languages and passions
+            const { data: languageData } = await supabase.from('profile_languages').select('languages (name)').eq('profile_id', user.id);
+            setSelectedLanguages(languageData?.map(l => l.languages.name) || []);
 
-            if (languageError) console.error('Error loading languages:', languageError);
-            else setSelectedLanguages(languageData.map(l => l.languages.name));
+            const { data: passionData } = await supabase.from('profile_passions').select('passions (name)').eq('profile_id', user.id);
+            setSelectedPassions(passionData?.map(p => p.passions.name) || []);
 
-            // --- 3. Fetch User's Selected Passions ---
-            const {data: passionData, error: passionError} = await supabase
-                .from('profile_passions')
-                .select('passions (name)')
-                .eq('profile_id', user.id);
+            // Fetch all available options for MultiSelect components
+            const { data: allLanguages } = await supabase.from('languages').select('id, name');
+            setAvailableLanguages(allLanguages || []);
 
-            if (passionError) console.error('Error loading passions:', passionError);
-            else setSelectedPassions(passionData.map(p => p.passions.name));
+            const { data: allPassions } = await supabase.from('passions').select('id, name');
+            setAvailablePassions(allPassions || []);
 
-
-            // --- 4. Fetch All Available Languages and Passions for selection ---
-            const {data: allLanguages, error: allLangError} = await supabase.from('languages').select('id, name');
-            if (allLangError) console.error('Error fetching all languages', allLangError);
-            else setAvailableLanguages(allLanguages);
-
-            const {data: allPassions, error: allPassionsError} = await supabase.from('passions').select('id, name');
-            if (allPassionsError) console.error('Error fetching all passions', allPassionsError);
-            else setAvailablePassions(allPassions);
-
+            // Fetch distinct countries for the first location dropdown
+            const { data: countryData } = await supabase.rpc('get_distinct_countries');
+            setCountries(countryData?.map(c => c.country) || []);
 
             setLoading(false);
         };
@@ -107,37 +99,75 @@ const EditProfile = () => {
         loadInitialData();
     }, [navigate]);
 
+    // --- EFFECT 2: Fetch regions when a country is selected ---
+    useEffect(() => {
+        if (location.country) {
+            const fetchRegions = async () => {
+                const { data, error } = await supabase.rpc('get_distinct_regions', { selected_country: location.country });
+                if (error) {
+                    console.error("Error fetching regions:", error);
+                    setRegions([]);
+                } else {
+                    setRegions(data.map(r => r.region).filter(Boolean));
+                }
+            };
+            fetchRegions();
+        } else {
+            setRegions([]); // Clear regions if no country is selected
+        }
+    }, [location.country]);
+
+    // --- EFFECT 3: Fetch cities when a country or region changes ---
+    useEffect(() => {
+        if (location.country) {
+            const fetchCities = async () => {
+                const { data, error } = await supabase.rpc('get_cities', {
+                    selected_country: location.country,
+                    selected_region: location.region || null
+                });
+                if (error) {
+                    console.error("Error fetching cities:", error);
+                    setCities([]);
+                } else {
+                    setCities(data.map(c => c.city));
+                }
+            };
+            fetchCities();
+        } else {
+            setCities([]); // Clear cities if no country is selected
+        }
+    }, [location.country, location.region]);
+
+    // --- Event Handlers ---
     const handleProfileChange = (e) => {
-        const {name, value} = e.target;
-        setProfile((prev) => ({...prev, [name]: value}));
+        const { name, value } = e.target;
+        setProfile((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleLocationChange = (e) => {
-        const {name, value} = e.target;
-        setLocation((prev) => ({...prev, [name]: value}));
-    };
-
-    const handleLanguageToggle = (languageName) => {
-        setSelectedLanguages(prev =>
-            prev.includes(languageName)
-                ? prev.filter(lang => lang !== languageName)
-                : [...prev, languageName]
-        );
-    };
-
-    const handlePassionToggle = (passionName) => {
-        setSelectedPassions(prev =>
-            prev.includes(passionName)
-                ? prev.filter(p => p !== passionName)
-                : [...prev, passionName]
-        );
+        const { name, value } = e.target;
+        setLocation(prev => {
+            const newState = { ...prev, [name]: value };
+            if (name === 'country') {
+                newState.region = '';
+                newState.city = '';
+                setRegions([]);
+                setCities([]);
+            }
+            if (name === 'region') {
+                newState.city = '';
+                setCities([]);
+            }
+            return newState;
+        });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError('');
 
-        const {data: {user}} = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
             setError('User not authenticated.');
             setLoading(false);
@@ -145,11 +175,11 @@ const EditProfile = () => {
         }
 
         try {
-            // --- 1. Upsert Location and get location_id ---
+            // This logic remains the same, as it correctly finds or creates a location
+            // based on the `location` state object, which is now populated by dropdowns.
             let locationId = null;
-            if (location.country) { // Country is required in the schema
-                // Check if location exists
-                const {data: existingLocation} = await supabase
+            if (location.country) {
+                const { data: existingLocation } = await supabase
                     .from('locations')
                     .select('id')
                     .match({
@@ -162,8 +192,7 @@ const EditProfile = () => {
                 if (existingLocation) {
                     locationId = existingLocation.id;
                 } else {
-                    // Insert new location if it doesn't exist
-                    const {data: newLocation, error: locError} = await supabase
+                    const { data: newLocation, error: locError } = await supabase
                         .from('locations')
                         .insert({
                             city: location.city || null,
@@ -177,60 +206,49 @@ const EditProfile = () => {
                 }
             }
 
-
-            // --- 2. Update the main profile table ---
-            const {error: profileError} = await supabase
+            // Upsert profile data
+            const { error: profileError } = await supabase
                 .from('profiles')
-                .update({
-                    ...profile,
+                .upsert({
+                    id: user.id,
+                    first_name: profile.first_name,
+                    last_name: profile.last_name,
+                    about_me: profile.about_me,
                     age: profile.age ? Number(profile.age) : null,
+                    gender: profile.gender,
                     location_id: locationId
-                })
-                .eq('id', user.id);
-
+                });
             if (profileError) throw profileError;
 
-
-            // --- 3. Update Profile Languages ---
-            // Delete old languages
+            // Update languages and passions (logic remains the same)
             await supabase.from('profile_languages').delete().eq('profile_id', user.id);
-            // Insert new languages
-            const languageInserts = selectedLanguages.map(langName => {
-                const language = availableLanguages.find(l => l.name === langName);
-                return {profile_id: user.id, language_id: language?.id};
-            }).filter(item => item.language_id);
-
+            const languageInserts = selectedLanguages.map(langName => ({
+                profile_id: user.id,
+                language_id: availableLanguages.find(l => l.name === langName)?.id
+            })).filter(item => item.language_id);
             if (languageInserts.length > 0) {
-                const {error: langError} = await supabase.from('profile_languages').insert(languageInserts);
-                if (langError) throw langError;
+                await supabase.from('profile_languages').insert(languageInserts);
             }
 
-
-            // --- 4. Update Profile Passions ---
-            // Delete old passions
             await supabase.from('profile_passions').delete().eq('profile_id', user.id);
-            // Insert new passions
-            const passionInserts = selectedPassions.map(passionName => {
-                const passion = availablePassions.find(p => p.name === passionName);
-                return {profile_id: user.id, passion_id: passion?.id};
-            }).filter(item => item.passion_id);
-
+            const passionInserts = selectedPassions.map(passionName => ({
+                profile_id: user.id,
+                passion_id: availablePassions.find(p => p.name === passionName)?.id
+            })).filter(item => item.passion_id);
             if (passionInserts.length > 0) {
-                const {error: passionError} = await supabase.from('profile_passions').insert(passionInserts);
-                if (passionError) throw passionError;
+                await supabase.from('profile_passions').insert(passionInserts);
             }
 
             alert('Profile updated successfully!');
             navigate('/profile');
 
         } catch (err) {
-            setError('Failed to update profile.');
+            setError('Failed to update profile. ' + err.message);
             console.error(err);
         } finally {
             setLoading(false);
         }
     };
-
 
     if (loading && !error) {
         return (
@@ -247,7 +265,7 @@ const EditProfile = () => {
                     onClick={() => navigate('/profile')}
                     className="text-gray-400 hover:text-white transition flex items-center gap-2"
                 >
-                    <ArrowLeft size={20}/>
+                    <ArrowLeft size={20} />
                     Back to Profile
                 </button>
             </header>
@@ -331,84 +349,48 @@ const EditProfile = () => {
                         </div>
                     </div>
 
-                    {/* Location Fields */}
+                    {/* NEW Location Dropdowns */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">Country</label>
-                            <input
-                                type="text"
-                                name="country"
-                                value={location.country}
-                                onChange={handleLocationChange}
-                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
-                                placeholder="e.g. Germany"
-                            />
+                            <select name="country" value={location.country} onChange={handleLocationChange} required className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white">
+                                <option value="">Select Country</option>
+                                {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">Region</label>
-                            <input
-                                type="text"
-                                name="region"
-                                value={location.region}
-                                onChange={handleLocationChange}
-                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
-                                placeholder="e.g. Bavaria"
-                            />
+                            <select name="region" value={location.region} onChange={handleLocationChange} disabled={!location.country || regions.length === 0} className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white disabled:opacity-50">
+                                <option value="">Select Region</option>
+                                {regions.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">City</label>
-                            <input
-                                type="text"
-                                name="city"
-                                value={location.city}
-                                onChange={handleLocationChange}
-                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
-                                placeholder="e.g. Munich"
-                            />
+                            <select name="city" value={location.city} onChange={handleLocationChange} disabled={!location.country || cities.length === 0} required className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white disabled:opacity-50">
+                                <option value="">Select City</option>
+                                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
                         </div>
                     </div>
 
+                    {/* Languages - Using MultiSelect */}
+                    <MultiSelect
+                        options={availableLanguages}
+                        selected={selectedLanguages}
+                        onChange={setSelectedLanguages}
+                        label="Languages I Speak"
+                        placeholder="Select languages..."
+                    />
 
-                    {/* Languages */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">Languages</label>
-                        <div className="flex flex-wrap gap-3">
-                            {availableLanguages.map(lang => (
-                                <button
-                                    type="button"
-                                    key={lang.id}
-                                    onClick={() => handleLanguageToggle(lang.name)}
-                                    className={`px-3 py-1 rounded-full text-sm transition ${selectedLanguages.includes(lang.name)
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                    }`}
-                                >
-                                    {lang.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Passions */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">Passions</label>
-                        <p className="text-sm text-gray-400 mb-3">Select the interests you'd like to share</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {availablePassions.map(passion => (
-                                <button
-                                    type="button"
-                                    key={passion.id}
-                                    onClick={() => handlePassionToggle(passion.name)}
-                                    className={`p-3 border rounded-lg cursor-pointer transition text-center ${selectedPassions.includes(passion.name)
-                                        ? 'border-indigo-500 bg-indigo-900/30 text-indigo-300'
-                                        : 'border-gray-700 hover:border-gray-500 text-gray-300'
-                                    }`}
-                                >
-                                    {passion.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    {/* Passions - Using MultiSelect */}
+                    <MultiSelect
+                        options={availablePassions}
+                        selected={selectedPassions}
+                        onChange={setSelectedPassions}
+                        label="My Passions"
+                        placeholder="Select your passions..."
+                    />
 
                     {/* Save Button */}
                     <div className="pt-6">
