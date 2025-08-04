@@ -237,7 +237,7 @@ const Messages = () => {
     };
 
     const openChat = (otherUserId) => {
-        if (otherUserId === selectedChat) return; // Don't re-open the same chat
+        if (otherUserId === selectedChat) return;
 
         setMessages([]);
         setPage(1);
@@ -254,10 +254,10 @@ const Messages = () => {
     if (!user) return null;
 
     return (
-        <div className="h-screen bg-black text-white flex flex-col">
+        <div className="bg-black text-white">
             <Navbar/>
 
-            <main className="flex-1 flex overflow-hidden">
+            <main className="flex overflow-hidden h-[calc(100vh-4rem)]">
                 {/* Sidebar: Conversations */}
                 <div className="w-80 bg-gray-900 border-r border-gray-800 flex flex-col">
                     <div className="p-4 border-b border-gray-800">
