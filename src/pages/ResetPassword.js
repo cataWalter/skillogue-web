@@ -1,9 +1,9 @@
 // src/pages/ResetPassword.js
 
-import {useState, useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {useNavigate} from 'react-router-dom';
-import {Loader2, AlertCircle} from 'lucide-react';
+import {AlertCircle, Loader2} from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 

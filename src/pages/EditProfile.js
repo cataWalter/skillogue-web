@@ -6,84 +6,123 @@ import {ArrowLeft} from 'lucide-react';
 
 const EditProfile = () => {
     const [loading, setLoading] = useState(true);
+    // Separate states for different parts of the profile
     const [profile, setProfile] = useState({
         first_name: '',
         last_name: '',
         about_me: '',
         age: '',
-        location: '',
         gender: '',
-        languages: [],
     });
-    const [passions, setPassions] = useState([]);
-    const [availablePassions, setAvailablePassions] = useState([]);
+    const [location, setLocation] = useState({
+        city: '',
+        region: '',
+        country: '',
+    });
+    const [selectedLanguages, setSelectedLanguages] = useState([]);
     const [selectedPassions, setSelectedPassions] = useState([]);
+
+    // State for available options from the database
+    const [availablePassions, setAvailablePassions] = useState([]);
+    const [availableLanguages, setAvailableLanguages] = useState([]);
+
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    // Fetch current user and profile
+    // Fetch all necessary data on component mount
     useEffect(() => {
-        const loadProfileAndPassions = async () => {
+        const loadInitialData = async () => {
+            setLoading(true);
             const {data: {user}} = await supabase.auth.getUser();
             if (!user) {
                 navigate('/login');
                 return;
             }
 
-            // Load profile
+            // --- 1. Fetch Profile and Location Data ---
             const {data: profileData, error: profileError} = await supabase
                 .from('profiles')
-                .select('*')
+                .select(`
+                    *,
+                    locations (city, region, country)
+                `)
                 .eq('id', user.id)
                 .single();
 
             if (profileError) {
                 setError('Failed to load profile.');
                 console.error(profileError);
-            } else {
-                setProfile({
-                    first_name: profileData.first_name || '',
-                    last_name: profileData.last_name || '',
-                    about_me: profileData.about_me || '',
-                    age: profileData.age || '',
-                    location: profileData.location || '',
-                    gender: profileData.gender || '',
-                    languages: Array.isArray(profileData.languages) ? profileData.languages : [],
+                setLoading(false);
+                return;
+            }
+
+            setProfile({
+                first_name: profileData.first_name || '',
+                last_name: profileData.last_name || '',
+                about_me: profileData.about_me || '',
+                age: profileData.age || '',
+                gender: profileData.gender || '',
+            });
+
+            if (profileData.locations) {
+                setLocation({
+                    city: profileData.locations.city || '',
+                    region: profileData.locations.region || '',
+                    country: profileData.locations.country || '',
                 });
-                // Store selected passions for later
-                setSelectedPassions(profileData.passions?.map(p => p.name) || []);
             }
 
-            // Load all passions for dropdown
-            const {data: passionsData, error: passionsError} = await supabase
-                .from('passions')
-                .select('id, name');
+            // --- 2. Fetch User's Selected Languages ---
+            const {data: languageData, error: languageError} = await supabase
+                .from('profile_languages')
+                .select('languages (name)')
+                .eq('profile_id', user.id);
 
-            if (passionsError) {
-                console.error('Error loading passions:', passionsError);
-            } else {
-                setAvailablePassions(passionsData);
-            }
+            if (languageError) console.error('Error loading languages:', languageError);
+            else setSelectedLanguages(languageData.map(l => l.languages.name));
+
+            // --- 3. Fetch User's Selected Passions ---
+            const {data: passionData, error: passionError} = await supabase
+                .from('profile_passions')
+                .select('passions (name)')
+                .eq('profile_id', user.id);
+
+            if (passionError) console.error('Error loading passions:', passionError);
+            else setSelectedPassions(passionData.map(p => p.passions.name));
+
+
+            // --- 4. Fetch All Available Languages and Passions for selection ---
+            const {data: allLanguages, error: allLangError} = await supabase.from('languages').select('id, name');
+            if (allLangError) console.error('Error fetching all languages', allLangError);
+            else setAvailableLanguages(allLanguages);
+
+            const {data: allPassions, error: allPassionsError} = await supabase.from('passions').select('id, name');
+            if (allPassionsError) console.error('Error fetching all passions', allPassionsError);
+            else setAvailablePassions(allPassions);
+
 
             setLoading(false);
         };
 
-        loadProfileAndPassions();
+        loadInitialData();
     }, [navigate]);
 
-    const handleChange = (e) => {
+    const handleProfileChange = (e) => {
         const {name, value} = e.target;
         setProfile((prev) => ({...prev, [name]: value}));
     };
 
-    const handleLanguageChange = (e) => {
-        const lang = e.target.value;
-        setProfile((prev) => {
-            const languages = prev.languages.includes(lang)
-                ? prev.languages.filter(l => l !== lang)
-                : [...prev.languages, lang];
-            return {...prev, languages};
-        });
+    const handleLocationChange = (e) => {
+        const {name, value} = e.target;
+        setLocation((prev) => ({...prev, [name]: value}));
+    };
+
+    const handleLanguageToggle = (languageName) => {
+        setSelectedLanguages(prev =>
+            prev.includes(languageName)
+                ? prev.filter(lang => lang !== languageName)
+                : [...prev, languageName]
+        );
     };
 
     const handlePassionToggle = (passionName) => {
@@ -105,52 +144,93 @@ const EditProfile = () => {
             return;
         }
 
-        // Update profile
-        const {error: profileError} = await supabase
-            .from('profiles')
-            .update({
-                first_name: profile.first_name,
-                last_name: profile.last_name,
-                about_me: profile.about_me,
-                age: profile.age ? Number(profile.age) : null,
-                location: profile.location,
-                gender: profile.gender,
-                languages: profile.languages,
-            })
-            .eq('id', user.id);
+        try {
+            // --- 1. Upsert Location and get location_id ---
+            let locationId = null;
+            if (location.country) { // Country is required in the schema
+                // Check if location exists
+                const {data: existingLocation} = await supabase
+                    .from('locations')
+                    .select('id')
+                    .match({
+                        city: location.city || null,
+                        region: location.region || null,
+                        country: location.country
+                    })
+                    .maybeSingle();
 
-        if (profileError) {
-            setError('Failed to update profile.');
-            console.error(profileError);
-            setLoading(false);
-            return;
-        }
-
-        // Clear old profile_passions
-        await supabase
-            .from('profile_passions')
-            .delete()
-            .eq('profile_id', user.id);
-
-        // Insert new passions
-        const passionInserts = selectedPassions.map(passionName => {
-            const passion = availablePassions.find(p => p.name === passionName);
-            return {profile_id: user.id, passion_id: passion?.id};
-        }).filter(Boolean);
-
-        if (passionInserts.length > 0) {
-            const {error: passionError} = await supabase
-                .from('profile_passions')
-                .insert(passionInserts);
-
-            if (passionError) {
-                console.error('Error updating passions:', passionError);
+                if (existingLocation) {
+                    locationId = existingLocation.id;
+                } else {
+                    // Insert new location if it doesn't exist
+                    const {data: newLocation, error: locError} = await supabase
+                        .from('locations')
+                        .insert({
+                            city: location.city || null,
+                            region: location.region || null,
+                            country: location.country
+                        })
+                        .select()
+                        .single();
+                    if (locError) throw locError;
+                    locationId = newLocation.id;
+                }
             }
-        }
 
-        alert('Profile updated successfully!');
-        navigate('/profile');
+
+            // --- 2. Update the main profile table ---
+            const {error: profileError} = await supabase
+                .from('profiles')
+                .update({
+                    ...profile,
+                    age: profile.age ? Number(profile.age) : null,
+                    location_id: locationId
+                })
+                .eq('id', user.id);
+
+            if (profileError) throw profileError;
+
+
+            // --- 3. Update Profile Languages ---
+            // Delete old languages
+            await supabase.from('profile_languages').delete().eq('profile_id', user.id);
+            // Insert new languages
+            const languageInserts = selectedLanguages.map(langName => {
+                const language = availableLanguages.find(l => l.name === langName);
+                return {profile_id: user.id, language_id: language?.id};
+            }).filter(item => item.language_id);
+
+            if (languageInserts.length > 0) {
+                const {error: langError} = await supabase.from('profile_languages').insert(languageInserts);
+                if (langError) throw langError;
+            }
+
+
+            // --- 4. Update Profile Passions ---
+            // Delete old passions
+            await supabase.from('profile_passions').delete().eq('profile_id', user.id);
+            // Insert new passions
+            const passionInserts = selectedPassions.map(passionName => {
+                const passion = availablePassions.find(p => p.name === passionName);
+                return {profile_id: user.id, passion_id: passion?.id};
+            }).filter(item => item.passion_id);
+
+            if (passionInserts.length > 0) {
+                const {error: passionError} = await supabase.from('profile_passions').insert(passionInserts);
+                if (passionError) throw passionError;
+            }
+
+            alert('Profile updated successfully!');
+            navigate('/profile');
+
+        } catch (err) {
+            setError('Failed to update profile.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
     };
+
 
     if (loading && !error) {
         return (
@@ -162,7 +242,6 @@ const EditProfile = () => {
 
     return (
         <div className="min-h-screen bg-black text-white">
-            {/* Header */}
             <header className="p-6 border-b border-gray-800 flex items-center">
                 <button
                     onClick={() => navigate('/profile')}
@@ -184,27 +263,23 @@ const EditProfile = () => {
                     {/* Name Fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                First Name
-                            </label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
                             <input
                                 type="text"
                                 name="first_name"
                                 value={profile.first_name}
-                                onChange={handleChange}
+                                onChange={handleProfileChange}
                                 className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
                                 required
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Last Name
-                            </label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
                             <input
                                 type="text"
                                 name="last_name"
                                 value={profile.last_name}
-                                onChange={handleChange}
+                                onChange={handleProfileChange}
                                 className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
                                 required
                             />
@@ -213,56 +288,37 @@ const EditProfile = () => {
 
                     {/* About Me */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            About Me
-                        </label>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">About Me</label>
                         <textarea
                             name="about_me"
                             value={profile.about_me}
-                            onChange={handleChange}
+                            onChange={handleProfileChange}
                             rows="4"
                             className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
                             placeholder="Tell others about yourself..."
                         />
                     </div>
 
-                    {/* Age, Location, Gender */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Age & Gender */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Age
-                            </label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Age</label>
                             <input
                                 type="number"
                                 name="age"
                                 value={profile.age}
-                                onChange={handleChange}
+                                onChange={handleProfileChange}
                                 className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
                                 min="16"
                                 max="120"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Location
-                            </label>
-                            <input
-                                type="text"
-                                name="location"
-                                value={profile.location}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
-                                placeholder="e.g. Berlin, Germany"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Gender
-                            </label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Gender</label>
                             <select
                                 name="gender"
                                 value={profile.gender}
-                                onChange={handleChange}
+                                onChange={handleProfileChange}
                                 className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
                             >
                                 <option value="">Select</option>
@@ -275,48 +331,81 @@ const EditProfile = () => {
                         </div>
                     </div>
 
+                    {/* Location Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Country</label>
+                            <input
+                                type="text"
+                                name="country"
+                                value={location.country}
+                                onChange={handleLocationChange}
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
+                                placeholder="e.g. Germany"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Region</label>
+                            <input
+                                type="text"
+                                name="region"
+                                value={location.region}
+                                onChange={handleLocationChange}
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
+                                placeholder="e.g. Bavaria"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">City</label>
+                            <input
+                                type="text"
+                                name="city"
+                                value={location.city}
+                                onChange={handleLocationChange}
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
+                                placeholder="e.g. Munich"
+                            />
+                        </div>
+                    </div>
+
+
                     {/* Languages */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
-                            Languages
-                        </label>
+                        <label className="block text-sm font-medium text-gray-300 mb-3">Languages</label>
                         <div className="flex flex-wrap gap-3">
-                            {['English', 'Spanish', 'French', 'German', 'Mandarin', 'Hindi', 'Arabic', 'Portuguese'].map(lang => (
-                                <label key={lang} className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={profile.languages.includes(lang)}
-                                        onChange={handleLanguageChange}
-                                        value={lang}
-                                        className="rounded text-indigo-600"
-                                    />
-                                    <span className="text-gray-300">{lang}</span>
-                                </label>
+                            {availableLanguages.map(lang => (
+                                <button
+                                    type="button"
+                                    key={lang.id}
+                                    onClick={() => handleLanguageToggle(lang.name)}
+                                    className={`px-3 py-1 rounded-full text-sm transition ${selectedLanguages.includes(lang.name)
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {lang.name}
+                                </button>
                             ))}
                         </div>
                     </div>
 
                     {/* Passions */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
-                            Passions
-                        </label>
-                        <p className="text-sm text-gray-400 mb-3">
-                            Select the interests you'd like to share
-                        </p>
+                        <label className="block text-sm font-medium text-gray-300 mb-3">Passions</label>
+                        <p className="text-sm text-gray-400 mb-3">Select the interests you'd like to share</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {availablePassions.map(passion => (
-                                <label
+                                <button
+                                    type="button"
                                     key={passion.id}
-                                    className={`p-3 border rounded-lg cursor-pointer transition text-center ${
-                                        selectedPassions.includes(passion.name)
-                                            ? 'border-indigo-500 bg-indigo-900/30 text-indigo-300'
-                                            : 'border-gray-700 hover:border-gray-500 text-gray-300'
-                                    }`}
                                     onClick={() => handlePassionToggle(passion.name)}
+                                    className={`p-3 border rounded-lg cursor-pointer transition text-center ${selectedPassions.includes(passion.name)
+                                        ? 'border-indigo-500 bg-indigo-900/30 text-indigo-300'
+                                        : 'border-gray-700 hover:border-gray-500 text-gray-300'
+                                    }`}
                                 >
                                     {passion.name}
-                                </label>
+                                </button>
                             ))}
                         </div>
                     </div>

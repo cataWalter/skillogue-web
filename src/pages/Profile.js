@@ -2,11 +2,15 @@
 import React, {useEffect, useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {Link} from 'react-router-dom';
-import {ArrowLeft, Edit, ShieldCheck} from 'lucide-react';
+import {Edit, ShieldCheck} from 'lucide-react';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import Avatar from '../components/Avatar';
 
 function Profile() {
     const [profile, setProfile] = useState(null);
     const [passions, setPassions] = useState([]);
+    const [languages, setLanguages] = useState([]); // <-- State for languages
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -17,16 +21,25 @@ function Profile() {
                 return;
             }
 
-            // Fetch profile
+            // Fetch profile and its related location in one query
             const {data: profileData, error: profileError} = await supabase
                 .from('profiles')
-                .select('*')
+                .select(`
+                    *,
+                    locations (*)
+                `)
                 .eq('id', user.id)
                 .single();
 
             if (profileError) {
-                alert('Profile not found. Please complete your profile.');
-                window.location.href = '/setup'; // Optional: redirect to setup
+                console.error('Error loading profile:', profileError);
+                // Redirecting to edit profile might be a better user experience
+                // if their profile is incomplete.
+                if (profileError.code === 'PGRST116') { // 'PGRST116' is for "single() row not found"
+                    alert('Profile not found. Please complete your profile.');
+                    window.location.href = '/edit-profile';
+                }
+                setLoading(false);
                 return;
             }
 
@@ -44,11 +57,31 @@ function Profile() {
                 setPassions(passionData.map(p => p.passions.name));
             }
 
+            // Fetch languages via join table
+            const {data: languageData, error: languageError} = await supabase
+                .from('profile_languages')
+                .select('languages (name)')
+                .eq('profile_id', user.id);
+
+            if (languageError) {
+                console.error('Error loading languages:', languageError);
+            } else {
+                setLanguages(languageData.map(l => l.languages.name));
+            }
+
+
             setLoading(false);
         };
 
         loadProfile();
     }, []);
+
+    // Helper to format the location string
+    const formatLocation = (location) => {
+        if (!location) return null;
+        return [location.city, location.region, location.country].filter(Boolean).join(', ');
+    };
+
 
     if (loading) {
         return (
@@ -58,43 +91,48 @@ function Profile() {
         );
     }
 
+    if (!profile) {
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                <p>Could not load profile. <Link to="/edit-profile" className="text-indigo-400">Please create
+                    one.</Link></p>
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen bg-black text-white">
-            {/* Header */}
-            <header className="p-6 border-b border-gray-800 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link
-                        to="/dashboard"
-                        className="text-gray-400 hover:text-white transition"
-                    >
-                        <ArrowLeft size={20}/>
-                    </Link>
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                        Your Profile
-                    </h1>
-                </div>
-                <Link
-                    to="/edit-profile"
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 transition"
-                >
-                    <Edit size={16}/> Edit
-                </Link>
-            </header>
+        <div className="flex flex-col min-h-screen bg-black text-white">
+            <Navbar/>
 
             {/* Profile Content */}
-            <main className="p-6 max-w-4xl mx-auto">
+            <main className="flex-grow p-6 max-w-4xl mx-auto w-full">
                 <div className="bg-gray-900/70 p-8 rounded-2xl border border-gray-800 shadow-xl">
-                    {/* Name & Verified Badge */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-                        <h2 className="text-3xl font-bold">
-                            {profile.first_name} {profile.last_name}
-                        </h2>
-                        {profile.verified && (
-                            <span className="flex items-center mt-2 sm:mt-0 text-green-400 text-sm font-medium">
-                                <ShieldCheck size={16} className="mr-1"/> Verified
-                            </span>
-                        )}
+                    <div className="flex items-center mb-6">
+                        <Avatar seed={profile.id}
+                                className="w-24 h-24 rounded-full object-cover border-4 border-indigo-500 mr-6"/>
+                        <div className="flex-grow">
+                            {/* Name & Edit Button */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-3xl font-bold">
+                                        {profile.first_name} {profile.last_name}
+                                    </h2>
+                                    {profile.verified && (
+                                        <span className="flex items-center text-green-400 text-sm font-medium">
+                                            <ShieldCheck size={16} className="mr-1"/> Verified
+                                        </span>
+                                    )}
+                                </div>
+                                <Link
+                                    to="/edit-profile"
+                                    className="flex items-center gap-2 mt-4 sm:mt-0 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 transition"
+                                >
+                                    <Edit size={16}/> Edit Profile
+                                </Link>
+                            </div>
+                        </div>
                     </div>
+
 
                     {/* About Me */}
                     {profile.about_me && (
@@ -118,16 +156,16 @@ function Profile() {
                                 <p className="text-white">{profile.age}</p>
                             </div>
                         )}
-                        {profile.location && (
+                        {profile.locations && (
                             <div>
                                 <h3 className="text-sm font-medium text-gray-400">Location</h3>
-                                <p className="text-white">{profile.location}</p>
+                                <p className="text-white">{formatLocation(profile.locations)}</p>
                             </div>
                         )}
-                        {profile.languages && profile.languages.length > 0 && (
+                        {languages.length > 0 && (
                             <div>
                                 <h3 className="text-sm font-medium text-gray-400">Languages</h3>
-                                <p className="text-white">{profile.languages.join(', ')}</p>
+                                <p className="text-white">{languages.join(', ')}</p>
                             </div>
                         )}
                     </div>
@@ -155,6 +193,7 @@ function Profile() {
                     </div>
                 </div>
             </main>
+            <Footer/>
         </div>
     );
 }

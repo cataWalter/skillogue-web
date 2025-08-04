@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {supabase} from '../supabaseClient';
-import {Home, LayoutDashboard, LogOut, Menu, MessageSquare, User, Users, X} from 'lucide-react';
+import {Home, LayoutDashboard, LogOut, Menu, MessageSquare, Search, User, Users, X} from 'lucide-react';
 
 const Navbar = () => {
     const [session, setSession] = useState(null);
@@ -29,34 +29,30 @@ const Navbar = () => {
 
     const NavLinks = () => (
         <>
-            <Link
-                to="/"
-                className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
-            >
+            <Link to="/"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <Home size={18}/>
                 <span>Home</span>
             </Link>
 
-            <Link
-                to="/dashboard"
-                className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
-            >
+            <Link to="/search"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
+                <Search size={18}/>
+                <span>Search</span>
+            </Link>
+
+            <Link to="/dashboard"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <LayoutDashboard size={18}/>
                 <span>Dashboard</span>
             </Link>
-
-            <Link
-                to="/connections"
-                className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
-            >
+            <Link to="/connections"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <Users size={18}/>
                 <span>Connections</span>
             </Link>
-
-            <Link
-                to="/messages"
-                className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
-            >
+            <Link to="/messages"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <MessageSquare size={18}/>
                 <span>Messages</span>
             </Link>
