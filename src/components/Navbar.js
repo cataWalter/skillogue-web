@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { LogOut, User, MessageSquare, Users, Home, Menu, X } from 'lucide-react';
+import { LogOut, User, MessageSquare, Users, Home, Menu, X, LayoutDashboard } from 'lucide-react';
 
 const Navbar = () => {
     const [session, setSession] = useState(null);
@@ -36,13 +36,23 @@ const Navbar = () => {
                 <Home size={18} />
                 <span>Home</span>
             </Link>
+
             <Link
-                to="/connections" // Changed from 'href' to 'to'
+                to="/dashboard"
+                className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
+            >
+                <LayoutDashboard size={18} />
+                <span>Dashboard</span>
+            </Link>
+
+            <Link
+                to="/connections"
                 className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
             >
                 <Users size={18} />
                 <span>Connections</span>
             </Link>
+
             <Link
                 to="/messages"
                 className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
@@ -50,6 +60,7 @@ const Navbar = () => {
                 <MessageSquare size={18} />
                 <span>Messages</span>
             </Link>
+
             <Link
                 to="/profile"
                 className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
@@ -76,13 +87,14 @@ const Navbar = () => {
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex md:items-center md:space-x-4">
-                        {session ? <NavLinks /> : null}
+                        {session && <NavLinks />}
                         {session && (
                             <button
                                 onClick={handleLogout}
-                                className="ml-6 px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition"
+                                className="flex items-center gap-2 ml-6 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition"
                             >
-                                Log Out
+                                <LogOut size={18} />
+                                <span>Log Out</span>
                             </button>
                         )}
                     </div>
@@ -107,9 +119,10 @@ const Navbar = () => {
                                     <NavLinks />
                                     <button
                                         onClick={handleLogout}
-                                        className="w-full text-left mt-4 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition"
+                                        className="flex items-center gap-2 w-full text-left mt-4 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition"
                                     >
-                                        Log Out
+                                        <LogOut size={18} />
+                                        <span>Log Out</span>
                                     </button>
                                 </>
                             ) : null}
