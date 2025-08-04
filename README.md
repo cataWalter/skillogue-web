@@ -51,7 +51,6 @@ as the all-in-one backend.
 
 ## Todo
 
-* fix not waiting registration link for accessing (security issue)
 * registration onboarding
 * reuse components
 * remove connections
