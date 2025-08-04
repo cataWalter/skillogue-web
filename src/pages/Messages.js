@@ -1,13 +1,13 @@
 // src/pages/Messages.js
 import React from 'react';
-import { Link } from 'react-router-dom';
+import {Link} from 'react-router-dom';
 
 const Messages = () => {
     // Mock data (replace with Supabase later)
     const conversations = [
-        { id: 1, name: 'Alex Rivera', lastMessage: 'Hey, loved your passion for photography!', time: '2m ago' },
-        { id: 2, name: 'Sam Chen', lastMessage: 'Let’s collab on that music project!', time: '1h ago' },
-        { id: 3, name: 'Jordan Lee', lastMessage: 'Same! I’ve been learning React too.', time: '5h ago' },
+        {id: 1, name: 'Alex Rivera', lastMessage: 'Hey, loved your passion for photography!', time: '2m ago'},
+        {id: 2, name: 'Sam Chen', lastMessage: 'Let’s collab on that music project!', time: '1h ago'},
+        {id: 3, name: 'Jordan Lee', lastMessage: 'Same! I’ve been learning React too.', time: '5h ago'},
     ];
 
     return (

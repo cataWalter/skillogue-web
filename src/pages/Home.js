@@ -1,5 +1,5 @@
-import { supabase } from '../supabaseClient'
-import { useNavigate } from 'react-router-dom'
+import {supabase} from '../supabaseClient'
+import {useNavigate} from 'react-router-dom'
 
 function Home() {
     const navigate = useNavigate()
@@ -10,7 +10,7 @@ function Home() {
     }
 
     return (
-        <div style={{ maxWidth: '420px', margin: '96px auto' }}>
+        <div style={{maxWidth: '420px', margin: '96px auto'}}>
             <h2>Welcome to Skillogue!</h2>
             <p>You are now logged in.</p>
             <button onClick={handleLogout}>Logout</button>

@@ -1,9 +1,9 @@
 // src/pages/Dashboard.js
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient'; // ✅ Add this import
+import React, {useEffect, useState} from 'react';
+import {supabase} from '../supabaseClient'; // ✅ Add this import
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { Link } from 'react-router-dom';
+import {Link} from 'react-router-dom';
 
 
 const Dashboard = () => {
@@ -11,7 +11,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         const fetchUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession(); // ✅ Now works
+            const {data: {session}} = await supabase.auth.getSession(); // ✅ Now works
             if (session) {
                 setUser(session.user);
             }
@@ -21,7 +21,7 @@ const Dashboard = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-black text-white">
-            <Navbar />
+            <Navbar/>
             <main className="flex-grow pt-8">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <div className="text-center">
@@ -33,7 +33,8 @@ const Dashboard = () => {
                             !
                         </h1>
                         <p className="mt-6 max-w-3xl mx-auto text-xl text-gray-300">
-                            Your space to build meaningful friendships through shared skills, passions, and real conversations.
+                            Your space to build meaningful friendships through shared skills, passions, and real
+                            conversations.
                         </p>
 
                         {/* Navigation Cards */}
@@ -63,7 +64,7 @@ const Dashboard = () => {
                     </div>
                 </div>
             </main>
-            <Footer />
+            <Footer/>
         </div>
     );
 };

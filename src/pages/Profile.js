@@ -1,8 +1,8 @@
 // src/pages/Profile.js
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Edit } from 'lucide-react';
+import React, {useEffect, useState} from 'react';
+import {supabase} from '../supabaseClient';
+import {Link} from 'react-router-dom';
+import {ArrowLeft, Edit, ShieldCheck} from 'lucide-react';
 
 function Profile() {
     const [profile, setProfile] = useState(null);
@@ -11,14 +11,14 @@ function Profile() {
 
     useEffect(() => {
         const loadProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {data: {user}} = await supabase.auth.getUser();
             if (!user) {
                 window.location.href = '/login';
                 return;
             }
 
             // Fetch profile
-            const { data: profileData, error: profileError } = await supabase
+            const {data: profileData, error: profileError} = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
@@ -33,7 +33,7 @@ function Profile() {
             setProfile(profileData);
 
             // Fetch passions via join table
-            const { data: passionData, error: passionError } = await supabase
+            const {data: passionData, error: passionError} = await supabase
                 .from('profile_passions')
                 .select('passions (name)')
                 .eq('profile_id', user.id);
@@ -67,7 +67,7 @@ function Profile() {
                         to="/dashboard"
                         className="text-gray-400 hover:text-white transition"
                     >
-                        <ArrowLeft size={20} />
+                        <ArrowLeft size={20}/>
                     </Link>
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                         Your Profile
@@ -77,7 +77,7 @@ function Profile() {
                     to="/edit-profile"
                     className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 transition"
                 >
-                    <Edit size={16} /> Edit
+                    <Edit size={16}/> Edit
                 </Link>
             </header>
 
@@ -91,7 +91,7 @@ function Profile() {
                         </h2>
                         {profile.verified && (
                             <span className="flex items-center mt-2 sm:mt-0 text-green-400 text-sm font-medium">
-                                <ShieldCheck size={16} className="mr-1" /> Verified
+                                <ShieldCheck size={16} className="mr-1"/> Verified
                             </span>
                         )}
                     </div>

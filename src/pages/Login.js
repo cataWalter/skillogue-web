@@ -2,7 +2,7 @@
 import React, {useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {Link, useNavigate} from 'react-router-dom';
-import {LogIn, UserPlus, Mail} from 'lucide-react';
+import {LogIn, Mail, UserPlus} from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
