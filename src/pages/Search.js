@@ -114,7 +114,7 @@ const Search = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-black text-white">
-            <Navbar />
+            <Navbar/>
             <main className="flex-grow p-6">
                 <div className="max-w-6xl mx-auto">
                     <h1 className="text-3xl font-bold mb-8">Find Your Tribe</h1>
@@ -253,7 +253,7 @@ const Search = () => {
                     </div>
                 </div>
             </main>
-            <Footer />
+            <Footer/>
         </div>
     );
 };

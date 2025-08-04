@@ -1,8 +1,8 @@
 // src/pages/Messages.js
-import React, {useState, useEffect, useRef, useLayoutEffect} from 'react';
+import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {Link, useSearchParams} from 'react-router-dom';
-import {Send, ArrowLeft, User, Loader2} from 'lucide-react';
+import {ArrowLeft, Loader2, Send, User} from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 

@@ -63,13 +63,14 @@ function Profile() {
 
     return (
         <div className="flex flex-col min-h-screen bg-black text-white">
-            <Navbar />
+            <Navbar/>
 
             {/* Profile Content */}
             <main className="flex-grow p-6 max-w-4xl mx-auto w-full">
                 <div className="bg-gray-900/70 p-8 rounded-2xl border border-gray-800 shadow-xl">
                     <div className="flex items-center mb-6">
-                        <Avatar seed={profile.id} className="w-24 h-24 rounded-full object-cover border-4 border-indigo-500 mr-6" />
+                        <Avatar seed={profile.id}
+                                className="w-24 h-24 rounded-full object-cover border-4 border-indigo-500 mr-6"/>
                         <div className="flex-grow">
                             {/* Name & Edit Button */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between">
@@ -153,7 +154,7 @@ function Profile() {
                     </div>
                 </div>
             </main>
-            <Footer />
+            <Footer/>
         </div>
     );
 }

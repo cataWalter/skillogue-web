@@ -53,13 +53,14 @@ const Connections = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-black text-white">
-            <Navbar />
+            <Navbar/>
             <main className="flex-grow p-6">
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl font-bold mb-8">Your Connections</h1>
 
                     {connections.length === 0 ? (
-                        <p className="text-gray-400">You haven't connected with anyone yet. Start searching for new friends!</p>
+                        <p className="text-gray-400">You haven't connected with anyone yet. Start searching for new
+                            friends!</p>
                     ) : (
                         <div className="space-y-4">
                             {connections.map((connection) => (
@@ -68,7 +69,8 @@ const Connections = () => {
                                     className="bg-gray-900/70 p-6 rounded-xl border border-gray-800 flex items-center justify-between hover:bg-gray-800/70 transition-all duration-200"
                                 >
                                     <div className="flex items-center space-x-4">
-                                        <Avatar seed={connection.id} className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500" />
+                                        <Avatar seed={connection.id}
+                                                className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500"/>
                                         <div>
                                             <h3 className="text-xl font-semibold">{connection.name}</h3>
                                             <div className="flex flex-wrap gap-2 mt-1">
@@ -114,7 +116,7 @@ const Connections = () => {
                     </Link>
                 </div>
             </main>
-            <Footer />
+            <Footer/>
         </div>
     );
 };
