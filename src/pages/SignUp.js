@@ -4,6 +4,10 @@ import { supabase } from '../supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 
+// ✅ Import shared components
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+
 const SignUp = () => {
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
@@ -40,18 +44,8 @@ const SignUp = () => {
 
     return (
         <div className="min-h-screen bg-black text-white flex flex-col">
-            {/* Background Decorative Blobs */}
-            <div className="fixed inset-0 -z-10 overflow-hidden">
-                <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-indigo-600/20 to-purple-800/20 rounded-full blur-3xl"></div>
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-pink-600/20 to-red-800/20 rounded-full blur-3xl"></div>
-            </div>
-
-            {/* Navbar */}
-            <header className="px-6 py-6">
-                <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                    Skillogue
-                </Link>
-            </header>
+            {/* ✅ Use the shared Navbar */}
+            <Navbar />
 
             {/* Main Sign-Up Form */}
             <main className="flex-grow flex items-center justify-center px-6 py-12">
@@ -146,10 +140,8 @@ const SignUp = () => {
                 </div>
             </main>
 
-            {/* Footer */}
-            <footer className="px-6 py-4 text-center text-gray-600 text-sm">
-                &copy; {new Date().getFullYear()} Skillogue. For real human connection.
-            </footer>
+            {/* ✅ Use the shared Footer */}
+            <Footer />
         </div>
     );
 };
