@@ -1,17 +1,8 @@
 // src/components/Avatar.js
-import React, { useState, useEffect } from 'react';
-import { createAvatar } from '@dicebear/core';
+import React, {useEffect, useState} from 'react';
+import {createAvatar} from '@dicebear/core';
 // Import a variety of collections from DiceBear
-import {
-    adventurer,
-    bottts,
-    micah,
-    miniavs,
-    openPeeps,
-    personas,
-    pixelArt,
-    thumbs
-} from '@dicebear/collection';
+import {adventurer, bottts, micah, miniavs, openPeeps, personas, pixelArt, thumbs} from '@dicebear/collection';
 
 // Create an array of the available avatar styles
 const avatarCollections = [
@@ -25,7 +16,7 @@ const avatarCollections = [
     thumbs
 ];
 
-const Avatar = ({ seed, className }) => {
+const Avatar = ({seed, className}) => {
     const [avatarSvg, setAvatarSvg] = useState('');
 
     useEffect(() => {
