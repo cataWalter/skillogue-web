@@ -5,11 +5,12 @@ import {Link} from 'react-router-dom';
 import {Edit, ShieldCheck} from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import Avatar from '../components/Avatar'; // Import the new Avatar component
+import Avatar from '../components/Avatar';
 
 function Profile() {
     const [profile, setProfile] = useState(null);
     const [passions, setPassions] = useState([]);
+    const [languages, setLanguages] = useState([]); // <-- State for languages
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -20,16 +21,25 @@ function Profile() {
                 return;
             }
 
-            // Fetch profile
+            // Fetch profile and its related location in one query
             const {data: profileData, error: profileError} = await supabase
                 .from('profiles')
-                .select('*')
+                .select(`
+                    *,
+                    locations (*)
+                `)
                 .eq('id', user.id)
                 .single();
 
             if (profileError) {
-                alert('Profile not found. Please complete your profile.');
-                window.location.href = '/setup'; // Optional: redirect to setup
+                console.error('Error loading profile:', profileError);
+                // Redirecting to edit profile might be a better user experience
+                // if their profile is incomplete.
+                if (profileError.code === 'PGRST116') { // 'PGRST116' is for "single() row not found"
+                    alert('Profile not found. Please complete your profile.');
+                    window.location.href = '/edit-profile';
+                }
+                setLoading(false);
                 return;
             }
 
@@ -47,16 +57,45 @@ function Profile() {
                 setPassions(passionData.map(p => p.passions.name));
             }
 
+            // Fetch languages via join table
+            const {data: languageData, error: languageError} = await supabase
+                .from('profile_languages')
+                .select('languages (name)')
+                .eq('profile_id', user.id);
+
+            if (languageError) {
+                console.error('Error loading languages:', languageError);
+            } else {
+                setLanguages(languageData.map(l => l.languages.name));
+            }
+
+
             setLoading(false);
         };
 
         loadProfile();
     }, []);
 
+    // Helper to format the location string
+    const formatLocation = (location) => {
+        if (!location) return null;
+        return [location.city, location.region, location.country].filter(Boolean).join(', ');
+    };
+
+
     if (loading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
                 <p>Loading your profile...</p>
+            </div>
+        );
+    }
+
+    if (!profile) {
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                <p>Could not load profile. <Link to="/edit-profile" className="text-indigo-400">Please create
+                    one.</Link></p>
             </div>
         );
     }
@@ -117,16 +156,16 @@ function Profile() {
                                 <p className="text-white">{profile.age}</p>
                             </div>
                         )}
-                        {profile.location && (
+                        {profile.locations && (
                             <div>
                                 <h3 className="text-sm font-medium text-gray-400">Location</h3>
-                                <p className="text-white">{profile.location}</p>
+                                <p className="text-white">{formatLocation(profile.locations)}</p>
                             </div>
                         )}
-                        {profile.languages && profile.languages.length > 0 && (
+                        {languages.length > 0 && (
                             <div>
                                 <h3 className="text-sm font-medium text-gray-400">Languages</h3>
-                                <p className="text-white">{profile.languages.join(', ')}</p>
+                                <p className="text-white">{languages.join(', ')}</p>
                             </div>
                         )}
                     </div>
