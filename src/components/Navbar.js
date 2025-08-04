@@ -37,7 +37,7 @@ const Navbar = () => {
                 <span>Home</span>
             </Link>
             <Link
-                to="/dashboard"
+                to="/connections" // Changed from 'href' to 'to'
                 className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition"
             >
                 <Users size={18} />
