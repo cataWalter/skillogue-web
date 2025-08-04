@@ -5,6 +5,7 @@ import {Link} from 'react-router-dom';
 import {MessageCircle, X} from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import Avatar from '../components/Avatar'; // Import the new Avatar component
 
 const Connections = () => {
     const [connections, setConnections] = useState([]);
@@ -12,29 +13,24 @@ const Connections = () => {
 
     useEffect(() => {
         const loadConnections = async () => {
-            // Get the current user
             const {data: {user}} = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch the user's connections (profiles they are connected to)
-            // This assumes a table like 'connections' with 'user_id' and 'connected_user_id'
             const {data, error} = await supabase
                 .from('connections')
                 .select(`
-          connected_user_id,
-          profiles!connections_connected_user_id_fkey (id, full_name, avatar_url, passions (name))
-        `)
+                    connected_user_id,
+                    profiles!connections_connected_user_id_fkey (id, full_name, passions (name))
+                `)
                 .eq('user_id', user.id)
-                .eq('status', 'accepted'); // Assuming a 'status' field for pending/accepted
+                .eq('status', 'accepted');
 
             if (error) {
                 console.error('Error loading connections:', error);
             } else {
-                // Map the data to a simpler format
                 const formattedConnections = data.map(conn => ({
                     id: conn.connected_user_id,
                     name: conn.profiles.full_name,
-                    avatar: conn.profiles.avatar_url,
                     passions: conn.profiles.passions?.map(p => p.name) || []
                 }));
                 setConnections(formattedConnections);
@@ -46,13 +42,8 @@ const Connections = () => {
     }, []);
 
     const handleDisconnect = async (connectedUserId) => {
-        // This is a simplified example. In a real app, you might want to update the 'connections' table.
-        // For now, we'll just filter it from the local state.
         if (window.confirm('Are you sure you want to disconnect?')) {
             setConnections(prev => prev.filter(conn => conn.id !== connectedUserId));
-
-            // Optional: Add Supabase call to update the database
-            // await supabase.from('connections').delete().match({ user_id: currentUserId, connected_user_id: connectedUserId });
         }
     };
 
@@ -77,11 +68,7 @@ const Connections = () => {
                                     className="bg-gray-900/70 p-6 rounded-xl border border-gray-800 flex items-center justify-between hover:bg-gray-800/70 transition-all duration-200"
                                 >
                                     <div className="flex items-center space-x-4">
-                                        <img
-                                            src={connection.avatar || 'https://via.placeholder.com/50'}
-                                            alt={connection.name}
-                                            className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500"
-                                        />
+                                        <Avatar seed={connection.id} className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500" />
                                         <div>
                                             <h3 className="text-xl font-semibold">{connection.name}</h3>
                                             <div className="flex flex-wrap gap-2 mt-1">

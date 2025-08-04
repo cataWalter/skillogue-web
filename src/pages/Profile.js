@@ -5,6 +5,7 @@ import {Link} from 'react-router-dom';
 import {Edit, ShieldCheck} from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import Avatar from '../components/Avatar'; // Import the new Avatar component
 
 function Profile() {
     const [profile, setProfile] = useState(null);
@@ -67,25 +68,31 @@ function Profile() {
             {/* Profile Content */}
             <main className="flex-grow p-6 max-w-4xl mx-auto w-full">
                 <div className="bg-gray-900/70 p-8 rounded-2xl border border-gray-800 shadow-xl">
-                    {/* Name & Edit Button */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-                        <div className="flex items-center gap-4">
-                            <h2 className="text-3xl font-bold">
-                                {profile.first_name} {profile.last_name}
-                            </h2>
-                            {profile.verified && (
-                                <span className="flex items-center text-green-400 text-sm font-medium">
-                                    <ShieldCheck size={16} className="mr-1"/> Verified
-                                </span>
-                            )}
+                    <div className="flex items-center mb-6">
+                        <Avatar seed={profile.id} className="w-24 h-24 rounded-full object-cover border-4 border-indigo-500 mr-6" />
+                        <div className="flex-grow">
+                            {/* Name & Edit Button */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-3xl font-bold">
+                                        {profile.first_name} {profile.last_name}
+                                    </h2>
+                                    {profile.verified && (
+                                        <span className="flex items-center text-green-400 text-sm font-medium">
+                                            <ShieldCheck size={16} className="mr-1"/> Verified
+                                        </span>
+                                    )}
+                                </div>
+                                <Link
+                                    to="/edit-profile"
+                                    className="flex items-center gap-2 mt-4 sm:mt-0 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 transition"
+                                >
+                                    <Edit size={16}/> Edit Profile
+                                </Link>
+                            </div>
                         </div>
-                        <Link
-                            to="/edit-profile"
-                            className="flex items-center gap-2 mt-4 sm:mt-0 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 transition"
-                        >
-                            <Edit size={16}/> Edit Profile
-                        </Link>
                     </div>
+
 
                     {/* About Me */}
                     {profile.about_me && (
