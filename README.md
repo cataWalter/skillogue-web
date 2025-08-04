@@ -29,10 +29,10 @@ This project is built on a modern, full-stack JavaScript blueprint centered arou
 
 | Category                 | Technology                                     | Role & Justification                                                                                                                             |
 | ------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Core Framework**       | **Next.js**                                    | The foundation for our Frontend (UI). It's the industry standard for building modern, high-performance React applications.                       |
+| **Core Framework**       | **React**                                    | The foundation for our Frontend (UI). It's the industry standard for building modern, high-performance React applications.                       |
 | **Backend & Database**   | **Supabase**                                   | Our all-in-one backend, providing the PostgreSQL Database, Authentication, and Real-time APIs for both development and production.               |
 | **Styling & UI**         | **Tailwind CSS** & **shadcn/ui**               | **Tailwind** allows for rapid, utility-first styling. **shadcn/ui** provides a library of beautifully designed, accessible components.           |
 | **Real-time Chat**       | **Supabase Realtime**                          | Powers our one-on-one private messaging. It's built into Supabase, allowing us to subscribe to database changes for a simple, integrated setup.  |
 | **Authentication**       | **Supabase Auth**                              | Handles all user sign-up, login, and session management. It's a complete, secure system that's part of the Supabase platform.                    |
 | **Forms & Validation**   | **React Hook Form** & **Zod**                  | **React Hook Form** manages form state efficiently. **Zod** provides strict, type-safe validation for both frontend forms and backend data.      |
-| **Deployment & Hosting** | **Vercel** (Frontend) & **Supabase** (Backend) | **Vercel** offers the best deployment experience for Next.js. **Supabase** hosts our database and backend services, creating a clean separation. |
+| **Deployment & Hosting** | **Vercel** (Frontend) & **Supabase** (Backend) | **Vercel** offers the best deployment experience for React. **Supabase** hosts our database and backend services, creating a clean separation. |
