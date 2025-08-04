@@ -1,5 +1,5 @@
 // src/components/ProtectedRoute.js
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
@@ -8,46 +8,42 @@ const ProtectedRoute = ({ children }) => {
     const [session, setSession] = useState(null);
 
     useEffect(() => {
+        // Fetch initial session
         const checkSession = async () => {
-            try {
-                // ✅ Correct destructuring
-                const { data: { session } } = await supabase.auth.getSession();
-                setSession(session);
-            } catch (err) {
-                console.error('Error getting session:', err);
-            } finally {
-                setLoading(false);
-            }
+            const { data } = await supabase.auth.getSession();
+            const { session } = data;
+            setSession(session);
+            setLoading(false);
+        };
 
-            // Listen for auth changes (sign in, sign out)
-            const {  { subscription }
-        } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        // Listen for auth changes
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
             setSession(newSession);
             if (!newSession) {
-                window.location.href = '/login'; // Redirect to login if logged out
+                // Optionally handle logout
             }
             setLoading(false);
         });
 
-        return () => subscription.unsubscribe();
-    };
+        checkSession();
 
-    checkSession();
-}, []);
+        // Cleanup: unsubscribe if subscription exists
+        return () => {
+            if (authListener && typeof authListener.unsubscribe === 'function') {
+                authListener.unsubscribe();
+            }
+        };
+    }, []);
 
-if (loading) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-black text-white">
-            <p>Loading...</p>
-        </div>
-    );
-}
+    if (loading) {
+        return <div>Loading...</div>;
+    }
 
-if (!session) {
-    return <Navigate to="/login" replace />;
-}
+    if (!session) {
+        return <Navigate to="/login" replace />;
+    }
 
-return children;
+    return children;
 };
 
 export default ProtectedRoute;
