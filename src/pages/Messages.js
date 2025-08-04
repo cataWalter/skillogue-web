@@ -1,8 +1,8 @@
 // src/pages/Messages.js
-import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabaseClient';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Send, ArrowLeft, User } from 'lucide-react';
+import React, {useState, useEffect, useRef} from 'react';
+import {supabase} from '../supabaseClient';
+import {Link, useSearchParams} from 'react-router-dom';
+import {Send, ArrowLeft, User} from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -28,7 +28,7 @@ const Messages = () => {
     // 🧑 Get current user
     useEffect(() => {
         const getUser = async () => {
-            const { data } = await supabase.auth.getUser();
+            const {data} = await supabase.auth.getUser();
             console.log('🔐 Auth getUser response:', data?.user);
             if (data?.user) {
                 setUser(data.user);
@@ -45,7 +45,7 @@ const Messages = () => {
         if (!user) return;
 
         console.log('🔄 Loading conversations for user:', user.id);
-        const { data, error } = await supabase.rpc('get_conversations', {
+        const {data, error} = await supabase.rpc('get_conversations', {
             current_user_id: user.id,
         });
 
@@ -60,16 +60,18 @@ const Messages = () => {
     // 💬 Load messages for a specific chat
     const loadMessages = async (otherUserId) => {
         console.log('📩 Loading messages with user:', otherUserId);
-        const { data, error } = await supabase
+        const {data, error} = await supabase
             .from('messages')
             .select(`
-                *,
-                sender:sender_id (id, first_name, last_name),
-                receiver:receiver_id (id, first_name, last_name)
-            `)
-            .or(`sender_id.eq.${otherUserId},receiver_id.eq.${otherUserId}`)
-            .or(`sender_id.eq.${user.id},receiver_id.eq.${otherUserId}`)
-            .order('created_at', { ascending: true });
+            *,
+            sender:sender_id (id, first_name, last_name),
+            receiver:receiver_id (id, first_name, last_name)
+        `)
+            // ✅ Single .or() with correct logic
+            .or(
+                `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
+            )
+            .order('created_at', {ascending: true});
 
         if (error) {
             console.error('❌ Error loading messages:', error);
@@ -77,10 +79,9 @@ const Messages = () => {
             console.log('✅ Messages loaded:', data);
             setMessages(data);
             setSelectedChat(otherUserId);
-            lastPollTime.current = new Date().toISOString(); // Reset poll time
+            lastPollTime.current = new Date().toISOString();
         }
     };
-
     // 🔄 Start polling for new messages every 3 seconds
     const startPolling = (otherUserId) => {
         console.log('🔁 Starting message polling every 3s');
@@ -92,17 +93,18 @@ const Messages = () => {
             const newerThan = lastPollTime.current;
             console.log('⏳ Polling for messages newer than:', newerThan);
 
-            const { data, error } = await supabase
+            const {data, error} = await supabase
                 .from('messages')
                 .select(`
-                    *,
-                    sender:sender_id (id, first_name, last_name),
-                    receiver:receiver_id (id, first_name, last_name)
-                `)
-                .or(`sender_id.eq.${otherUserId},receiver_id.eq.${otherUserId}`)
-                .or(`sender_id.eq.${user.id},receiver_id.eq.${otherUserId}`)
+        *,
+        sender:sender_id (id, first_name, last_name),
+        receiver:receiver_id (id, first_name, last_name)
+    `)
+                .or(
+                    `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
+                )
                 .gt('created_at', newerThan)
-                .order('created_at', { ascending: true });
+                .order('created_at', {ascending: true});
 
             if (error) {
                 console.error('❌ Polling error:', error);
@@ -159,7 +161,7 @@ const Messages = () => {
 
     // 📌 Scroll to bottom of messages
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
     };
     useEffect(() => {
         scrollToBottom();
@@ -177,7 +179,7 @@ const Messages = () => {
         };
 
         console.log('📤 Sending message:', message);
-        const { error } = await supabase.from('messages').insert([message]);
+        const {error} = await supabase.from('messages').insert([message]);
 
         if (error) {
             console.error('❌ Failed to send message:', error);
@@ -211,7 +213,7 @@ const Messages = () => {
 
     return (
         <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar />
+            <Navbar/>
 
             <main className="flex-grow flex overflow-hidden">
                 {/* Sidebar: Conversations */}
@@ -233,7 +235,8 @@ const Messages = () => {
                                             selectedChat === conv.user_id ? 'bg-gray-800' : ''
                                         }`}
                                     >
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-medium">
+                                        <div
+                                            className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-medium">
                                             {conv.full_name?.charAt(0).toUpperCase() || 'U'}
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -257,7 +260,7 @@ const Messages = () => {
                             {/* Chat Header */}
                             <div className="p-4 border-b border-gray-800 bg-gray-900/50">
                                 <div className="flex items-center gap-3">
-                                    <User className="w-8 h-8 text-gray-400" />
+                                    <User className="w-8 h-8 text-gray-400"/>
                                     <span className="font-medium">
                                         {conversations.find((c) => c.user_id === selectedChat)?.full_name || 'User'}
                                     </span>
@@ -299,7 +302,7 @@ const Messages = () => {
                                         );
                                     })
                                 )}
-                                <div ref={messagesEndRef} />
+                                <div ref={messagesEndRef}/>
                             </div>
 
                             {/* Message Input */}
@@ -317,7 +320,7 @@ const Messages = () => {
                                         disabled={!newMessage.trim()}
                                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg flex items-center"
                                     >
-                                        <Send size={18} />
+                                        <Send size={18}/>
                                     </button>
                                 </form>
                             </div>
@@ -330,7 +333,7 @@ const Messages = () => {
                                 to="/dashboard"
                                 className="flex items-center gap-2 text-indigo-400 hover:underline"
                             >
-                                <ArrowLeft size={16} />
+                                <ArrowLeft size={16}/>
                                 Back to Dashboard
                             </Link>
                         </div>
@@ -338,7 +341,7 @@ const Messages = () => {
                 </div>
             </main>
 
-            <Footer />
+            <Footer/>
         </div>
     );
 };
