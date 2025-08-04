@@ -3,6 +3,7 @@ import React, {useEffect, useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {useNavigate} from 'react-router-dom';
 import {ArrowLeft} from 'lucide-react';
+import MultiSelect from '../components/MultiSelect'; // Import the new component
 
 const EditProfile = () => {
     const [loading, setLoading] = useState(true);
@@ -49,28 +50,31 @@ const EditProfile = () => {
                 .eq('id', user.id)
                 .single();
 
-            if (profileError) {
+            if (profileError && profileError.code !== 'PGRST116') { // Handle errors other than no profile
                 setError('Failed to load profile.');
                 console.error(profileError);
                 setLoading(false);
                 return;
             }
 
-            setProfile({
-                first_name: profileData.first_name || '',
-                last_name: profileData.last_name || '',
-                about_me: profileData.about_me || '',
-                age: profileData.age || '',
-                gender: profileData.gender || '',
-            });
-
-            if (profileData.locations) {
-                setLocation({
-                    city: profileData.locations.city || '',
-                    region: profileData.locations.region || '',
-                    country: profileData.locations.country || '',
+            if (profileData) {
+                setProfile({
+                    first_name: profileData.first_name || '',
+                    last_name: profileData.last_name || '',
+                    about_me: profileData.about_me || '',
+                    age: profileData.age || '',
+                    gender: profileData.gender || '',
                 });
+
+                if (profileData.locations) {
+                    setLocation({
+                        city: profileData.locations.city || '',
+                        region: profileData.locations.region || '',
+                        country: profileData.locations.country || '',
+                    });
+                }
             }
+
 
             // --- 2. Fetch User's Selected Languages ---
             const {data: languageData, error: languageError} = await supabase
@@ -117,25 +121,10 @@ const EditProfile = () => {
         setLocation((prev) => ({...prev, [name]: value}));
     };
 
-    const handleLanguageToggle = (languageName) => {
-        setSelectedLanguages(prev =>
-            prev.includes(languageName)
-                ? prev.filter(lang => lang !== languageName)
-                : [...prev, languageName]
-        );
-    };
-
-    const handlePassionToggle = (passionName) => {
-        setSelectedPassions(prev =>
-            prev.includes(passionName)
-                ? prev.filter(p => p !== passionName)
-                : [...prev, passionName]
-        );
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError('');
 
         const {data: {user}} = await supabase.auth.getUser();
         if (!user) {
@@ -148,8 +137,7 @@ const EditProfile = () => {
             // --- 1. Upsert Location and get location_id ---
             let locationId = null;
             if (location.country) { // Country is required in the schema
-                // Check if location exists
-                const {data: existingLocation} = await supabase
+                const {data: existingLocation, error: findLocError} = await supabase
                     .from('locations')
                     .select('id')
                     .match({
@@ -159,10 +147,11 @@ const EditProfile = () => {
                     })
                     .maybeSingle();
 
+                if (findLocError) throw findLocError;
+
                 if (existingLocation) {
                     locationId = existingLocation.id;
                 } else {
-                    // Insert new location if it doesn't exist
                     const {data: newLocation, error: locError} = await supabase
                         .from('locations')
                         .insert({
@@ -178,23 +167,26 @@ const EditProfile = () => {
             }
 
 
-            // --- 2. Update the main profile table ---
+            // --- 2. Upsert the main profile table ---
             const {error: profileError} = await supabase
                 .from('profiles')
-                .update({
-                    ...profile,
+                .upsert({
+                    id: user.id, // Important for upsert
+                    first_name: profile.first_name,
+                    last_name: profile.last_name,
+                    about_me: profile.about_me,
                     age: profile.age ? Number(profile.age) : null,
+                    gender: profile.gender,
                     location_id: locationId
                 })
-                .eq('id', user.id);
+                .select()
+                .single();
 
             if (profileError) throw profileError;
 
 
             // --- 3. Update Profile Languages ---
-            // Delete old languages
             await supabase.from('profile_languages').delete().eq('profile_id', user.id);
-            // Insert new languages
             const languageInserts = selectedLanguages.map(langName => {
                 const language = availableLanguages.find(l => l.name === langName);
                 return {profile_id: user.id, language_id: language?.id};
@@ -207,9 +199,7 @@ const EditProfile = () => {
 
 
             // --- 4. Update Profile Passions ---
-            // Delete old passions
             await supabase.from('profile_passions').delete().eq('profile_id', user.id);
-            // Insert new passions
             const passionInserts = selectedPassions.map(passionName => {
                 const passion = availablePassions.find(p => p.name === passionName);
                 return {profile_id: user.id, passion_id: passion?.id};
@@ -224,7 +214,7 @@ const EditProfile = () => {
             navigate('/profile');
 
         } catch (err) {
-            setError('Failed to update profile.');
+            setError('Failed to update profile. ' + err.message);
             console.error(err);
         } finally {
             setLoading(false);
@@ -368,47 +358,23 @@ const EditProfile = () => {
                         </div>
                     </div>
 
+                    {/* Languages - Using MultiSelect */}
+                    <MultiSelect
+                        options={availableLanguages}
+                        selected={selectedLanguages}
+                        onChange={setSelectedLanguages}
+                        label="Languages I Speak"
+                        placeholder="Select languages..."
+                    />
 
-                    {/* Languages */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">Languages</label>
-                        <div className="flex flex-wrap gap-3">
-                            {availableLanguages.map(lang => (
-                                <button
-                                    type="button"
-                                    key={lang.id}
-                                    onClick={() => handleLanguageToggle(lang.name)}
-                                    className={`px-3 py-1 rounded-full text-sm transition ${selectedLanguages.includes(lang.name)
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                    }`}
-                                >
-                                    {lang.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Passions */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">Passions</label>
-                        <p className="text-sm text-gray-400 mb-3">Select the interests you'd like to share</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {availablePassions.map(passion => (
-                                <button
-                                    type="button"
-                                    key={passion.id}
-                                    onClick={() => handlePassionToggle(passion.name)}
-                                    className={`p-3 border rounded-lg cursor-pointer transition text-center ${selectedPassions.includes(passion.name)
-                                        ? 'border-indigo-500 bg-indigo-900/30 text-indigo-300'
-                                        : 'border-gray-700 hover:border-gray-500 text-gray-300'
-                                    }`}
-                                >
-                                    {passion.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    {/* Passions - Using MultiSelect */}
+                    <MultiSelect
+                        options={availablePassions}
+                        selected={selectedPassions}
+                        onChange={setSelectedPassions}
+                        label="My Passions"
+                        placeholder="Select your passions..."
+                    />
 
                     {/* Save Button */}
                     <div className="pt-6">
