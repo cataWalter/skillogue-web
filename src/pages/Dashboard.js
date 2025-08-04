@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Link } from 'react-router-dom';
 
+
 const Dashboard = () => {
     const [user, setUser] = useState(null);
 
@@ -51,6 +52,12 @@ const Dashboard = () => {
                             >
                                 <h2 className="text-2xl font-bold text-white">Messages</h2>
                                 <p className="mt-2 text-gray-400">Chat with your connections</p>
+                            </Link>
+                            <Link
+                                to="/search"
+                                className="mt-6 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full font-semibold hover:shadow-lg transform hover:scale-105 transition"
+                            >
+                                Start Searching by Passion
                             </Link>
                         </div>
                     </div>
