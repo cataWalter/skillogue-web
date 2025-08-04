@@ -1,8 +1,8 @@
 // src/pages/SignUp.js
-import { useState } from 'react';
-import { supabase } from '../supabaseClient';
-import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus } from 'lucide-react';
+import {useState} from 'react';
+import {supabase} from '../supabaseClient';
+import {Link, useNavigate} from 'react-router-dom';
+import {UserPlus} from 'lucide-react';
 
 // ✅ Import shared components
 import Navbar from '../components/Navbar';
@@ -29,7 +29,7 @@ const SignUp = () => {
 
         try {
             setLoading(true);
-            const { error } = await supabase.auth.signUp({ email, password });
+            const {error} = await supabase.auth.signUp({email, password});
             if (error) throw error;
 
             alert('🎉 Check your email for the confirmation link!');
@@ -45,11 +45,12 @@ const SignUp = () => {
     return (
         <div className="min-h-screen bg-black text-white flex flex-col">
             {/* ✅ Use the shared Navbar */}
-            <Navbar />
+            <Navbar/>
 
             {/* Main Sign-Up Form */}
             <main className="flex-grow flex items-center justify-center px-6 py-12">
-                <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+                <div
+                    className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
                     {/* Header */}
                     <div className="text-center p-8">
                         <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
@@ -101,7 +102,8 @@ const SignUp = () => {
                         >
                             {loading ? (
                                 <span className="flex items-center">
-                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none"
+                                         viewBox="0 0 24 24">
                                         <circle
                                             className="opacity-25"
                                             cx="12"
@@ -120,7 +122,7 @@ const SignUp = () => {
                                 </span>
                             ) : (
                                 <span className="flex items-center">
-                                    <UserPlus className="mr-2" size={20} />
+                                    <UserPlus className="mr-2" size={20}/>
                                     Sign Up
                                 </span>
                             )}
@@ -141,7 +143,7 @@ const SignUp = () => {
             </main>
 
             {/* ✅ Use the shared Footer */}
-            <Footer />
+            <Footer/>
         </div>
     );
 };

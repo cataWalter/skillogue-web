@@ -1,7 +1,7 @@
 // src/pages/Search.js
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import { Link } from 'react-router-dom';
+import React, {useEffect, useState} from 'react';
+import {supabase} from '../supabaseClient';
+import {Link} from 'react-router-dom';
 
 const Search = () => {
     const [query, setQuery] = useState('');
@@ -18,7 +18,7 @@ const Search = () => {
     // Fetch all passions for dropdown
     useEffect(() => {
         const fetchPassions = async () => {
-            const { data, error } = await supabase.from('passions').select('id, name');
+            const {data, error} = await supabase.from('passions').select('id, name');
             if (error) {
                 console.error('Error loading passions:', error);
             } else {
@@ -76,7 +76,7 @@ const Search = () => {
         if (passions.length > 0) {
             // We need to filter profiles that have ALL selected passions
             for (const passionId of passions) {
-                const { data, error } = await supabase
+                const {data, error} = await supabase
                     .from('profile_passions')
                     .select('profile_id')
                     .eq('passion_id', passionId);
@@ -87,7 +87,7 @@ const Search = () => {
             }
         }
 
-        const { data, error } = await queryBuilder.order('created_at', { ascending: false });
+        const {data, error} = await queryBuilder.order('created_at', {ascending: false});
 
         if (error) {
             console.error('Search error:', error);
@@ -95,7 +95,7 @@ const Search = () => {
             // Map passions from join
             const resultsWithPassions = data.map(profile => {
                 const profilePassions = profile.profile_passions?.map(pp => pp.passions.name) || [];
-                return { ...profile, profilePassions };
+                return {...profile, profilePassions};
             });
             setResults(resultsWithPassions);
         }

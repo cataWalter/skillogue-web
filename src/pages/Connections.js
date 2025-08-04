@@ -1,8 +1,8 @@
 // src/pages/Connections.js
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import { Link } from 'react-router-dom';
-import { User, MessageCircle, X } from 'lucide-react';
+import React, {useEffect, useState} from 'react';
+import {supabase} from '../supabaseClient';
+import {Link} from 'react-router-dom';
+import {MessageCircle, X} from 'lucide-react';
 
 const Connections = () => {
     const [connections, setConnections] = useState([]);
@@ -11,12 +11,12 @@ const Connections = () => {
     useEffect(() => {
         const loadConnections = async () => {
             // Get the current user
-            const { data: { user } } = await supabase.auth.getUser();
+            const {data: {user}} = await supabase.auth.getUser();
             if (!user) return;
 
             // Fetch the user's connections (profiles they are connected to)
             // This assumes a table like 'connections' with 'user_id' and 'connected_user_id'
-            const { data, error } = await supabase
+            const {data, error} = await supabase
                 .from('connections')
                 .select(`
           connected_user_id,
@@ -64,7 +64,8 @@ const Connections = () => {
                 <h1 className="text-3xl font-bold mb-8">Your Connections</h1>
 
                 {connections.length === 0 ? (
-                    <p className="text-gray-400">You haven't connected with anyone yet. Start searching for new friends!</p>
+                    <p className="text-gray-400">You haven't connected with anyone yet. Start searching for new
+                        friends!</p>
                 ) : (
                     <div className="space-y-4">
                         {connections.map((connection) => (
@@ -90,7 +91,8 @@ const Connections = () => {
                         </span>
                                             ))}
                                             {connection.passions.length > 3 && (
-                                                <span className="text-gray-500 text-xs">+{connection.passions.length - 3} more</span>
+                                                <span
+                                                    className="text-gray-500 text-xs">+{connection.passions.length - 3} more</span>
                                             )}
                                         </div>
                                     </div>
@@ -102,14 +104,14 @@ const Connections = () => {
                                         className="text-indigo-400 hover:text-indigo-300 transition-colors"
                                         aria-label={`Message ${connection.name}`}
                                     >
-                                        <MessageCircle className="h-6 w-6" />
+                                        <MessageCircle className="h-6 w-6"/>
                                     </Link>
                                     <button
                                         onClick={() => handleDisconnect(connection.id)}
                                         className="text-red-400 hover:text-red-300 transition-colors"
                                         aria-label={`Disconnect from ${connection.name}`}
                                     >
-                                        <X className="h-6 w-6" />
+                                        <X className="h-6 w-6"/>
                                     </button>
                                 </div>
                             </div>

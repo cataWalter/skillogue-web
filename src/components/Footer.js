@@ -1,6 +1,6 @@
 // src/components/Footer.js
-import React, { useState } from 'react';
-import { Github, Twitter, Linkedin } from 'lucide-react';
+import React, {useState} from 'react';
+import {Github, Linkedin, Twitter} from 'lucide-react';
 import Modal from './Modal';
 
 // Example content - could also be fetched or imported from other files
@@ -38,10 +38,10 @@ const FAQContent = () => (
 );
 
 const Footer = () => {
-    const [modal, setModal] = useState({ open: false, title: '', content: null });
+    const [modal, setModal] = useState({open: false, title: '', content: null});
 
     const openModal = (title, content) => {
-        setModal({ open: true, title, content });
+        setModal({open: true, title, content});
     };
 
     return (
@@ -64,7 +64,7 @@ const Footer = () => {
                                     className="text-gray-400 hover:text-gray-300"
                                 >
                                     <span className="sr-only">GitHub</span>
-                                    <Github className="h-6 w-6" />
+                                    <Github className="h-6 w-6"/>
                                 </a>
                                 <a
                                     href="https://twitter.com/skillogue"
@@ -73,7 +73,7 @@ const Footer = () => {
                                     className="text-gray-400 hover:text-gray-300"
                                 >
                                     <span className="sr-only">Twitter</span>
-                                    <Twitter className="h-6 w-6" />
+                                    <Twitter className="h-6 w-6"/>
                                 </a>
                                 <a
                                     href="https://linkedin.com/company/skillogue"
@@ -82,7 +82,7 @@ const Footer = () => {
                                     className="text-gray-400 hover:text-gray-300"
                                 >
                                     <span className="sr-only">LinkedIn</span>
-                                    <Linkedin className="h-6 w-6" />
+                                    <Linkedin className="h-6 w-6"/>
                                 </a>
                             </div>
                         </div>
@@ -96,7 +96,7 @@ const Footer = () => {
                                     <ul className="mt-4 space-y-4">
                                         <li>
                                             <button
-                                                onClick={() => openModal('FAQ', <FAQContent />)}
+                                                onClick={() => openModal('FAQ', <FAQContent/>)}
                                                 className="text-base text-gray-300 hover:text-white text-left transition"
                                             >
                                                 FAQ
@@ -104,7 +104,10 @@ const Footer = () => {
                                         </li>
                                         <li>
                                             <button
-                                                onClick={() => openModal('Contact Us', <p className="text-gray-300">Email us at <a href="mailto:support@skillogue.com" className="text-indigo-400">support@skillogue.com</a></p>)}
+                                                onClick={() => openModal('Contact Us', <p
+                                                    className="text-gray-300">Email us at <a
+                                                    href="mailto:support@skillogue.com"
+                                                    className="text-indigo-400">support@skillogue.com</a></p>)}
                                                 className="text-base text-gray-300 hover:text-white text-left transition"
                                             >
                                                 Contact Us
@@ -112,7 +115,9 @@ const Footer = () => {
                                         </li>
                                         <li>
                                             <button
-                                                onClick={() => openModal('Help Center', <p className="text-gray-300">Visit our Help Center for guides and troubleshooting.</p>)}
+                                                onClick={() => openModal('Help Center', <p
+                                                    className="text-gray-300">Visit our Help Center for guides and
+                                                    troubleshooting.</p>)}
                                                 className="text-base text-gray-300 hover:text-white text-left transition"
                                             >
                                                 Help Center
@@ -127,7 +132,7 @@ const Footer = () => {
                                     <ul className="mt-4 space-y-4">
                                         <li>
                                             <button
-                                                onClick={() => openModal('Terms', <TermsContent />)}
+                                                onClick={() => openModal('Terms', <TermsContent/>)}
                                                 className="text-base text-gray-300 hover:text-white text-left transition"
                                             >
                                                 Terms
@@ -135,7 +140,7 @@ const Footer = () => {
                                         </li>
                                         <li>
                                             <button
-                                                onClick={() => openModal('Privacy Policy', <PrivacyContent />)}
+                                                onClick={() => openModal('Privacy Policy', <PrivacyContent/>)}
                                                 className="text-base text-gray-300 hover:text-white text-left transition"
                                             >
                                                 Privacy Policy
@@ -143,7 +148,9 @@ const Footer = () => {
                                         </li>
                                         <li>
                                             <button
-                                                onClick={() => openModal('Cookies', <p className="text-gray-300">We use essential cookies to keep the site running. You can disable non-essential ones in settings.</p>)}
+                                                onClick={() => openModal('Cookies', <p className="text-gray-300">We use
+                                                    essential cookies to keep the site running. You can disable
+                                                    non-essential ones in settings.</p>)}
                                                 className="text-base text-gray-300 hover:text-white text-left transition"
                                             >
                                                 Cookies
@@ -166,7 +173,7 @@ const Footer = () => {
             {/* Modal */}
             <Modal
                 isOpen={modal.open}
-                onClose={() => setModal({ open: false, title: '', content: null })}
+                onClose={() => setModal({open: false, title: '', content: null})}
                 title={modal.title}
             >
                 {modal.content}

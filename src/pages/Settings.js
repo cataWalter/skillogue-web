@@ -1,6 +1,6 @@
 // src/pages/Settings.js
 import React from 'react';
-import { Link } from 'react-router-dom';
+import {Link} from 'react-router-dom';
 
 const Settings = () => {
     return (

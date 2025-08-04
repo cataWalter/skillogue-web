@@ -1,14 +1,14 @@
 // src/pages/LandingPage.js
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Sparkles, MessageCircle, ShieldCheck, Users, Zap, Heart } from 'lucide-react';
+import {Link} from 'react-router-dom';
+import {MessageCircle, ShieldCheck, Sparkles} from 'lucide-react';
 import Navbar from '../components/Navbar'; // ✅ Import the shared Navbar
 import Footer from '../components/Footer';
 
 const LandingPage = () => {
     return (
         <div className="flex flex-col min-h-screen bg-black text-white">
-            <Navbar /> {/* ✅ Use the same Navbar as Dashboard */}
+            <Navbar/> {/* ✅ Use the same Navbar as Dashboard */}
 
             <main className="flex-grow pt-8">
                 {/* Hero Section */}
@@ -40,17 +40,18 @@ const LandingPage = () => {
                     <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-12 text-center">
                         <div className="flex flex-col items-center">
                             <div className="p-4 bg-purple-600/20 rounded-full mb-4">
-                                <Sparkles className="h-12 w-12 text-purple-400" />
+                                <Sparkles className="h-12 w-12 text-purple-400"/>
                             </div>
                             <h3 className="text-2xl font-bold mb-2">Passion-Based Matching</h3>
                             <p className="text-gray-400">
-                                Discover people who love what you love — from coding to cooking, music to mountaineering.
+                                Discover people who love what you love — from coding to cooking, music to
+                                mountaineering.
                             </p>
                         </div>
 
                         <div className="flex flex-col items-center">
                             <div className="p-4 bg-blue-600/20 rounded-full mb-4">
-                                <MessageCircle className="h-12 w-12 text-blue-400" />
+                                <MessageCircle className="h-12 w-12 text-blue-400"/>
                             </div>
                             <h3 className="text-2xl font-bold mb-2">Private Messaging</h3>
                             <p className="text-gray-400">
@@ -60,7 +61,7 @@ const LandingPage = () => {
 
                         <div className="flex flex-col items-center">
                             <div className="p-4 bg-green-600/20 rounded-full mb-4">
-                                <ShieldCheck className="h-12 w-12 text-green-400" />
+                                <ShieldCheck className="h-12 w-12 text-green-400"/>
                             </div>
                             <h3 className="text-2xl font-bold mb-2">Safe & Trusted</h3>
                             <p className="text-gray-400">
@@ -85,7 +86,7 @@ const LandingPage = () => {
                 </section>
             </main>
 
-            <Footer />
+            <Footer/>
         </div>
     );
 };
