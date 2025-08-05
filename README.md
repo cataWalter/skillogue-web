@@ -51,7 +51,6 @@ as the all-in-one backend.
 
 ## Todo
 
-* registration onboarding
 * enable notifications for messages
 * show messages number and a popup when you are in another window
 * reuse components
