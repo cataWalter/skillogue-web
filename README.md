@@ -52,13 +52,14 @@ as the all-in-one backend.
 ## Todo
 
 * registration onboarding
+* enable notifications for messages
+* show messages number and a popup when you are in another window
 * reuse components
 * remove connections
 * remove follow
 * improve search
 * allow to save past searches
 * improve settings
-* enable notifications for messages
 * improve dashboard
 * improve modal
 * add blocked logic
