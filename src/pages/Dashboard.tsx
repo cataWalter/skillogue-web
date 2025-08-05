@@ -1,34 +1,57 @@
-// src/pages/Dashboard.js
+// src/pages/Dashboard.tsx
 import React, {useEffect, useState} from 'react';
-import {supabase} from '../supabaseClient'; // ✅ Add this import
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import {Link} from 'react-router-dom';
+import {supabase} from '../supabaseClient';
+import {Link, useNavigate} from 'react-router-dom';
+import Layout from '../components/Layout'; // Import the Layout component
 
+// Define a type for the profile data
+interface ProfileData {
+    first_name: string | null;
+}
 
-const Dashboard = () => {
-    const [user, setUser] = useState(null);
+const Dashboard: React.FC = () => {
+    const [profile, setProfile] = useState<ProfileData | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchUser = async () => {
-            const {data: {session}} = await supabase.auth.getSession(); // ✅ Now works
-            if (session) {
-                setUser(session.user);
+        const fetchProfile = async () => {
+            const {data: {user}} = await supabase.auth.getUser();
+
+            if (user) {
+                const {data: profileData, error} = await supabase
+                    .from('profiles')
+                    .select('first_name')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    console.error("Error fetching profile:", error);
+                } else if (!profileData || !profileData.first_name) {
+                    // If profile is incomplete, redirect to onboarding
+                    navigate('/onboarding');
+                } else {
+                    setProfile(profileData);
+                }
             }
+            setLoading(false);
         };
-        fetchUser();
-    }, []);
+        fetchProfile();
+    }, [navigate]);
+
+    if (loading) {
+        return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
+    }
 
     return (
-        <div className="flex flex-col min-h-screen bg-black text-white">
-            <Navbar/>
-            <main className="flex-grow pt-8">
+        <Layout>
+            <div className="pt-8">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <div className="text-center">
                         <h1 className="text-4xl font-extrabold text-white sm:text-5xl lg:text-6xl">
                             Welcome,{' '}
                             <span className="text-indigo-400">
-                                {user?.email?.split('@')[0]}
+                                {profile?.first_name}
                             </span>
                             !
                         </h1>
@@ -63,9 +86,8 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
-            </main>
-            <Footer/>
-        </div>
+            </div>
+        </Layout>
     );
 };
 

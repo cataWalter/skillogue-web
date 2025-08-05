@@ -1,18 +1,17 @@
-// src/pages/Login.js
+// src/pages/Login.tsx
 import React, {useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {Link, useNavigate} from 'react-router-dom';
 import {LogIn, Mail, UserPlus} from 'lucide-react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import Layout from '../components/Layout';
 
-const Login = () => {
-    const [loading, setLoading] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+const Login: React.FC = () => {
+    const [loading, setLoading] = useState<boolean>(false);
+    const [email, setEmail] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
     const navigate = useNavigate();
 
-    const handleLogin = async (e) => {
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!email || !password) {
             alert('Please fill in both fields');
@@ -23,7 +22,7 @@ const Login = () => {
             const {error} = await supabase.auth.signInWithPassword({email, password});
             if (error) throw error;
             navigate('/dashboard');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Login error:', error);
             alert(error.error_description || error.message);
         } finally {
@@ -32,11 +31,7 @@ const Login = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-black text-white">
-            {/* Navbar */}
-            <Navbar/>
-
-            {/* Main Login Form */}
+        <Layout>
             <main className="flex-grow flex items-center justify-center px-6 py-12">
                 <div
                     className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
@@ -88,27 +83,28 @@ const Login = () => {
                             >
                                 {loading ? (
                                     <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                      ></circle>
-                      <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Signing In...
-                  </span>
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none"
+                                             viewBox="0 0 24 24">
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                            ></circle>
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            ></path>
+                                        </svg>
+                                        Signing In...
+                                    </span>
                                 ) : (
                                     <span className="flex items-center justify-center">
-                    <LogIn className="mr-2" size={20}/> Sign In
-                  </span>
+                                        <LogIn className="mr-2" size={20}/> Sign In
+                                    </span>
                                 )}
                             </button>
                         </div>
@@ -131,10 +127,7 @@ const Login = () => {
                     </form>
                 </div>
             </main>
-
-            {/* Footer */}
-            <Footer/>
-        </div>
+        </Layout>
     );
 };
 

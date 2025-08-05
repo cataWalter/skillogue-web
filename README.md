@@ -51,14 +51,11 @@ as the all-in-one backend.
 
 ## Todo
 
-* registration onboarding
+
 * reuse components
-* remove connections
-* remove follow
 * improve search
 * allow to save past searches
 * improve settings
-* enable notifications for messages
 * improve dashboard
 * improve modal
 * add blocked logic
@@ -66,15 +63,17 @@ as the all-in-one backend.
 * privacy analysis
 * law requirements analysis
 * tests
+* enable notifications for messages
+* show messages number and a popup when you are in another window
 * documentation
 * common layout
 * implement real-time messaging with WebSockets or optimize polling
-* Loading States & Skeleton Screens: Replace simple "Loading..." text with skeleton loaders, especially on Search.js,
-  Messages.js, and Profile.js. This provides a much smoother experience while data is being fetched.
+* Loading States & Skeleton Screens: Replace simple "Loading..." text with skeleton loaders, especially on Search.tsx,
+  Messages.tsx, and Profile.tsx. This provides a much smoother experience while data is being fetched.
 * Error Boundaries: Implement React Error Boundaries to gracefully handle JavaScript errors in the UI, preventing the
   entire app from crashing. Wrap major sections of your app (e.g., the Dashboard or Messages page) in an error boundary
   component.
-* Form Feedback: On Login.js and ResetPassword.js, provide clearer inline validation feedback (e.g., password strength
+* Form Feedback: On Login.tsx and ResetPassword.js, provide clearer inline validation feedback (e.g., password strength
   meters, real-time email validation).
 * Accessibility (a11y): Add aria-label attributes to icons (like the X for disconnecting or the Send button in chat) and
   ensure all interactive elements are keyboard-navigable. Use semantic HTML where possible.
@@ -97,7 +96,7 @@ as the all-in-one backend.
   profiles, messages, and connections.
 * Rate Limiting: Implement rate limiting on your Supabase functions or at the network level to prevent abuse (e.g.,
   spamming messages or login attempts).
-* Real-time Updates: Replace the polling mechanism in Messages.js with Supabase's real-time subscriptions (
+* Real-time Updates: Replace the polling mechanism in Messages.tsx with Supabase's real-time subscriptions (
   supabase.channel().on().subscribe()). This is more efficient and provides an instant chat experience.
 * Advanced Search: Fulfill the "improve search" TODO by adding filters (e.g., by passion, location, skill level) and
   potentially full-text search capabilities using Supabase's PostgreSQL full-text search.
@@ -109,7 +108,115 @@ as the all-in-one backend.
 
 
 
+Here are some specific components that could be created from repeated code patterns:
 
+1. Common Page Layout
+   Several pages share the same overall structure, including a navigation bar, a main content area, and a footer.
+
+
+Redundant Code: The pattern of including <Navbar />, a <main> element, and <Footer /> is repeated across multiple page files like Dashboard.tsx ,
+
+
+Home.tx ,
+
+
+Login.tsx , and
+
+
+
+
+
+SignUp.js. Many pages also use a root
+
+
+
+
+
+div with the class "flex flex-col min-h-screen bg-black text-white".
+
+
+
+
+Proposed Solution: A Layout.js component could be created to encapsulate this structure. This component would accept children as a prop, which would be rendered inside the <main> tag. This would simplify each page to only contain its specific content.
+
+2. Standardized Buttons
+   The
+
+README.md file specifically suggests creating a Button.js component to ensure consistent styling and behavior. Buttons across different forms and pages use similar, but slightly different, class lists.
+
+Redundant Code:
+
+
+Submit Buttons: The login , sign-up , and password reset  pages all feature a primary action button with a purple gradient and hover effects.
+
+
+
+
+Loading State: Forms like Login.tsx and ForgotPassword.tsx include a manually inserted SVG and text for the loading state inside the button element.
+
+
+
+Secondary Buttons: Pages like Onboarding.js and
+
+Dashboard.tsx  have other button styles that could be defined as variants.
+
+Proposed Solution: A single Button.js component could handle these variations through props (e.g., variant="primary", isLoading={true}, icon={<LogIn />}). This would centralize button styling and logic.
+
+3. Form Input Fields
+   Multiple forms use the same combination of a <label> and an <input> with consistent styling.
+
+
+Redundant Code: Pages like Login.tsx ,
+
+
+SignUp.js ,
+
+
+EditProfile.js , and
+
+
+Onboarding.js  repeat the structure for text, email, and password inputs. They all share similar
+
+
+className attributes for styling the input fields.
+
+Proposed Solution: A reusable Input.js or FormField.js component could be created. This component would accept props for label, name, type, value, onChange, and placeholder, reducing the boilerplate in each form.
+
+4. Card Components
+   The
+
+README.md also suggests creating a Card.js component for profile and connection cards. Various pages use card-like containers with similar styling.
+
+Redundant Code:
+
+
+Dashboard.tsx uses <Link> elements styled as cards for navigation.
+
+
+
+Search.tsx displays user results in a div with card styling.
+
+
+Profile.tsx uses a large div as the main profile card.
+
+Proposed Solution: A Card.js component that takes children would provide a consistent container. It could accept props to modify padding, borders, or allow it to render as a div or a Link.
+
+5. Loading Indicators
+   Different pages show a loading state, but the implementation is inconsistent.
+
+Redundant Code:
+
+
+Dashboard.tsx shows a simple "Loading..." text.
+
+
+EditProfile.js displays "Loading your profile...".
+
+
+ProtectedRoute.js shows "Loading session...".
+
+
+Proposed Solution: A centralized LoadingSpinner.js or LoadingScreen.js component could be used across the application for a more consistent user experience, as suggested in the README.md to replace simple text with skeleton loaders.
 
 
 

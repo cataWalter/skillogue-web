@@ -1,20 +1,17 @@
-// src/pages/ForgotPassword.js
-import {useState} from 'react';
+// src/pages/ForgotPassword.tsx
+import React, {useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {Link} from 'react-router-dom';
 import {AlertCircle, Mail} from 'lucide-react';
+import Layout from '../components/Layout';
 
-// Import shared layout
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+const ForgotPassword: React.FC = () => {
+    const [email, setEmail] = useState<string>('');
+    const [loading, setLoading] = useState<boolean>(false);
+    const [message, setMessage] = useState<string>('');
+    const [error, setError] = useState<string>('');
 
-const ForgotPassword = () => {
-    const [email, setEmail] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
-    const [error, setError] = useState('');
-
-    const handleReset = async (e) => {
+    const handleReset = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         setError('');
@@ -28,14 +25,14 @@ const ForgotPassword = () => {
 
         try {
             const {error} = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: 'http://localhost:3000/reset-password',
+                redirectTo: window.location.origin + '/reset-password',
             });
 
             if (error) throw error;
 
             setMessage('✅ Password reset link sent! Check your email.');
             setEmail('');
-        } catch (err) {
+        } catch (err: any) {
             setError(`Failed to send reset link: ${err.message}`);
             console.error('Reset password error:', err);
         } finally {
@@ -44,9 +41,7 @@ const ForgotPassword = () => {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar/>
-
+        <Layout>
             <main className="flex-grow flex items-center justify-center px-6 py-12">
                 <div
                     className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl p-8">
@@ -59,8 +54,10 @@ const ForgotPassword = () => {
 
                     <form onSubmit={handleReset} className="space-y-6 mt-8">
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">Email
+                                Address</label>
                             <input
+                                id="email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -114,9 +111,7 @@ const ForgotPassword = () => {
                     </p>
                 </div>
             </main>
-
-            <Footer/>
-        </div>
+        </Layout>
     );
 };
 
