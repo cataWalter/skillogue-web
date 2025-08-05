@@ -10,7 +10,6 @@ import LandingPage from './pages/LandingPage';
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Connections from "./pages/Connections";
 import EditProfile from "./pages/EditProfile";
 import ResetPassword from "./pages/ResetPassword";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -36,7 +35,6 @@ function App() {
                 <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
-                <Route path="/connections" element={<ProtectedRoute><Connections /></ProtectedRoute>} />
             </Routes>
         </Router>
     );

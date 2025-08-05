@@ -51,11 +51,8 @@ as the all-in-one backend.
 
 ## Todo
 
-* enable notifications for messages
-* show messages number and a popup when you are in another window
+
 * reuse components
-* remove connections
-* remove follow
 * improve search
 * allow to save past searches
 * improve settings
@@ -66,6 +63,8 @@ as the all-in-one backend.
 * privacy analysis
 * law requirements analysis
 * tests
+* enable notifications for messages
+* show messages number and a popup when you are in another window
 * documentation
 * common layout
 * implement real-time messaging with WebSockets or optimize polling
