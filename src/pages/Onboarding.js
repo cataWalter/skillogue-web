@@ -106,20 +106,30 @@ const Onboarding = () => {
     };
 
     const nextStep = () => {
-        // Simple validation before proceeding
-        if (step === 1 && (!profile.first_name || !profile.last_name)) {
-            setError('Please enter both your first and last name.');
-            return;
+        setError(''); // Clear previous errors
+        switch (step) {
+            case 1:
+                if (!profile.first_name || !profile.last_name) {
+                    setError('Please enter both your first and last name.');
+                    return;
+                }
+                break;
+            case 2:
+                if (!profile.age) {
+                    setError('Please enter your age.');
+                    return;
+                }
+                break;
+            case 3:
+                if (!location.city) {
+                    setError('Please select your location.');
+                    return;
+                }
+                break;
+            // No specific validation needed for steps 4 & 5 to proceed
+            default:
+                break;
         }
-        if (step === 2 && !profile.age) {
-            setError('Please enter your age.');
-            return;
-        }
-        if (step === 3 && !location.city) {
-            setError('Please select your location.');
-            return;
-        }
-        setError('');
         setStep(step + 1);
     };
 
@@ -216,7 +226,7 @@ const Onboarding = () => {
                 </div>
 
                 <div className="bg-gray-900/70 p-8 rounded-2xl border border-gray-800 shadow-2xl">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form className="space-y-6">
                         {error && <p className="text-red-500 text-center">{error}</p>}
 
                         {step === 1 && (
@@ -314,7 +324,12 @@ const Onboarding = () => {
                                     Next <ArrowRight size={16} />
                                 </button>
                             ) : (
-                                <button type="submit" disabled={loading} className="px-6 py-2 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition disabled:opacity-70">
+                                <button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    disabled={loading}
+                                    className="px-6 py-2 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition disabled:opacity-70"
+                                >
                                     {loading ? 'Finishing...' : 'Finish & Go to Dashboard'}
                                 </button>
                             )}
