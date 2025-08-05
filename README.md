@@ -70,7 +70,7 @@ as the all-in-one backend.
 * common layout
 * implement real-time messaging with WebSockets or optimize polling
 * Loading States & Skeleton Screens: Replace simple "Loading..." text with skeleton loaders, especially on Search.js,
-  Messages.js, and Profile.js. This provides a much smoother experience while data is being fetched.
+  Messages.tsx, and Profile.js. This provides a much smoother experience while data is being fetched.
 * Error Boundaries: Implement React Error Boundaries to gracefully handle JavaScript errors in the UI, preventing the
   entire app from crashing. Wrap major sections of your app (e.g., the Dashboard or Messages page) in an error boundary
   component.
@@ -97,7 +97,7 @@ as the all-in-one backend.
   profiles, messages, and connections.
 * Rate Limiting: Implement rate limiting on your Supabase functions or at the network level to prevent abuse (e.g.,
   spamming messages or login attempts).
-* Real-time Updates: Replace the polling mechanism in Messages.js with Supabase's real-time subscriptions (
+* Real-time Updates: Replace the polling mechanism in Messages.tsx with Supabase's real-time subscriptions (
   supabase.channel().on().subscribe()). This is more efficient and provides an instant chat experience.
 * Advanced Search: Fulfill the "improve search" TODO by adding filters (e.g., by passion, location, skill level) and
   potentially full-text search capabilities using Supabase's PostgreSQL full-text search.
