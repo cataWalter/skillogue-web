@@ -1,21 +1,39 @@
-// src/pages/Search.js
+// src/pages/Search.tsx
 import React, {useEffect, useState} from 'react';
 import {supabase} from '../supabaseClient';
 import {Link} from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import Layout from '../components/Layout';
 
-const Search = () => {
-    const [query, setQuery] = useState('');
-    const [location, setLocation] = useState('');
-    const [minAge, setMinAge] = useState('');
-    const [maxAge, setMaxAge] = useState('');
-    const [language, setLanguage] = useState('');
-    const [gender, setGender] = useState('');
-    const [passions, setPassions] = useState([]);
-    const [allPassions, setAllPassions] = useState([]);
-    const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(false);
+// --- Type Definitions ---
+interface Passion {
+    id: number;
+    name: string;
+}
+
+interface SearchResult {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    about_me: string | null;
+    location: string | null;
+    age: number | null;
+    gender: string | null;
+    languages: string[] | null;
+    created_at: string;
+    profilePassions: string[];
+}
+
+const Search: React.FC = () => {
+    const [query, setQuery] = useState<string>('');
+    const [location, setLocation] = useState<string>('');
+    const [minAge, setMinAge] = useState<string>('');
+    const [maxAge, setMaxAge] = useState<string>('');
+    const [language, setLanguage] = useState<string>('');
+    const [gender, setGender] = useState<string>('');
+    const [passions, setPassions] = useState<number[]>([]);
+    const [allPassions, setAllPassions] = useState<Passion[]>([]);
+    const [results, setResults] = useState<SearchResult[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
 
     // Fetch all passions for dropdown
     useEffect(() => {
@@ -24,7 +42,7 @@ const Search = () => {
             if (error) {
                 console.error('Error loading passions:', error);
             } else {
-                setAllPassions(data);
+                setAllPassions(data || []);
             }
         };
 
@@ -37,17 +55,17 @@ const Search = () => {
         let queryBuilder = supabase
             .from('profiles')
             .select(`
-        id,
-        first_name,
-        last_name,
-        about_me,
-        location,
-        age,
-        gender,
-        languages,
-        created_at,
-        profile_passions(passions (name))
-      `)
+                id,
+                first_name,
+                last_name,
+                about_me,
+                location,
+                age,
+                gender,
+                languages,
+                created_at,
+                profile_passions(passions (name))
+            `)
             .not('id', 'is', null); // exclude null profiles
 
         // Text search (full-text on multiple fields)
@@ -62,10 +80,10 @@ const Search = () => {
             queryBuilder = queryBuilder.ilike('location', `%${location}%`);
         }
         if (minAge) {
-            queryBuilder = queryBuilder.gte('age', minAge);
+            queryBuilder = queryBuilder.gte('age', parseInt(minAge, 10));
         }
         if (maxAge) {
-            queryBuilder = queryBuilder.lte('age', maxAge);
+            queryBuilder = queryBuilder.lte('age', parseInt(maxAge, 10));
         }
         if (language) {
             queryBuilder = queryBuilder.contains('languages', [language]);
@@ -76,14 +94,13 @@ const Search = () => {
 
         // Passion filter (via join table)
         if (passions.length > 0) {
-            // We need to filter profiles that have ALL selected passions
             for (const passionId of passions) {
-                const {data, error} = await supabase
+                const {data: passionProfileData} = await supabase
                     .from('profile_passions')
                     .select('profile_id')
                     .eq('passion_id', passionId);
-                if (data) {
-                    const profileIds = data.map(p => p.profile_id);
+                if (passionProfileData) {
+                    const profileIds = passionProfileData.map(p => p.profile_id);
                     queryBuilder = queryBuilder.in('id', profileIds);
                 }
             }
@@ -95,8 +112,8 @@ const Search = () => {
             console.error('Search error:', error);
         } else {
             // Map passions from join
-            const resultsWithPassions = data.map(profile => {
-                const profilePassions = profile.profile_passions?.map(pp => pp.passions.name) || [];
+            const resultsWithPassions: SearchResult[] = data.map((profile: any) => {
+                const profilePassions = profile.profile_passions?.map((pp: any) => pp.passions.name) || [];
                 return {...profile, profilePassions};
             });
             setResults(resultsWithPassions);
@@ -104,7 +121,7 @@ const Search = () => {
         setLoading(false);
     };
 
-    const togglePassion = (passionId) => {
+    const togglePassion = (passionId: number) => {
         setPassions(prev =>
             prev.includes(passionId)
                 ? prev.filter(id => id !== passionId)
@@ -113,9 +130,8 @@ const Search = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-black text-white">
-            <Navbar/>
-            <main className="flex-grow p-6">
+        <Layout>
+            <div className="p-6">
                 <div className="max-w-6xl mx-auto">
                     <h1 className="text-3xl font-bold mb-8">Find Your Tribe</h1>
 
@@ -212,7 +228,7 @@ const Search = () => {
                             <p className="text-gray-400">No users found. Try adjusting your filters.</p>
                         ) : (
                             results.map((user) => (
-                                <div key={user.id} className="bg-gray-900 p-6 rounded-lg hover:bg-gray-850 transition">
+                                <div key={user.id} className="bg-gray-900 p-6 rounded-lg hover:bg-gray-800 transition">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
                                             <h3 className="text-xl font-bold">
@@ -241,7 +257,7 @@ const Search = () => {
                                             )}
                                         </div>
                                         <Link
-                                            to={`/messages?chatWith=${user.id}`}
+                                            to={`/messages?with=${user.id}`}
                                             className="ml-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-sm"
                                         >
                                             Message
@@ -252,9 +268,8 @@ const Search = () => {
                         )}
                     </div>
                 </div>
-            </main>
-            <Footer/>
-        </div>
+            </div>
+        </Layout>
     );
 };
 

@@ -68,12 +68,12 @@ as the all-in-one backend.
 * documentation
 * common layout
 * implement real-time messaging with WebSockets or optimize polling
-* Loading States & Skeleton Screens: Replace simple "Loading..." text with skeleton loaders, especially on Search.js,
-  Messages.tsx, and Profile.js. This provides a much smoother experience while data is being fetched.
+* Loading States & Skeleton Screens: Replace simple "Loading..." text with skeleton loaders, especially on Search.tsx,
+  Messages.tsx, and Profile.tsx. This provides a much smoother experience while data is being fetched.
 * Error Boundaries: Implement React Error Boundaries to gracefully handle JavaScript errors in the UI, preventing the
   entire app from crashing. Wrap major sections of your app (e.g., the Dashboard or Messages page) in an error boundary
   component.
-* Form Feedback: On Login.js and ResetPassword.js, provide clearer inline validation feedback (e.g., password strength
+* Form Feedback: On Login.tsx and ResetPassword.js, provide clearer inline validation feedback (e.g., password strength
   meters, real-time email validation).
 * Accessibility (a11y): Add aria-label attributes to icons (like the X for disconnecting or the Send button in chat) and
   ensure all interactive elements are keyboard-navigable. Use semantic HTML where possible.
@@ -117,10 +117,10 @@ Here are some specific components that could be created from repeated code patte
 Redundant Code: The pattern of including <Navbar />, a <main> element, and <Footer /> is repeated across multiple page files like Dashboard.tsx ,
 
 
-LandingPage.js ,
+Home.tx ,
 
 
-Login.js , and
+Login.tsx , and
 
 
 
@@ -152,7 +152,7 @@ Submit Buttons: The login , sign-up , and password reset  pages all feature a pr
 
 
 
-Loading State: Forms like Login.js and ForgotPassword.js include a manually inserted SVG and text for the loading state inside the button element.
+Loading State: Forms like Login.tsx and ForgotPassword.tsx include a manually inserted SVG and text for the loading state inside the button element.
 
 
 
@@ -166,7 +166,7 @@ Proposed Solution: A single Button.js component could handle these variations th
    Multiple forms use the same combination of a <label> and an <input> with consistent styling.
 
 
-Redundant Code: Pages like Login.js ,
+Redundant Code: Pages like Login.tsx ,
 
 
 SignUp.js ,
@@ -194,10 +194,10 @@ Dashboard.tsx uses <Link> elements styled as cards for navigation.
 
 
 
-Search.js displays user results in a div with card styling.
+Search.tsx displays user results in a div with card styling.
 
 
-Profile.js uses a large div as the main profile card.
+Profile.tsx uses a large div as the main profile card.
 
 Proposed Solution: A Card.js component that takes children would provide a consistent container. It could accept props to modify padding, borders, or allow it to render as a div or a Link.
 
