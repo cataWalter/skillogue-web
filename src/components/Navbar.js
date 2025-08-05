@@ -87,11 +87,6 @@ const Navbar = () => {
                 <LayoutDashboard size={18} />
                 <span>Dashboard</span>
             </Link>
-            <Link to="/connections" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
-                <Users size={18} />
-                <span>Connections</span>
-            </Link>
-            {/* Updated Messages Link with Badge */}
             <Link to="/messages" className="relative flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <MessageSquare size={18} />
                 <span>Messages</span>
