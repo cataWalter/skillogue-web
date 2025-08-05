@@ -1,41 +1,79 @@
-// src/pages/Messages.js
-import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
-import {supabase} from '../supabaseClient';
-import {Link, useSearchParams} from 'react-router-dom';
-import {ArrowLeft, Loader2, Send, User} from 'lucide-react';
+// src/pages/Messages.tsx
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { supabase } from '../supabaseClient';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Loader2, Send, User } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { User as AuthUser } from '@supabase/supabase-js';
 
-const PAGE_SIZE = 25; // Number of messages to fetch per page
+// --- Type Definitions ---
+interface Profile {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+}
 
-const Messages = () => {
+interface Message {
+    id: number;
+    created_at: string;
+    sender_id: string;
+    receiver_id: string;
+    content: string;
+    sender: Profile;
+    receiver: Profile;
+}
+
+interface Conversation {
+    user_id: string;
+    full_name: string;
+    last_message: string;
+    unread: number;
+}
+
+const PAGE_SIZE = 25;
+
+const Messages: React.FC = () => {
+    console.log('[Messages] Component rendered or re-rendered.');
     const [searchParams, setSearchParams] = useSearchParams();
     const chatWith = searchParams.get('with');
 
-    const [user, setUser] = useState(null);
-    const [conversations, setConversations] = useState([]);
-    const [selectedChat, setSelectedChat] = useState(null);
-    const [messages, setMessages] = useState([]);
+    const [user, setUser] = useState<AuthUser | null>(null);
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [selectedChat, setSelectedChat] = useState<string | null>(chatWith);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
 
-    const [loading, setLoading] = useState(false); // For initial load
-    const [loadingMore, setLoadingMore] = useState(false); // For loading older messages
+    const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
 
-    const messagesContainerRef = useRef(null);
-    const lastPollTime = useRef(null);
-    const pollingInterval = useRef(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const lastPollTime = useRef<string | null>(null);
+    const pollingInterval = useRef<NodeJS.Timeout | null>(null);
     const userScrolledUp = useRef(false);
-    const prevScrollHeightRef = useRef(null); // For preserving scroll position
+    const prevScrollHeightRef = useRef<number | null>(null);
+
+    // Request notification permission on component mount
+    useEffect(() => {
+        console.log('[Messages] Checking Notification API permission.');
+        if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
+    }, []);
+
 
     // Get current user
     useEffect(() => {
         const getUser = async () => {
-            const {data} = await supabase.auth.getUser();
+            console.log('[Messages] Attempting to get user session.');
+            const { data } = await supabase.auth.getUser();
             if (data?.user) {
+                console.log('[Messages] User found:', data.user.id);
                 setUser(data.user);
             } else {
+                console.error('[Messages] No user found, redirecting to login.');
                 window.location.href = '/login';
             }
         };
@@ -45,30 +83,67 @@ const Messages = () => {
     // Load conversations
     const loadConversations = async () => {
         if (!user) return;
-        const {data, error} = await supabase.rpc('get_conversations', {
+        console.log('[Messages] Loading conversations for user:', user.id);
+        const { data, error } = await supabase.rpc('get_conversations', {
             current_user_id: user.id,
         });
         if (error) {
             console.error('Error loading conversations:', error);
         } else {
-            setConversations(data);
+            console.log('[Messages] Conversations loaded:', data);
+            setConversations(data || []);
         }
     };
 
     // Effect to load conversations and poll for updates
     useEffect(() => {
         if (user) {
+            console.log('[Messages] Initial conversation load and setting up polling.');
             loadConversations();
             const interval = setInterval(loadConversations, 10000);
             return () => clearInterval(interval);
         }
     }, [user]);
 
+    // Effect to mark messages as read whenever the selected chat changes
+    useEffect(() => {
+        const markMessagesAsRead = async () => {
+            if (!selectedChat || !user) {
+                console.log('[MarkAsRead] Skipping: no selected chat or user.');
+                return;
+            }
+
+            console.log(`[MarkAsRead] Calling RPC to mark messages as read from sender "${selectedChat}" for receiver "${user.id}".`);
+            // --- 🔽 MODIFIED LOGIC: Call the new SQL function ---
+            const { error } = await supabase.rpc('mark_messages_as_read', {
+                sender_id_param: selectedChat,
+                receiver_id_param: user.id
+            });
+
+
+            if (error) {
+                console.error('[MarkAsRead] RPC Error:', error);
+            } else {
+                console.log('[MarkAsRead] RPC Success. Refreshing conversation list.');
+                // Refresh the conversation list to update unread counts in the sidebar immediately
+                loadConversations();
+            }
+        };
+
+        markMessagesAsRead();
+    }, [selectedChat, user]);
+
+
     // Effect to load messages when a chat is selected or page changes
     useEffect(() => {
         const loadMessages = async () => {
             if (!selectedChat || !user) return;
-            if (loadingMore || (page > 1 && !hasMore)) return;
+            console.log(`[LoadMessages] Loading messages for chat with ${selectedChat}, page ${page}.`);
+
+            if (loadingMore || (page > 1 && !hasMore)) {
+                console.log('[LoadMessages] Skipped: already loading more or no more messages.');
+                return;
+            }
 
             if (page === 1) {
                 setLoading(true);
@@ -78,31 +153,36 @@ const Messages = () => {
 
             const from = (page - 1) * PAGE_SIZE;
             const to = from + PAGE_SIZE - 1;
+            console.log(`[LoadMessages] Fetching range ${from}-${to}.`);
 
-            const {data, error} = await supabase
+
+            const { data, error } = await supabase
                 .from('messages')
                 .select(`*, sender:sender_id (id, first_name, last_name), receiver:receiver_id (id, first_name, last_name)`)
                 .or(`and(sender_id.eq.${user.id},receiver_id.eq.${selectedChat}),and(sender_id.eq.${selectedChat},receiver_id.eq.${user.id})`)
-                .order('created_at', {ascending: false})
+                .order('created_at', { ascending: false })
                 .range(from, to);
 
             if (error) {
-                console.error('Error loading messages:', error);
+                console.error('[LoadMessages] Error:', error);
             } else if (data) {
+                console.log(`[LoadMessages] Fetched ${data.length} messages.`);
                 if (data.length < PAGE_SIZE) {
+                    console.log('[LoadMessages] No more messages to load.');
                     setHasMore(false);
                 }
-                const reversedData = data.reverse();
+
+                const reversedData = [...data].reverse() as Message[];
+
                 if (page === 1) {
                     setMessages(reversedData);
                 } else {
-                    prevScrollHeightRef.current = messagesContainerRef.current.scrollHeight;
+                    if (messagesContainerRef.current) {
+                        prevScrollHeightRef.current = messagesContainerRef.current.scrollHeight;
+                    }
                     setMessages((prev) => [...reversedData, ...prev]);
                 }
-
-                if (page === 1) {
-                    lastPollTime.current = new Date().toISOString();
-                }
+                lastPollTime.current = new Date().toISOString();
             }
 
             if (page === 1) setLoading(false);
@@ -116,37 +196,65 @@ const Messages = () => {
     // Effect to auto-select chat from URL param
     useEffect(() => {
         if (user && chatWith && chatWith !== selectedChat) {
+            console.log('[Messages] Selecting chat from URL param:', chatWith);
             openChat(chatWith);
         }
-    }, [user, chatWith, selectedChat]);
+    }, [user, chatWith]);
 
     // Polling for NEW messages
     useEffect(() => {
-        const startPolling = (otherUserId) => {
-            stopPolling(); // Ensure no multiple pollers
+        const showNotification = (message: Message) => {
+            if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+                console.log('[Polling] Document is hidden, showing notification.');
+                const notification = new Notification(`New message from ${getFullName(message.sender)}`, {
+                    body: message.content,
+                    tag: message.sender_id,
+                });
+                notification.onclick = () => {
+                    window.focus();
+                    setSearchParams({ with: message.sender_id });
+                };
+            }
+        };
+
+        const startPolling = (otherUserId: string) => {
+            stopPolling();
+            console.log(`[Polling] Starting for chat with ${otherUserId}.`);
             lastPollTime.current = new Date().toISOString();
 
             pollingInterval.current = setInterval(async () => {
-                if (!lastPollTime.current || !selectedChat || document.hidden) return;
+                if (!lastPollTime.current || !selectedChat || !user) return;
 
-                const {data, error} = await supabase
+                if (document.hidden) {
+                    console.log('[Polling] Tab is hidden, skipping poll cycle body.');
+                    return;
+                }
+                console.log(`[Polling] Checking for new messages since ${lastPollTime.current}`);
+
+                const { data, error } = await supabase
                     .from('messages')
                     .select(`*, sender:sender_id (id, first_name, last_name), receiver:receiver_id (id, first_name, last_name)`)
                     .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
                     .gt('created_at', lastPollTime.current)
-                    .order('created_at', {ascending: true});
+                    .order('created_at', { ascending: true });
 
                 if (error) {
-                    console.error('Polling error:', error);
+                    console.error('[Polling] Error:', error);
                     return;
                 }
 
-                if (data.length > 0) {
-                    const isAtBottom = messagesContainerRef.current.scrollHeight - messagesContainerRef.current.scrollTop - messagesContainerRef.current.clientHeight < 100;
-                    setMessages((prev) => [...prev, ...data]);
-                    if (isAtBottom) {
-                        userScrolledUp.current = false;
-                    }
+                if (data && data.length > 0) {
+                    console.log(`[Polling] Found ${data.length} new message(s).`);
+                    const newMessages = data as Message[];
+                    const isAtBottom = messagesContainerRef.current
+                        ? messagesContainerRef.current.scrollHeight - messagesContainerRef.current.scrollTop - messagesContainerRef.current.clientHeight < 100
+                        : false;
+
+                    setMessages((prev) => [...prev, ...newMessages]);
+                    if (isAtBottom) userScrolledUp.current = false;
+
+                    if (newMessages[0]) showNotification(newMessages[0]);
+
                     lastPollTime.current = new Date().toISOString();
                 }
             }, 3000);
@@ -154,6 +262,7 @@ const Messages = () => {
 
         const stopPolling = () => {
             if (pollingInterval.current) {
+                console.log('[Polling] Stopping polling interval.');
                 clearInterval(pollingInterval.current);
                 pollingInterval.current = null;
             }
@@ -164,7 +273,7 @@ const Messages = () => {
         }
 
         return () => stopPolling();
-    }, [selectedChat, user]);
+    }, [selectedChat, user, setSearchParams]);
 
 
     // Effect for handling scroll behavior
@@ -174,6 +283,7 @@ const Messages = () => {
 
         const handleScroll = () => {
             if (container.scrollTop === 0 && hasMore && !loadingMore) {
+                console.log('[Scroll] Reached top, loading more messages.');
                 setPage((prevPage) => prevPage + 1);
             }
             const threshold = 100;
@@ -183,13 +293,14 @@ const Messages = () => {
 
         container.addEventListener('scroll', handleScroll);
         return () => container.removeEventListener('scroll', handleScroll);
-    }, [hasMore, loadingMore, selectedChat]);
+    }, [hasMore, loadingMore]);
 
 
     // Layout effect to preserve scroll position when loading older messages
     useLayoutEffect(() => {
         const container = messagesContainerRef.current;
         if (page > 1 && !loadingMore && prevScrollHeightRef.current !== null && container) {
+            console.log('[LayoutEffect] Restoring scroll position after loading more.');
             container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
             prevScrollHeightRef.current = null;
         }
@@ -199,6 +310,7 @@ const Messages = () => {
     useLayoutEffect(() => {
         const container = messagesContainerRef.current;
         if (page === 1 && !loading && container && messages.length > 0) {
+            console.log('[LayoutEffect] Scrolling to bottom on initial load.');
             container.scrollTop = container.scrollHeight;
         }
     }, [loading, page, messages]);
@@ -208,6 +320,7 @@ const Messages = () => {
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (container && !userScrolledUp.current) {
+            console.log('[ScrollEffect] New message received, auto-scrolling to bottom.');
             container.scrollTo({
                 top: container.scrollHeight,
                 behavior: 'smooth',
@@ -216,9 +329,10 @@ const Messages = () => {
     }, [messages]);
 
 
-    const sendMessage = async (e) => {
+    const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !selectedChat) return;
+        if (!newMessage.trim() || !selectedChat || !user) return;
+        console.log(`[SendMessage] Sending message to ${selectedChat}.`);
 
         const message = {
             sender_id: user.id,
@@ -226,36 +340,37 @@ const Messages = () => {
             content: newMessage.trim(),
         };
 
-        const {error} = await supabase.from('messages').insert([message]);
+        const { error } = await supabase.from('messages').insert([message]);
 
         if (error) {
-            console.error('Failed to send message:', error);
+            console.error('[SendMessage] Failed:', error);
         } else {
+            console.log('[SendMessage] Success.');
             setNewMessage('');
-            // New message will be picked up by polling
         }
     };
 
-    const openChat = (otherUserId) => {
+    const openChat = (otherUserId: string) => {
         if (otherUserId === selectedChat) return;
-
+        console.log(`[OpenChat] Opening chat with ${otherUserId}.`);
         setMessages([]);
         setPage(1);
         setHasMore(true);
         setSelectedChat(otherUserId);
-        setSearchParams({with: otherUserId});
+        setSearchParams({ with: otherUserId });
     };
 
-    const getFullName = (person) => {
+    const getFullName = (person: Profile | null) => {
         if (!person) return 'User';
         return `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'User';
     };
 
-    if (!user) return null;
+    if (!user) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Authenticating...</div>;
 
+    // ... The rest of your JSX remains the same
     return (
         <div className="bg-black text-white">
-            <Navbar/>
+            <Navbar />
 
             <main className="flex overflow-hidden h-[calc(100vh-4rem)]">
                 {/* Sidebar: Conversations */}
@@ -272,12 +387,9 @@ const Messages = () => {
                                     <li
                                         key={conv.user_id}
                                         onClick={() => openChat(conv.user_id)}
-                                        className={`p-4 border-b border-gray-800 hover:bg-gray-800 cursor-pointer flex items-center gap-3 ${
-                                            selectedChat === conv.user_id ? 'bg-gray-800' : ''
-                                        }`}
+                                        className={`p-4 border-b border-gray-800 hover:bg-gray-800 cursor-pointer flex items-center gap-3 ${selectedChat === conv.user_id ? 'bg-gray-800' : ''}`}
                                     >
-                                        <div
-                                            className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-medium">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-medium">
                                             {conv.full_name?.charAt(0).toUpperCase() || 'U'}
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -301,7 +413,7 @@ const Messages = () => {
                             {/* Chat Header */}
                             <div className="p-4 border-b border-gray-800 bg-gray-900/50">
                                 <div className="flex items-center gap-3">
-                                    <User className="w-8 h-8 text-gray-400"/>
+                                    <User className="w-8 h-8 text-gray-400" />
                                     <span className="font-medium">
                                         {conversations.find((c) => c.user_id === selectedChat)?.full_name || 'User'}
                                     </span>
@@ -318,7 +430,7 @@ const Messages = () => {
 
                                     {loadingMore && (
                                         <div className="flex justify-center py-2">
-                                            <Loader2 className="animate-spin text-gray-400"/>
+                                            <Loader2 className="animate-spin text-gray-400" />
                                         </div>
                                     )}
 
@@ -335,9 +447,7 @@ const Messages = () => {
                                                 className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                                             >
                                                 <div
-                                                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                                                        isMe ? 'bg-indigo-600' : 'bg-gray-800'
-                                                    }`}
+                                                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isMe ? 'bg-indigo-600' : 'bg-gray-800'}`}
                                                 >
                                                     {!isMe && (
                                                         <div className="text-xs opacity-70 mb-1">
@@ -373,7 +483,7 @@ const Messages = () => {
                                         disabled={!newMessage.trim()}
                                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg flex items-center"
                                     >
-                                        <Send size={18}/>
+                                        <Send size={18} />
                                     </button>
                                 </form>
                             </div>
@@ -386,7 +496,7 @@ const Messages = () => {
                                 to="/dashboard"
                                 className="flex items-center gap-2 text-indigo-400 hover:underline"
                             >
-                                <ArrowLeft size={16}/>
+                                <ArrowLeft size={16} />
                                 Back to Dashboard
                             </Link>
                         </div>
@@ -394,7 +504,7 @@ const Messages = () => {
                 </div>
             </main>
 
-            <Footer/>
+            <Footer />
         </div>
     );
 };
