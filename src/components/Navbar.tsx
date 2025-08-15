@@ -1,16 +1,23 @@
-// src/components/Navbar.js
+// src/components/Navbar.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { Home, LayoutDashboard, LogOut, Menu, MessageSquare, Search, User, Users, X } from 'lucide-react';
+import { Home, LayoutDashboard, LogOut, Menu, MessageSquare, Search, Settings, X } from 'lucide-react';
 import NotificationPopup from './NotificationPopup';
+import { Session } from '@supabase/supabase-js';
 
-const Navbar = () => {
-    const [session, setSession] = useState(null);
-    const [isOpen, setIsOpen] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(0);
-    const [notification, setNotification] = useState(null); // { message, sender }
-    const previousUnreadCount = useRef(0);
+// Define types for our state
+interface NotificationState {
+    message: string;
+    sender: string;
+}
+
+const Navbar: React.FC = () => {
+    const [session, setSession] = useState<Session | null>(null);
+    const [isOpen, setIsOpen] = useState<boolean>(false);
+    const [unreadCount, setUnreadCount] = useState<number>(0);
+    const [notification, setNotification] = useState<NotificationState | null>(null);
+    const previousUnreadCount = useRef<number>(0);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -27,7 +34,6 @@ const Navbar = () => {
         return () => subscription.unsubscribe();
     }, []);
 
-    // --- New Feature: Fetch Unread Messages Count & Show Popup ---
     useEffect(() => {
         if (!session?.user) return;
 
@@ -48,9 +54,7 @@ const Navbar = () => {
 
                 setUnreadCount(newCount);
 
-                // If new messages have arrived since the last check, show a notification
                 if (newCount > 0 && newCount > previousUnreadCount.current) {
-                    // Don't show popup if user is already on the messages page
                     if (!window.location.pathname.startsWith('/messages')) {
                         setNotification({ message: newLastMessage, sender: newSender });
                     }
@@ -59,8 +63,8 @@ const Navbar = () => {
             }
         };
 
-        fetchUnreadCount(); // Initial fetch
-        const interval = setInterval(fetchUnreadCount, 15000); // Poll every 15 seconds
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 15000);
 
         return () => clearInterval(interval);
     }, [session]);
@@ -71,7 +75,7 @@ const Navbar = () => {
         navigate('/');
     };
 
-    const NavLinks = () => (
+    const NavLinks: React.FC = () => (
         <>
             <Link to="/" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <Home size={18} />
@@ -99,9 +103,9 @@ const Navbar = () => {
                 )}
             </Link>
 
-            <Link to="/profile" className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
-                <User size={18} />
-                <span>Profile</span>
+            <Link to="/settings" className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
+                <Settings size={18} />
+                <span>Settings</span>
             </Link>
         </>
     );
