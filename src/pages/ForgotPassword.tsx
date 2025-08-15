@@ -1,9 +1,12 @@
 // src/pages/ForgotPassword.tsx
-import React, {useState} from 'react';
-import {supabase} from '../supabaseClient';
-import {Link} from 'react-router-dom';
-import {AlertCircle, Mail} from 'lucide-react';
+import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
+import { Link } from 'react-router-dom';
+import { AlertCircle, Mail } from 'lucide-react';
 import Layout from '../components/Layout';
+import AuthLayout from '../components/AuthLayout';
+import FormInput from '../components/FormInput';
+import { Button } from '../components/Button';
 
 const ForgotPassword: React.FC = () => {
     const [email, setEmail] = useState<string>('');
@@ -24,7 +27,7 @@ const ForgotPassword: React.FC = () => {
         }
 
         try {
-            const {error} = await supabase.auth.resetPasswordForEmail(email, {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: window.location.origin + '/reset-password',
             });
 
@@ -42,75 +45,45 @@ const ForgotPassword: React.FC = () => {
 
     return (
         <Layout>
-            <main className="flex-grow flex items-center justify-center px-6 py-12">
-                <div
-                    className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl p-8">
-                    <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-                        Reset Your Password
-                    </h2>
-                    <p className="text-gray-400 text-center mt-2">
-                        Enter your email to receive a password reset link
-                    </p>
+            <AuthLayout
+                title="Reset Your Password"
+                subtitle="Enter your email to receive a password reset link"
+            >
+                <form onSubmit={handleReset} className="space-y-6">
+                    <FormInput
+                        id="email"
+                        type="email"
+                        label="Email Address"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        disabled={loading}
+                    />
 
-                    <form onSubmit={handleReset} className="space-y-6 mt-8">
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">Email
-                                Address</label>
-                            <input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="you@example.com"
-                                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-500"
-                                disabled={loading}
-                            />
+                    {error && (
+                        <div className="bg-red-900/30 text-red-300 p-3 rounded-lg text-sm flex items-start">
+                            <AlertCircle className="w-5 h-5 mr-2 mt-0.5" />
+                            {error}
                         </div>
+                    )}
 
-                        {error && (
-                            <div className="bg-red-900/30 text-red-300 p-3 rounded-lg text-sm flex items-start">
-                                <AlertCircle className="w-5 h-5 mr-2 mt-0.5"/>
-                                {error}
-                            </div>
-                        )}
+                    {message && <p className="text-green-400 text-sm">{message}</p>}
 
-                        {message && <p className="text-green-400 text-sm">{message}</p>}
+                    <Button
+                        type="submit"
+                        isLoading={loading}
+                        icon={<Mail size={20} />}
+                    >
+                        {loading ? 'Sending Reset Email...' : 'Send Reset Link'}
+                    </Button>
+                </form>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-                        >
-                            {loading ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none"
-                                         viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                strokeWidth="4"></circle>
-                                        <path
-                                            className="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                        ></path>
-                                    </svg>
-                                    Sending Reset Email...
-                                </>
-                            ) : (
-                                <>
-                                    <Mail className="mr-2" size={20}/>
-                                    Send Reset Link
-                                </>
-                            )}
-                        </button>
-                    </form>
-
-                    <p className="text-center text-sm mt-6 text-gray-400">
-                        <Link to="/login" className="text-indigo-400 hover:underline">
-                            ← Back to Login
-                        </Link>
-                    </p>
-                </div>
-            </main>
+                <p className="text-center text-sm mt-6 text-gray-400">
+                    <Link to="/login" className="text-indigo-400 hover:underline">
+                        ← Back to Login
+                    </Link>
+                </p>
+            </AuthLayout>
         </Layout>
     );
 };
