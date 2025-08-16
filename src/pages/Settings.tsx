@@ -53,8 +53,12 @@ const Settings: React.FC = () => {
                         <h2 className="text-xl font-semibold border-b border-gray-700 pb-2 mb-4">Account</h2>
                         <ul className="space-y-3 text-gray-300">
                             <li><Link to="/settings/account" className="hover:underline">Change Email Address</Link></li>
-                            <li><Link to="/forgot-password" className="hover:underline">Change Password</Link></li>
-                            <li className="text-red-400"><Link to="/settings/delete-account" className="hover:underline">Delete Account</Link></li>
+                            <li><Link to="/reset-password" className="hover:underline">Change Password</Link></li>
+                            <li className="text-red-400">
+                                <Link to="/settings/delete-account" className="hover:underline">
+                                    Delete Account
+                                </Link>
+                            </li>
                         </ul>
                     </div>
 

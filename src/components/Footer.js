@@ -54,7 +54,7 @@ const Footer = () => {
                                 Skill<span className="text-indigo-400">ogue</span>
                             </h2>
                             <p className="text-gray-400 text-base">
-                                Connect through passions, not profile pictures.
+                                Connect through passions, not pictures
                             </p>
                             <div className="flex space-x-6">
                                 <a

@@ -1,35 +1,41 @@
-// src/pages/ResetPassword.js
-
-import {useEffect, useState} from 'react';
-import {supabase} from '../supabaseClient';
-import {useNavigate} from 'react-router-dom';
-import {AlertCircle, Loader2} from 'lucide-react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+// src/pages/ResetPassword.tsx
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
+import { AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import Layout from '../components/Layout';
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter'; // 👈 Import the strength meter
 
 const ResetPassword = () => {
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false); // Only show success AFTER reset
-
+    const [password, setPassword] = useState<string>('');
+    const [confirmPassword, setConfirmPassword] = useState<string>('');
+    const [error, setError] = useState<string>('');
+    const [loading, setLoading] = useState<boolean>(false);
+    const [showSuccess, setShowSuccess] = useState<boolean>(false);
     const navigate = useNavigate();
 
-    // ✅ Don't auto-set success just because there's a session
-    // Just verify we're in a reset context
     useEffect(() => {
         const checkSession = async () => {
-            const {data} = await supabase.auth.getSession();
+            const { data } = await supabase.auth.getSession();
             if (!data.session) {
                 setError('Invalid or expired link. Please request a new password reset.');
             }
-            // We don't set success here — only after form submission
         };
         checkSession();
     }, []);
 
-    const handleReset = async (e) => {
+    // 👇 New validation logic
+    const isPasswordValid = (): boolean => {
+        const checks = {
+            length: password.length >= 8,
+            uppercase: /[A-Z]/.test(password),
+            number: /[0-9]/.test(password),
+            symbol: /[^A-Za-z0-9]/.test(password),
+        };
+        return Object.values(checks).every(Boolean);
+    };
+
+    const handleReset = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
         setLoading(true);
@@ -40,32 +46,29 @@ const ResetPassword = () => {
             return;
         }
 
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters long');
-            setLoading(false);
-            return;
-        }
-
         if (password !== confirmPassword) {
             setError('Passwords do not match');
             setLoading(false);
             return;
         }
 
-        try {
-            // ✅ This is where we actually update the password
-            const {data, error} = await supabase.auth.updateUser({password});
+        // 👇 Use the new validation function
+        if (!isPasswordValid()) {
+            setError('Please ensure your new password meets all the strength requirements.');
+            setLoading(false);
+            return;
+        }
 
+        try {
+            const { error } = await supabase.auth.updateUser({ password });
             if (error) throw error;
 
-            // ✅ Only now mark success
             setShowSuccess(true);
 
-            // Optional: Refresh session or redirect after a delay
             setTimeout(() => {
                 navigate('/dashboard');
             }, 2000);
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message || 'Failed to reset password');
             console.error('Password reset error:', err);
         } finally {
@@ -75,34 +78,24 @@ const ResetPassword = () => {
 
     if (showSuccess) {
         return (
-            <div className="min-h-screen bg-black text-white flex flex-col">
-                <Navbar/>
+            <Layout>
                 <main className="flex-grow flex items-center justify-center px-6 py-12">
-                    <div
-                        className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden text-center p-8">
-                        <div
-                            className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
-                            <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor"
-                                 viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                            </svg>
+                    <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden text-center p-8">
+                        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
+                            <CheckCircle className="w-8 h-8 text-green-400" />
                         </div>
                         <h2 className="text-xl font-semibold text-white">Password Updated!</h2>
                         <p className="text-gray-400 mt-2">Redirecting to your dashboard...</p>
                     </div>
                 </main>
-                <Footer/>
-            </div>
+            </Layout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar/>
-
+        <Layout>
             <main className="flex-grow flex items-center justify-center px-6 py-12">
-                <div
-                    className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
                     <div className="text-center p-8">
                         <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
                             Set New Password
@@ -111,9 +104,8 @@ const ResetPassword = () => {
                     </div>
 
                     {error && (
-                        <div
-                            className="px-8 mx-6 mb-4 bg-red-900/30 text-red-300 p-3 rounded-lg text-sm flex items-start">
-                            <AlertCircle className="w-5 h-5 mr-2 mt-0.5"/>
+                        <div className="mx-6 mb-4 bg-red-900/30 text-red-300 p-3 rounded-lg text-sm flex items-start">
+                            <AlertCircle className="w-5 h-5 mr-2 mt-0.5" />
                             {error}
                         </div>
                     )}
@@ -128,10 +120,11 @@ const ResetPassword = () => {
                                 type="password"
                                 placeholder="••••••••"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-white placeholder-gray-500"
                             />
-                            <p className="mt-1 text-xs text-gray-500">Min. 6 characters</p>
+                            {/* 👇 Add the strength meter component */}
+                            <PasswordStrengthMeter password={password} />
                         </div>
 
                         <div>
@@ -143,19 +136,19 @@ const ResetPassword = () => {
                                 type="password"
                                 placeholder="••••••••"
                                 value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-white placeholder-gray-500"
                             />
                         </div>
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || !isPasswordValid() || password !== confirmPassword} // 👈 Disable button if invalid
                             className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
                         >
                             {loading ? (
                                 <>
-                                    <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5"/>
+                                    <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
                                     Updating Password...
                                 </>
                             ) : (
@@ -165,9 +158,7 @@ const ResetPassword = () => {
                     </form>
                 </div>
             </main>
-
-            <Footer/>
-        </div>
+        </Layout>
     );
 };
 
