@@ -1,3 +1,4 @@
+// src/components/Layout.tsx
 import React from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
@@ -19,8 +20,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="flex flex-col min-h-screen bg-black text-white">
             <Navbar />
             {/* The 'flex-grow' class ensures the main content area expands
-                to fill available space, pushing the footer down. */}
-            <main className="flex-grow">
+                 to fill available space, pushing the footer down. */}
+            <main className="flex-grow flex flex-col">
                 {children}
             </main>
             <Footer />

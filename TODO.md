@@ -1,9 +1,5 @@
 ## Todo
 
-High priority
-
-* Chat
-
 Medium priority
 
 * Blocked Users Management
