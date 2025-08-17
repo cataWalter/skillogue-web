@@ -1,9 +1,10 @@
 // src/pages/Login.tsx
-import React, {useState} from 'react';
-import {supabase} from '../supabaseClient';
-import {Link, useNavigate} from 'react-router-dom';
-import {LogIn, Mail, UserPlus} from 'lucide-react';
+import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
+import { Link, useNavigate } from 'react-router-dom';
+import { LogIn, Mail, UserPlus } from 'lucide-react';
 import Layout from '../components/Layout';
+import SEO from '../components/SEO';
 
 const Login: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
@@ -19,7 +20,7 @@ const Login: React.FC = () => {
         }
         try {
             setLoading(true);
-            const {error} = await supabase.auth.signInWithPassword({email, password});
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) throw error;
             navigate('/dashboard');
         } catch (error: any) {
@@ -31,7 +32,10 @@ const Login: React.FC = () => {
     };
 
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <main className="flex-grow flex items-center justify-center px-6 py-12">
                 <div
                     className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
@@ -84,7 +88,7 @@ const Login: React.FC = () => {
                                 {loading ? (
                                     <span className="flex items-center justify-center">
                                         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none"
-                                             viewBox="0 0 24 24">
+                                            viewBox="0 0 24 24">
                                             <circle
                                                 className="opacity-25"
                                                 cx="12"
@@ -103,7 +107,7 @@ const Login: React.FC = () => {
                                     </span>
                                 ) : (
                                     <span className="flex items-center justify-center">
-                                        <LogIn className="mr-2" size={20}/> Sign In
+                                        <LogIn className="mr-2" size={20} /> Sign In
                                     </span>
                                 )}
                             </button>
@@ -112,7 +116,7 @@ const Login: React.FC = () => {
                             to="/signup"
                             className="w-full flex items-center justify-center mt-4 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold rounded-lg shadow transition-all duration-300 hover:shadow-xl transform hover:scale-105"
                         >
-                            <UserPlus className="mr-2" size={20}/>
+                            <UserPlus className="mr-2" size={20} />
                             Create a New Account
                         </Link>
                         <div className="text-center mt-6">
@@ -120,7 +124,7 @@ const Login: React.FC = () => {
                                 to="/forgot-password"
                                 className="inline-flex items-center text-sm text-gray-400 hover:text-gray-300 hover:underline transition duration-200"
                             >
-                                <Mail className="mr-1" size={16}/>
+                                <Mail className="mr-1" size={16} />
                                 Forgot password?
                             </Link>
                         </div>

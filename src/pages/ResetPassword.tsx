@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import Layout from '../components/Layout';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter'; // 👈 Import the strength meter
+import SEO from '../components/SEO';
 
 const ResetPassword = () => {
     const [password, setPassword] = useState<string>('');
@@ -78,7 +79,10 @@ const ResetPassword = () => {
 
     if (showSuccess) {
         return (
-            <Layout>
+                <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
                 <main className="flex-grow flex items-center justify-center px-6 py-12">
                     <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden text-center p-8">
                         <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
@@ -93,7 +97,10 @@ const ResetPassword = () => {
     }
 
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <main className="flex-grow flex items-center justify-center px-6 py-12">
                 <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
                     <div className="text-center p-8">

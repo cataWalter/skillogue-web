@@ -10,6 +10,7 @@ import { Session } from '@supabase/supabase-js';
 import Modal from '../components/Modal';
 import { Button } from '../components/Button';
 import toast from 'react-hot-toast';
+import SEO from '../components/SEO';
 
 const UserProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -68,7 +69,7 @@ const UserProfile: React.FC = () => {
                 .eq('user_id', id) // The profile owner is the blocker
                 .eq('blocked_user_id', currentSession.user.id) // The current user is the one being blocked
                 .maybeSingle();
-            
+
             if (reverseBlockError) {
                 console.error('Error checking if blocked by user:', reverseBlockError);
             }
@@ -85,7 +86,7 @@ const UserProfile: React.FC = () => {
                 .select(`*, locations(*)`)
                 .eq('id', id)
                 .single();
-            
+
             if (profileError || !profileData) {
                 console.error('Error loading user profile:', profileError);
                 setError('Could not find this user.');
@@ -98,12 +99,12 @@ const UserProfile: React.FC = () => {
                 supabase.from('profile_passions').select('passions(name)').eq('profile_id', id),
                 supabase.from('profile_languages').select('languages(name)').eq('profile_id', id)
             ]);
-            
+
             setPassions(passionRes.data?.map((p: any) => p.passions.name) || []);
             setLanguages(languageRes.data?.map((l: any) => l.languages.name) || []);
-            
+
             await checkBlockStatus(currentSession.user.id, id);
-            
+
             setLoading(false);
         };
 
@@ -143,7 +144,7 @@ const UserProfile: React.FC = () => {
             setIsBlocked(false);
         }
     };
-    
+
     const handleSubmitReport = async () => {
         if (!session?.user || !profile || !reportReason.trim()) {
             toast.error('Please provide a reason for the report.');
@@ -155,7 +156,7 @@ const UserProfile: React.FC = () => {
             reported_user_id: profile.id,
             reason: reportReason
         });
-        
+
         if (error) {
             toast.error('Failed to submit report.');
             console.error(error);
@@ -168,13 +169,19 @@ const UserProfile: React.FC = () => {
     };
 
     if (loading) {
-        return <Layout><div className="text-center p-10">Loading profile...</div></Layout>;
+        return     <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            /><div className="text-center p-10">Loading profile...</div></Layout>;
     }
 
     // --- New Render Condition for Blocked State ---
     if (isBlockedByProfileUser) {
         return (
-            <Layout>
+                <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
                 <main className="flex-grow flex items-center justify-center text-center p-6">
                     <div className="bg-gray-900/70 p-10 rounded-2xl border border-gray-800">
                         <Ghost size={64} className="mx-auto text-indigo-400 mb-4 animate-pulse" />
@@ -190,13 +197,19 @@ const UserProfile: React.FC = () => {
             </Layout>
         );
     }
-    
+
     if (error) {
-         return <Layout><div className="text-center p-10 text-red-400">{error}</div></Layout>;
+        return     <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            /><div className="text-center p-10 text-red-400">{error}</div></Layout>;
     }
 
     if (!profile) {
-        return <Layout><div className="text-center p-10">User not found.</div></Layout>;
+        return     <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            /><div className="text-center p-10">User not found.</div></Layout>;
     }
 
     const actionSlot = (
@@ -209,7 +222,7 @@ const UserProfile: React.FC = () => {
                     <MessageSquare size={16} /> Message
                 </Link>
             )}
-            
+
             <button
                 onClick={isBlocked ? handleUnblock : handleBlock}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm ${isBlocked ? 'bg-gray-600 hover:bg-gray-500' : 'bg-yellow-600 hover:bg-yellow-500'}`}
@@ -224,14 +237,17 @@ const UserProfile: React.FC = () => {
     );
 
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <main className="flex-grow p-4 sm:p-6 w-full">
                 <div className="max-w-4xl mx-auto">
-                    <ProfileCard 
-                        profile={profile} 
-                        passions={passions} 
-                        languages={languages} 
-                        actionSlot={actionSlot} 
+                    <ProfileCard
+                        profile={profile}
+                        passions={passions}
+                        languages={languages}
+                        actionSlot={actionSlot}
                     />
                 </div>
             </main>
@@ -251,14 +267,14 @@ const UserProfile: React.FC = () => {
                         placeholder="Describe the issue..."
                     />
                     <div className="flex justify-end gap-4">
-                         <Button variant="outline" onClick={() => setReportModalOpen(false)}>Cancel</Button>
-                         <Button
+                        <Button variant="outline" onClick={() => setReportModalOpen(false)}>Cancel</Button>
+                        <Button
                             onClick={handleSubmitReport}
                             isLoading={isSubmitting}
                             disabled={!reportReason.trim() || isSubmitting}
-                         >
+                        >
                             Submit Report
-                         </Button>
+                        </Button>
                     </div>
                 </div>
             </Modal>

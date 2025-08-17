@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { Link } from 'react-router-dom';
 import { AlertCircle, Mail, Loader2 } from 'lucide-react';
 import Layout from '../components/Layout';
+import SEO from '../components/SEO';
 
 const ForgotPassword: React.FC = () => {
     const [email, setEmail] = useState<string>('');
@@ -41,7 +42,10 @@ const ForgotPassword: React.FC = () => {
     };
 
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <main className="flex-grow flex items-center justify-center px-6 py-12">
                 <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl p-8">
                     <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">

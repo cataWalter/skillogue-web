@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import Layout from '../components/Layout';
+import SEO from '../components/SEO';
 
 /**
  * Renders the account deletion page.
@@ -44,7 +45,7 @@ const DeleteAccount: React.FC = () => {
 
             // On successful deletion from the backend, sign the user out from the client session.
             await supabase.auth.signOut();
-            
+
             // Redirect to the home page with a success message passed in the navigation state.
             navigate('/', { state: { message: 'Your account has been successfully deleted.' } });
 
@@ -57,7 +58,10 @@ const DeleteAccount: React.FC = () => {
     };
 
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <main className="flex-grow flex items-center justify-center px-6 py-12">
                 <div className="w-full max-w-lg bg-gray-900/70 backdrop-blur-sm border border-red-500/50 rounded-2xl shadow-2xl p-8">
                     <div className="text-center">

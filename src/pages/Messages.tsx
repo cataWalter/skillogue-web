@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Send, User } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { User as AuthUser } from '@supabase/supabase-js';
 import Avatar from '../components/Avatar';
+import SEO from '../components/SEO';
 
 // --- Type Definitions ---
 interface Profile {

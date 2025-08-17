@@ -18,6 +18,7 @@ import {
     MessageSquare
 } from 'lucide-react';
 import Avatar from '../components/Avatar';
+import SEO from '../components/SEO';
 
 // --- Type Definitions ---
 interface Passion {
@@ -83,7 +84,7 @@ const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
                             <MessageSquare size={16} /> Message
                         </Link>
                     </div>
-                     {user.about_me && <p className="text-gray-400 mt-2 text-sm">{user.about_me}</p>}
+                    {user.about_me && <p className="text-gray-400 mt-2 text-sm">{user.about_me}</p>}
                 </div>
             </div>
 
@@ -147,7 +148,7 @@ const Search: React.FC = () => {
 
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [hasMoreResults, setHasMoreResults] = useState<boolean>(false);
-    
+
     const initialLoad = useRef(true);
 
     // --- Data Fetching Callbacks ---
@@ -270,7 +271,7 @@ const Search: React.FC = () => {
         setIsSaving(false);
         await fetchSavedSearches();
     };
-    
+
     const handleLoadSearch = (search: SavedSearch) => {
         console.log(`[Search.tsx] Loading saved search: "${search.name}"`);
         setQuery(search.query || '');
@@ -295,7 +296,10 @@ const Search: React.FC = () => {
 
     // --- Render ---
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 p-6">
                 <aside className="md:col-span-1 lg:col-span-1 space-y-8 md:sticky md:top-6 self-start">
                     {/* Search Filters */}
@@ -317,7 +321,7 @@ const Search: React.FC = () => {
                             </select>
                         </div>
                         <MultiSelect options={allPassions} selected={selectedPassionNames} onChange={setSelectedPassionNames} label="Select Passions" placeholder="Filter by passions..." />
-                        
+
                         <div className="pt-2">
                             <label className="flex items-center space-x-3 cursor-pointer">
                                 <input
@@ -378,8 +382,8 @@ const Search: React.FC = () => {
                         Results: {results.length > 0 ? `Showing page ${currentPage}` : 'No one found'}
                     </h2>
                     <div className="space-y-6">
-                        {loading ? ( <p className="text-gray-400">Searching...</p> ) : results.length === 0 ? (
-                             <p className="text-gray-400">No users found. Try adjusting your filters.</p>
+                        {loading ? (<p className="text-gray-400">Searching...</p>) : results.length === 0 ? (
+                            <p className="text-gray-400">No users found. Try adjusting your filters.</p>
                         ) : (
                             results.map((user) => (
                                 <SearchResultCard key={user.id} user={user} />

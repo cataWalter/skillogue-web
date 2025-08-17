@@ -9,6 +9,7 @@ import ProfileCompletion from '../components/ProfileCompletion';
 import PassionSpotlight from '../components/PassionSpotlight';
 // ✅ Import shared types - FIX APPLIED ON THIS LINE
 import { ProfileData, Conversation, SuggestedProfile, UserPassion } from '../types';
+import SEO from '../components/SEO';
 
 const Dashboard: React.FC = () => {
     const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -25,8 +26,8 @@ const Dashboard: React.FC = () => {
 
             if (user) {
                 const [
-                    profileRes, 
-                    convosRes, 
+                    profileRes,
+                    convosRes,
                     suggestionsRes,
                     passionsRes,
                 ] = await Promise.all([
@@ -41,13 +42,13 @@ const Dashboard: React.FC = () => {
                     supabase.rpc('get_suggested_profiles', { current_user_id: user.id, p_limit: 5 }),
                     supabase.from('profile_passions').select('passion_id, passions(name)').eq('profile_id', user.id)
                 ]);
-                
+
                 if (profileRes.error || !profileRes.data?.first_name) {
                     console.error("Profile incomplete or error fetching:", profileRes.error);
                     navigate('/onboarding');
                     return;
                 }
-                
+
                 const profileData = profileRes.data as any;
                 setProfile({
                     ...profileData,
@@ -65,7 +66,7 @@ const Dashboard: React.FC = () => {
                 else setUserPassions(passionsRes.data || []);
 
             } else {
-                 navigate('/login');
+                navigate('/login');
             }
             setLoading(false);
         };
@@ -79,6 +80,10 @@ const Dashboard: React.FC = () => {
 
     return (
         <Layout>
+            <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <h1 className="text-4xl font-extrabold text-white sm:text-5xl">
                     Welcome back, <span className="text-indigo-400">{profile?.first_name}</span>!
@@ -106,8 +111,8 @@ const Dashboard: React.FC = () => {
                     <div className="lg:col-span-2 space-y-8">
                         {profile && <ProfileCompletion profile={profile} />}
                         <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
-                           <h2 className="text-2xl font-bold mb-4">Recent Messages</h2>
-                           <div className="space-y-4">
+                            <h2 className="text-2xl font-bold mb-4">Recent Messages</h2>
+                            <div className="space-y-4">
                                 {conversations.length > 0 ? conversations.map(convo => (
                                     <Link key={convo.user_id} to={`/messages?with=${convo.user_id}`} className="flex items-center gap-4 p-3 hover:bg-gray-800 rounded-lg transition-colors">
                                         <Avatar seed={convo.user_id} className="w-12 h-12 rounded-full flex-shrink-0" />
@@ -124,7 +129,7 @@ const Dashboard: React.FC = () => {
 
                     <div className="lg:col-span-1 space-y-8">
                         {userPassions.length > 0 && <PassionSpotlight userPassions={userPassions} userId={profile?.id || ''} />}
-                        
+
                         <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
                             <h2 className="text-2xl font-bold mb-4">Suggested For You</h2>
                             <div className="space-y-4">

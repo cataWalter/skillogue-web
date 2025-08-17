@@ -6,6 +6,7 @@ import Layout from '../components/Layout';
 import ProfileCard from '../components/ProfileCard';
 import { FullProfile } from '../types';
 import { Edit } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const Profile: React.FC = () => {
     const [profile, setProfile] = useState<FullProfile | null>(null);
@@ -54,11 +55,17 @@ const Profile: React.FC = () => {
     }, [navigate]);
 
     if (loading) {
-        return <Layout><div className="text-center p-10">Loading your profile...</div></Layout>;
+        return     <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            /><div className="text-center p-10">Loading your profile...</div></Layout>;
     }
 
     if (!profile) {
-        return <Layout><div className="text-center p-10">Could not load profile.</div></Layout>;
+        return     <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            /><div className="text-center p-10">Could not load profile.</div></Layout>;
     }
 
     const actionButton = (
@@ -71,13 +78,16 @@ const Profile: React.FC = () => {
     );
 
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <main className="flex-grow p-4 sm:p-6 w-full">
                 <div className="max-w-4xl mx-auto">
-                    <ProfileCard 
-                        profile={profile} 
-                        passions={passions} 
-                        languages={languages} 
+                    <ProfileCard
+                        profile={profile}
+                        passions={passions}
+                        languages={languages}
                         actionSlot={actionButton}
                     />
                 </div>

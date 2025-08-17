@@ -7,37 +7,37 @@ import NotificationPopup from '../components/NotificationPopup';
 
 // This is the raw data shape from Supabase, where a to-one join might be an object or an array.
 interface RawNotification {
-  id: number;
-  read: boolean;
-  type: string;
-  created_at: string;
-  actor: {
-    id: string;
-    first_name: string | null;
-  } | {
-    id: string;
-    first_name: string | null;
-  }[] | null;
+    id: number;
+    read: boolean;
+    type: string;
+    created_at: string;
+    actor: {
+        id: string;
+        first_name: string | null;
+    } | {
+        id: string;
+        first_name: string | null;
+    }[] | null;
 }
 
 // This is the clean shape we want to use consistently throughout the app.
 interface Notification {
-  id: number;
-  read: boolean;
-  type: string;
-  created_at: string;
-  actor: {
-    id: string;
-    first_name: string | null;
-  } | null;
+    id: number;
+    read: boolean;
+    type: string;
+    created_at: string;
+    actor: {
+        id: string;
+        first_name: string | null;
+    } | null;
 }
 
 // ✅ MODIFIED: Added fetchNotifications to the context type
 interface NotificationContextType {
-  notifications: Notification[];
-  unreadCount: number;
-  markAsRead: (id: number | null) => void;
-  fetchNotifications: () => void;
+    notifications: Notification[];
+    unreadCount: number;
+    markAsRead: (id: number | null) => void;
+    fetchNotifications: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -79,7 +79,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             console.error('Error fetching notifications:', error);
             return;
         }
-        
+
         const rawNotifications = (data as unknown as RawNotification[]) || [];
 
         const transformedNotifications: Notification[] = rawNotifications.map(n => ({
@@ -107,28 +107,28 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
                 (payload) => {
                     console.log('Notification table change detected:', payload.eventType);
-                    fetchNotifications(); 
+                    fetchNotifications();
                 }
             )
             .subscribe();
 
         const privateMessageChannel = supabase.channel(`private-messages-for-${session.user.id}`);
-        
+
         privateMessageChannel
             .on('broadcast', { event: 'new-message' }, ({ payload }) => {
                 console.log('New message broadcast received in context:', payload);
                 fetchNotifications();
-                
+
                 const currentPath = window.location.pathname;
                 const searchParams = new URLSearchParams(window.location.search);
                 const isChatOpenWithSender = currentPath.startsWith('/messages') && searchParams.get('with') === payload.message.sender_id;
 
                 if (!isChatOpenWithSender) {
                     toast.custom((t) => (
-                        <NotificationPopup 
-                            message={payload.message.content} 
+                        <NotificationPopup
+                            message={payload.message.content}
                             sender={payload.message.sender.first_name || 'New Message'}
-                            onClose={() => toast.dismiss(t.id)} 
+                            onClose={() => toast.dismiss(t.id)}
                         />
                     ), { position: 'bottom-right' });
                 }
@@ -143,9 +143,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     const markAsRead = async (id: number | null) => {
         if (!session?.user) return;
-        
+
         const query = supabase.from('notifications').update({ read: true });
-        
+
         if (id) {
             query.eq('id', id);
         } else {
@@ -156,7 +156,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         if (error) {
             console.error('Error marking notification as read:', error);
         } else {
-            setNotifications(prev => 
+            setNotifications(prev =>
                 prev.map(n => (id ? n.id === id : !n.read) ? { ...n, read: true } : n)
             );
             setUnreadCount(id ? Math.max(0, unreadCount - 1) : 0);

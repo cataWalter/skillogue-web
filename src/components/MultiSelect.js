@@ -41,7 +41,7 @@ const MultiSelect = ({ options, selected, onChange, label, placeholder }) => {
             <div className="flex flex-wrap gap-2 p-2 border border-gray-700 rounded-lg bg-gray-900 cursor-text" onClick={() => setIsOpen(true)}>
                 {selected.map((item) => (
                     <span key={item} className="flex items-center gap-2 bg-indigo-600 text-white text-sm px-2 py-1 rounded-full">
-            {item}
+                        {item}
                         <button
                             type="button"
                             onClick={(e) => {
@@ -50,9 +50,9 @@ const MultiSelect = ({ options, selected, onChange, label, placeholder }) => {
                             }}
                             className="text-indigo-200 hover:text-white"
                         >
-              <X size={14} />
-            </button>
-          </span>
+                            <X size={14} />
+                        </button>
+                    </span>
                 ))}
                 <div className="relative flex-grow">
                     <input

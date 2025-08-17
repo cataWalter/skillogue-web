@@ -91,7 +91,7 @@ const EditProfile: React.FC = () => {
                 setLoading(false);
                 return;
             }
-            
+
             // ✅ FIX: Use a type assertion to tell TypeScript the correct data shape.
             const currentLanguages = (languageRes.data as { languages: { name: string } | null }[] | null)
                 ?.map(item => item.languages?.name)

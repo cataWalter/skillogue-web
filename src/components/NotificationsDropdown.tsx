@@ -7,14 +7,14 @@ import { formatDistanceToNow } from 'date-fns';
 
 // Define the Notification type again to help TypeScript in this file
 interface Notification {
-  id: number;
-  read: boolean;
-  type: string;
-  created_at: string;
-  actor: {
-    id: string;
-    first_name: string | null;
-  } | null;
+    id: number;
+    read: boolean;
+    type: string;
+    created_at: string;
+    actor: {
+        id: string;
+        first_name: string | null;
+    } | null;
 }
 
 const NotificationsDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -26,10 +26,10 @@ const NotificationsDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =
         }
         return '/notifications'; // Fallback link
     };
-    
+
     const getNotificationText = (notification: Notification): React.ReactNode => {
         const actorName = notification.actor?.first_name || 'Someone';
-        
+
         if (notification.type === 'new_message') {
             return <><strong>{actorName}</strong> sent you a message.</>;
         }

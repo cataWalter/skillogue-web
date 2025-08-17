@@ -6,11 +6,12 @@ import { UserPlus } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
+import SEO from '../components/SEO';
 
 const SignUp: React.FC = () => {
-    const [loading, setLoading] = useState < boolean > (false);
-    const [email, setEmail] = useState < string > ('');
-    const [password, setPassword] = useState < string > ('');
+    const [loading, setLoading] = useState<boolean>(false);
+    const [email, setEmail] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
     const navigate = useNavigate();
 
     const isPasswordValid = (): boolean => {

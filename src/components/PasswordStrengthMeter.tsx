@@ -3,7 +3,7 @@ import React from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 interface PasswordStrengthMeterProps {
-  password?: string;
+    password?: string;
 }
 
 const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ password = '' }) => {

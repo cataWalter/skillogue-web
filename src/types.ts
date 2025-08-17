@@ -132,17 +132,17 @@ export interface Conversation {
  [cite_start]* [cite: 1517]
  */
 export interface RawNotification {
-  id: number;
-  read: boolean;
-  type: string;
-  created_at: string;
-  actor: {
-    id: string;
-    first_name: string | null;
-  } | {
-    id: string;
-    first_name: string | null;
-  }[] | null;
+    id: number;
+    read: boolean;
+    type: string;
+    created_at: string;
+    actor: {
+        id: string;
+        first_name: string | null;
+    } | {
+        id: string;
+        first_name: string | null;
+    }[] | null;
 }
 
 /**
@@ -151,14 +151,14 @@ export interface RawNotification {
  [cite_start]* [cite: 1517]
  */
 export interface Notification {
-  id: number;
-  read: boolean;
-  type: string;
-  created_at: string;
-  actor: {
-    id: string;
-    first_name: string | null;
-  } | null;
+    id: number;
+    read: boolean;
+    type: string;
+    created_at: string;
+    actor: {
+        id: string;
+        first_name: string | null;
+    } | null;
 }
 
 

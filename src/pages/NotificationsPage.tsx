@@ -6,17 +6,18 @@ import Layout from '../components/Layout';
 import Avatar from '../components/Avatar';
 import { Bell, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import SEO from '../components/SEO';
 
 // Re-defining the type here for clarity within the component
 interface Notification {
-  id: number;
-  read: boolean;
-  type: string;
-  created_at: string;
-  actor: {
-    id: string;
-    first_name: string | null;
-  } | null;
+    id: number;
+    read: boolean;
+    type: string;
+    created_at: string;
+    actor: {
+        id: string;
+        first_name: string | null;
+    } | null;
 }
 
 const NotificationsPage: React.FC = () => {
@@ -32,7 +33,7 @@ const NotificationsPage: React.FC = () => {
 
     const getNotificationText = (notification: Notification): React.ReactNode => {
         const actorName = notification.actor?.first_name || 'An unknown user';
-        
+
         switch (notification.type) {
             case 'new_message':
                 return <><strong>{actorName}</strong> sent you a new message.</>;
@@ -45,7 +46,10 @@ const NotificationsPage: React.FC = () => {
     };
 
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <main className="flex-grow p-6 max-w-3xl mx-auto w-full">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-4xl font-bold flex items-center gap-3">
@@ -53,8 +57,8 @@ const NotificationsPage: React.FC = () => {
                         Notifications
                     </h1>
                     {unreadCount > 0 && (
-                        <button 
-                            onClick={() => markAsRead(null)} 
+                        <button
+                            onClick={() => markAsRead(null)}
                             className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-semibold transition"
                         >
                             <CheckCheck size={16} />
@@ -73,9 +77,8 @@ const NotificationsPage: React.FC = () => {
                                     <Link
                                         to={getNotificationLink(n)}
                                         onClick={() => !n.read && markAsRead(n.id)}
-                                        className={`flex items-start gap-4 p-4 transition-colors duration-200 ${
-                                            n.read ? 'hover:bg-gray-800/50' : 'bg-indigo-900/20 hover:bg-indigo-900/40'
-                                        }`}
+                                        className={`flex items-start gap-4 p-4 transition-colors duration-200 ${n.read ? 'hover:bg-gray-800/50' : 'bg-indigo-900/20 hover:bg-indigo-900/40'
+                                            }`}
                                     >
                                         {n.actor ? (
                                             <Avatar seed={n.actor.id} className="w-12 h-12 rounded-full flex-shrink-0 mt-1" />

@@ -3,10 +3,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { User, Shield, Bell, Edit, ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
 import Layout from '../components/Layout';
+import SEO from '../components/SEO';
 
 const Settings: React.FC = () => {
     return (
-        <Layout>
+            <Layout>        <SEO
+                title="Skillogue"
+                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+            />
             <main className="flex-grow p-6 max-w-4xl mx-auto w-full">
                 <div className="flex items-center mb-8">
                     <Link to="/dashboard" className="text-gray-400 hover:text-white transition flex items-center gap-2">
