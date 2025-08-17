@@ -7,12 +7,13 @@ import { MessageSquare, User, Search } from 'lucide-react';
 import Avatar from '../components/Avatar';
 import ProfileCompletion from '../components/ProfileCompletion';
 import PassionSpotlight from '../components/PassionSpotlight';
-// ✅ Import shared types
-import { ProfileData, RecentConversation, SuggestedProfile, UserPassion } from '../types';
+// ✅ Import shared types - FIX APPLIED ON THIS LINE
+import { ProfileData, Conversation, SuggestedProfile, UserPassion } from '../types';
 
 const Dashboard: React.FC = () => {
     const [profile, setProfile] = useState<ProfileData | null>(null);
-    const [conversations, setConversations] = useState<RecentConversation[]>([]);
+    // ✅ FIX APPLIED ON THIS LINE
+    const [conversations, setConversations] = useState<Conversation[]>([]);
     const [suggestions, setSuggestions] = useState<SuggestedProfile[]>([]);
     const [userPassions, setUserPassions] = useState<UserPassion[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -64,7 +65,7 @@ const Dashboard: React.FC = () => {
                 else setUserPassions(passionsRes.data || []);
 
             } else {
-                navigate('/login');
+                 navigate('/login');
             }
             setLoading(false);
         };
@@ -106,7 +107,7 @@ const Dashboard: React.FC = () => {
                         {profile && <ProfileCompletion profile={profile} />}
                         <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
                            <h2 className="text-2xl font-bold mb-4">Recent Messages</h2>
-                            <div className="space-y-4">
+                           <div className="space-y-4">
                                 {conversations.length > 0 ? conversations.map(convo => (
                                     <Link key={convo.user_id} to={`/messages?with=${convo.user_id}`} className="flex items-center gap-4 p-3 hover:bg-gray-800 rounded-lg transition-colors">
                                         <Avatar seed={convo.user_id} className="w-12 h-12 rounded-full flex-shrink-0" />
