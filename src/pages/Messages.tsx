@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { User as AuthUser } from '@supabase/supabase-js';
 import Avatar from '../components/Avatar';
+import { useNotifications } from '../context/NotificationContext'; // ✅ IMPORT the context hook
 
 // --- Type Definitions ---
 interface Profile {
@@ -52,6 +53,9 @@ const Messages: React.FC = () => {
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const userScrolledUp = useRef(false);
     const prevScrollHeightRef = useRef<number | null>(null);
+    
+    // ✅ USE the context to get the fetchNotifications function
+    const { fetchNotifications } = useNotifications();
 
     useEffect(() => {
         const getUser = async () => {
@@ -77,6 +81,24 @@ const Messages: React.FC = () => {
         if (error) console.error('Error marking messages as read:', error);
         else loadConversations();
     }, [selectedChat, user, loadConversations]);
+    
+    const deleteChatNotifications = useCallback(async (otherUserId: string) => {
+        if (!user || !otherUserId) return;
+
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('actor_id', otherUserId)
+            .eq('type', 'new_message');
+
+        if (error) {
+            console.error('Error deleting chat notifications:', error);
+        } else {
+            // ✅ On successful deletion, manually trigger a refetch of notifications.
+            fetchNotifications();
+        }
+    }, [user, fetchNotifications]);
 
     useEffect(() => {
         if (user) {
@@ -135,7 +157,6 @@ const Messages: React.FC = () => {
                 const newMessage: Message = payload.message;
                 console.log('Broadcast received in Messages.tsx:', newMessage);
 
-                // ✅ FIX #1: Always refresh the conversation list to update the last message snippet.
                 loadConversations();
 
                 if (newMessage.sender_id === selectedChat) {
@@ -171,8 +192,7 @@ const Messages: React.FC = () => {
         }
 
         setMessages((prev) => [...prev, insertedMessage as Message]);
-
-        // ✅ FIX #2: Immediately refresh the conversation list after sending.
+        
         loadConversations();
 
         try {
@@ -189,6 +209,7 @@ const Messages: React.FC = () => {
 
     const openChat = (otherUserId: string) => {
         if (otherUserId === selectedChat) return;
+        deleteChatNotifications(otherUserId);
         setMessages([]);
         setPage(1);
         setHasMore(true);

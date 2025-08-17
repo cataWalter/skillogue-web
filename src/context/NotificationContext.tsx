@@ -1,12 +1,11 @@
 // src/context/NotificationContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import toast from 'react-hot-toast';
 import NotificationPopup from '../components/NotificationPopup';
 
-// ✅ STEP 1: Define BOTH the raw and clean types again.
-// This tells TypeScript what we GET from Supabase.
+// This is the raw data shape from Supabase, where a to-one join might be an object or an array.
 interface RawNotification {
   id: number;
   read: boolean;
@@ -15,10 +14,13 @@ interface RawNotification {
   actor: {
     id: string;
     first_name: string | null;
-  }[] | null; // The type system expects an array here.
+  } | {
+    id: string;
+    first_name: string | null;
+  }[] | null;
 }
 
-// This is the clean shape we WANT to use in our app.
+// This is the clean shape we want to use consistently throughout the app.
 interface Notification {
   id: number;
   read: boolean;
@@ -27,13 +29,15 @@ interface Notification {
   actor: {
     id: string;
     first_name: string | null;
-  } | null; // We want a single object.
+  } | null;
 }
 
+// ✅ MODIFIED: Added fetchNotifications to the context type
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
   markAsRead: (id: number | null) => void;
+  fetchNotifications: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -57,7 +61,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         return () => subscription.unsubscribe();
     }, []);
 
-    const fetchNotifications = async () => {
+    // ✅ MODIFIED: Wrapped the function in useCallback for stability
+    const fetchNotifications = useCallback(async () => {
         if (!session?.user) return;
 
         const { data, error } = await supabase
@@ -75,25 +80,22 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             return;
         }
         
-        // ✅ STEP 2: Use the `RawNotification` type and the `unknown` keyword to bypass the strict error.
-        // This tells TypeScript: "Trust me, I will handle the conversion."
         const rawNotifications = (data as unknown as RawNotification[]) || [];
 
-        // ✅ STEP 3: Re-introduce the transformation logic. This correctly handles the data.
         const transformedNotifications: Notification[] = rawNotifications.map(n => ({
             ...n,
-            actor: n.actor && n.actor.length > 0 ? n.actor[0] : null
+            actor: Array.isArray(n.actor) ? n.actor[0] || null : n.actor || null,
         }));
 
         setNotifications(transformedNotifications);
         setUnreadCount(transformedNotifications.filter(n => !n.read).length);
-    };
+    }, [session]);
 
     useEffect(() => {
         if (session) {
             fetchNotifications();
         }
-    }, [session]);
+    }, [session, fetchNotifications]);
 
     useEffect(() => {
         if (!session?.user) return;
@@ -102,9 +104,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             .channel('public:notifications')
             .on(
                 'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
+                { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
                 (payload) => {
-                    console.log('New standard notification received!', payload);
+                    console.log('Notification table change detected:', payload.eventType);
                     fetchNotifications(); 
                 }
             )
@@ -137,7 +139,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             supabase.removeChannel(notificationChannel);
             supabase.removeChannel(privateMessageChannel);
         };
-    }, [session]);
+    }, [session, fetchNotifications]);
 
     const markAsRead = async (id: number | null) => {
         if (!session?.user) return;
@@ -162,7 +164,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     };
 
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead }}>
+        // ✅ MODIFIED: Pass the fetchNotifications function in the provider's value
+        <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, fetchNotifications }}>
             {children}
         </NotificationContext.Provider>
     );
