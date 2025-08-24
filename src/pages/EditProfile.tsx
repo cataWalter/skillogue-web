@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import MultiSelect from '../components/MultiSelect';
+import SEO from '../components/SEO';
 
 interface ProfileState {
     first_name: string;
@@ -263,6 +264,7 @@ const EditProfile: React.FC = () => {
     }
     return (
         <div className="min-h-screen bg-black text-white">
+            <SEO title={isProfileComplete ? "Edit Profile" : "Onboarding"} />
             <header className="p-6 border-b border-gray-800 flex items-center">
                 {isProfileComplete && (
                     <button

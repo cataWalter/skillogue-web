@@ -20,7 +20,11 @@ const NotificationPopup = ({ message, sender, onClose }) => {
                 <p className="font-semibold">{sender}</p>
                 <p className="text-sm text-gray-300">{message}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-white"
+                aria-label="Close notification"
+            >
                 <X size={18} />
             </button>
         </div>

@@ -145,7 +145,7 @@ const Messages: React.FC = () => {
             if (page === 1) setLoading(false); else setLoadingMore(false);
         };
         loadMessages();
-    }, [selectedChat, page, user, loadingMore, hasMore]);
+    }, [selectedChat, page, user]);
 
     useEffect(() => {
         if (!user) return;
@@ -219,6 +219,10 @@ const Messages: React.FC = () => {
         setSearchParams({ with: otherUserId });
     };
 
+    const getFullName = (person: Profile | null) => {
+        if (!person) return 'User';
+        return `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'User';
+    };
 
     useEffect(() => {
         const container = messagesContainerRef.current;
@@ -341,7 +345,12 @@ const Messages: React.FC = () => {
                             <div className="p-4 border-t border-gray-800 bg-gray-900/70">
                                 <form onSubmit={sendMessage} className="flex gap-2">
                                     <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-gray-500" />
-                                    <button type="submit" disabled={!newMessage.trim()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg flex items-center">
+                                    <button
+                                        type="submit"
+                                        disabled={!newMessage.trim()}
+                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg flex items-center"
+                                        aria-label="Send message"
+                                    >
                                         <Send size={18} />
                                     </button>
                                 </form>

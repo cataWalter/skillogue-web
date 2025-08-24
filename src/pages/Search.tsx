@@ -395,7 +395,11 @@ const Search: React.FC = () => {
                                             <button onClick={() => handleLoadSearch(search)} className="flex items-center gap-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 rounded text-sm transition-colors">
                                                 <Zap size={14} /> Load
                                             </button>
-                                            <button onClick={() => handleDeleteSearch(search.id)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/50 rounded-full transition-colors">
+                                            <button
+                                                onClick={() => handleDeleteSearch(search.id)}
+                                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/50 rounded-full transition-colors"
+                                                aria-label={`Delete saved search: ${search.name}`}
+                                            >
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
