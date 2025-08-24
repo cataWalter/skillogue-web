@@ -2,11 +2,12 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Send, User } from 'lucide-react';
+import { ArrowLeft, Loader2, Send } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { User as AuthUser } from '@supabase/supabase-js';
 import Avatar from '../components/Avatar';
 import SEO from '../components/SEO';
+import Skeleton from '../components/Skeleton';
 
 // --- Type Definitions ---
 interface Profile {
@@ -34,6 +35,25 @@ interface Conversation {
 
 const PAGE_SIZE = 25;
 
+const ConversationSkeleton: React.FC = () => (
+    <div className="p-4 border-b border-gray-800 flex items-center gap-3">
+        <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+        <div className="flex-1 min-w-0 space-y-2">
+            <Skeleton className="h-4 w-3/4 rounded" />
+            <Skeleton className="h-3 w-full rounded" />
+        </div>
+    </div>
+);
+
+const MessageSkeleton: React.FC<{ isMe?: boolean }> = ({ isMe }) => (
+    <div className={`flex items-start gap-3 ${isMe ? 'justify-end' : 'justify-start'}`}>
+        {!isMe && <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />}
+        <Skeleton className={`h-12 rounded-lg ${isMe ? 'w-56' : 'w-48'}`} />
+        {isMe && <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />}
+    </div>
+);
+
+
 const Messages: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const chatWith = searchParams.get('with');
@@ -46,6 +66,7 @@ const Messages: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [convosLoading, setConvosLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
 
@@ -66,6 +87,7 @@ const Messages: React.FC = () => {
         const { data, error } = await supabase.rpc('get_conversations', { current_user_id: user.id });
         if (error) console.error('Error loading conversations:', error);
         else setConversations(data || []);
+        setConvosLoading(false);
     }, [user]);
 
     const markMessagesAsRead = useCallback(async () => {
@@ -80,6 +102,7 @@ const Messages: React.FC = () => {
 
     useEffect(() => {
         if (user) {
+            setConvosLoading(true);
             loadConversations();
             const interval = setInterval(loadConversations, 15000);
             return () => clearInterval(interval);
@@ -122,7 +145,7 @@ const Messages: React.FC = () => {
             if (page === 1) setLoading(false); else setLoadingMore(false);
         };
         loadMessages();
-    }, [selectedChat, page, user]);
+    }, [selectedChat, page, user, loadingMore, hasMore]);
 
     useEffect(() => {
         if (!user) return;
@@ -196,10 +219,6 @@ const Messages: React.FC = () => {
         setSearchParams({ with: otherUserId });
     };
 
-    const getFullName = (person: Profile | null) => {
-        if (!person) return 'User';
-        return `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'User';
-    };
 
     useEffect(() => {
         const container = messagesContainerRef.current;
@@ -233,6 +252,7 @@ const Messages: React.FC = () => {
 
     return (
         <div className="bg-black text-white">
+            <SEO title="Messages" />
             <Navbar />
             <main className="flex overflow-hidden h-[calc(100vh-4rem)]">
                 {/* Sidebar */}
@@ -241,7 +261,14 @@ const Messages: React.FC = () => {
                         <h2 className="text-xl font-semibold">Messages</h2>
                     </div>
                     <div className="flex-grow overflow-y-auto">
-                        {conversations.length === 0 ? (
+                        {convosLoading ? (
+                            <div>
+                                <ConversationSkeleton />
+                                <ConversationSkeleton />
+                                <ConversationSkeleton />
+                                <ConversationSkeleton />
+                            </div>
+                        ) : conversations.length === 0 ? (
                             <p className="text-gray-500 p-4">No conversations yet.</p>
                         ) : (
                             <ul>
@@ -281,22 +308,33 @@ const Messages: React.FC = () => {
 
                             <div className="flex-1 overflow-hidden flex flex-col">
                                 <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 messages-container">
-                                    {loading && <div className="text-center text-gray-400"><Loader2 className="animate-spin inline-block" /></div>}
-                                    {loadingMore && <div className="flex justify-center py-2"><Loader2 className="animate-spin text-gray-400" /></div>}
-                                    {!loading && messages.length === 0 && <p className="text-gray-500 text-center">No messages yet. Say hello!</p>}
-                                    {messages.map((msg) => {
-                                        const isMe = msg.sender_id === user.id;
-                                        return (
-                                            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isMe ? 'bg-indigo-600' : 'bg-gray-800'}`}>
-                                                    <p className="text-sm" style={{ wordBreak: 'break-word' }}>{msg.content}</p>
-                                                    <span className="text-xs opacity-70 mt-1 block text-right">
-                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                    {loading ? (
+                                        <div className="space-y-4">
+                                            <MessageSkeleton />
+                                            <MessageSkeleton isMe />
+                                            <MessageSkeleton />
+                                            <MessageSkeleton isMe />
+                                            <MessageSkeleton />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {loadingMore && <div className="flex justify-center py-2"><Loader2 className="animate-spin text-gray-400" /></div>}
+                                            {messages.length === 0 && <p className="text-gray-500 text-center">No messages yet. Say hello!</p>}
+                                            {messages.map((msg) => {
+                                                const isMe = msg.sender_id === user.id;
+                                                return (
+                                                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                                        <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isMe ? 'bg-indigo-600' : 'bg-gray-800'}`}>
+                                                            <p className="text-sm" style={{ wordBreak: 'break-word' }}>{msg.content}</p>
+                                                            <span className="text-xs opacity-70 mt-1 block text-right">
+                                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </>
+                                    )}
                                 </div>
                             </div>
 

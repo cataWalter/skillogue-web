@@ -5,9 +5,6 @@ Medium priority
 * Blocked Users Management
 * add report logic
 * Privacy & Visibility Settings
-* Backend Validation: While you use Zod on the frontend, never trust the client. Implement strict Zod validation on the  Supabase backend (using PostgREST policies or a middleware) for all INSERT and UPDATE operations on tables like   profiles, messages, and connections.
-
-
 
 Low priority
 

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Avatar from '../components/Avatar';
 import SEO from '../components/SEO';
+import Skeleton from '../components/Skeleton';
 
 // --- Type Definitions ---
 interface Passion {
@@ -68,6 +69,33 @@ const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value?: strin
         </div>
     );
 };
+
+const SearchResultCardSkeleton: React.FC = () => (
+    <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+            <Skeleton className="w-24 h-24 rounded-full flex-shrink-0" />
+            <div className="flex-grow w-full space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-10 w-32 mt-2 sm:mt-0" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-1/2" />
+            </div>
+        </div>
+        <div className="border-t border-gray-800 my-4"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="mt-4">
+            <Skeleton className="h-16 w-full" />
+        </div>
+    </div>
+);
+
 
 const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
     return (
@@ -296,9 +324,10 @@ const Search: React.FC = () => {
 
     // --- Render ---
     return (
-            <Layout>        <SEO
-                title="Skillogue"
-                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+        <Layout>
+            <SEO
+                title="Search"
+                description="Find and connect with people who share your passions and skills on Skillogue."
             />
             <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 p-6">
                 <aside className="md:col-span-1 lg:col-span-1 space-y-8 md:sticky md:top-6 self-start">
@@ -379,10 +408,16 @@ const Search: React.FC = () => {
 
                 <div className="md:col-span-2 lg:col-span-3 min-w-0">
                     <h2 className="text-2xl font-semibold mb-4">
-                        Results: {results.length > 0 ? `Showing page ${currentPage}` : 'No one found'}
+                        {loading ? 'Searching...' : `Results: ${results.length > 0 ? `Showing page ${currentPage}` : 'No one found'}`}
                     </h2>
                     <div className="space-y-6">
-                        {loading ? (<p className="text-gray-400">Searching...</p>) : results.length === 0 ? (
+                        {loading ? (
+                            <>
+                                <SearchResultCardSkeleton />
+                                <SearchResultCardSkeleton />
+                                <SearchResultCardSkeleton />
+                            </>
+                        ) : results.length === 0 ? (
                             <p className="text-gray-400">No users found. Try adjusting your filters.</p>
                         ) : (
                             results.map((user) => (

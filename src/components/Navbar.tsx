@@ -3,7 +3,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { Home, LayoutDashboard, LogOut, Menu, MessageSquare, Search, Settings, User, X } from 'lucide-react';
-import NotificationPopup from './NotificationPopup';
 import { Session } from '@supabase/supabase-js';
 import NotificationIcon from './NotificationIcon';
 
@@ -17,7 +16,7 @@ const Navbar: React.FC = () => {
     const [session, setSession] = useState<Session | null>(null);
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [unreadCount, setUnreadCount] = useState<number>(0);
-    const [notification, setNotification] = useState<NotificationState | null>(null);
+    const [, setNotification] = useState<NotificationState | null>(null);
     const previousUnreadCount = useRef<number>(0);
     const navigate = useNavigate();
 

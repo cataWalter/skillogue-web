@@ -11,6 +11,7 @@ import Modal from '../components/Modal';
 import { Button } from '../components/Button';
 import toast from 'react-hot-toast';
 import SEO from '../components/SEO';
+import ProfileCardSkeleton from '../components/ProfileCardSkeleton';
 
 const UserProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -169,19 +170,23 @@ const UserProfile: React.FC = () => {
     };
 
     if (loading) {
-        return     <Layout>        <SEO
-                title="Skillogue"
-                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
-            /><div className="text-center p-10">Loading profile...</div></Layout>;
+        return (
+            <Layout>
+                <SEO title="Loading Profile" />
+                <main className="flex-grow p-4 sm:p-6 w-full">
+                    <div className="max-w-4xl mx-auto">
+                        <ProfileCardSkeleton />
+                    </div>
+                </main>
+            </Layout>
+        );
     }
 
     // --- New Render Condition for Blocked State ---
     if (isBlockedByProfileUser) {
         return (
-                <Layout>        <SEO
-                title="Skillogue"
-                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
-            />
+            <Layout>
+                <SEO title="Profile Unavailable" />
                 <main className="flex-grow flex items-center justify-center text-center p-6">
                     <div className="bg-gray-900/70 p-10 rounded-2xl border border-gray-800">
                         <Ghost size={64} className="mx-auto text-indigo-400 mb-4 animate-pulse" />
@@ -199,17 +204,21 @@ const UserProfile: React.FC = () => {
     }
 
     if (error) {
-        return     <Layout>        <SEO
-                title="Skillogue"
-                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
-            /><div className="text-center p-10 text-red-400">{error}</div></Layout>;
+        return (
+            <Layout>
+                <SEO title="Error" />
+                <div className="text-center p-10 text-red-400">{error}</div>
+            </Layout>
+        );
     }
 
     if (!profile) {
-        return     <Layout>        <SEO
-                title="Skillogue"
-                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
-            /><div className="text-center p-10">User not found.</div></Layout>;
+        return (
+            <Layout>
+                <SEO title="User Not Found" />
+                <div className="text-center p-10">User not found.</div>
+            </Layout>
+        );
     }
 
     const actionSlot = (
@@ -237,9 +246,10 @@ const UserProfile: React.FC = () => {
     );
 
     return (
-            <Layout>        <SEO
-                title="Skillogue"
-                description="Skillogue brings together people who share your interests — not just your looks. Discover people who love what you love."
+        <Layout>
+            <SEO
+                title={`${profile.first_name}'s Profile`}
+                description={`View the Skillogue profile for ${profile.first_name} ${profile.last_name}.`}
             />
             <main className="flex-grow p-4 sm:p-6 w-full">
                 <div className="max-w-4xl mx-auto">

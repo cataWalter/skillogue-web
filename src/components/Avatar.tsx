@@ -15,7 +15,6 @@ import {
 } from '@dicebear/collection';
 
 // Define a common type for the collections
-import type { Options as CoreOptions } from '@dicebear/core';
 
 // Define Props Type
 interface AvatarProps {
