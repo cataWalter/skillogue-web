@@ -6,17 +6,7 @@ import { supabase } from '../supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
 
-// Define the shape of the profile data we're fetching for the check
-interface ProfileCheckData {
-    first_name: string | null;
-    last_name: string | null;
-    about_me: string | null;
-    age: number | null;
-    gender: string | null;
-    location_id: number | null;
-    passions_count: { count: number }[];
-    languages_count: { count: number }[];
-}
+
 
 // Define the props for the component
 interface ProtectedRouteProps {
@@ -58,6 +48,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
                     setProfileComplete(false);
                 } else {
                     // Check if critical fields are filled
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const p = profile as any; // Cast to any to handle the count arrays easily
                     const isComplete =
                         p.first_name &&

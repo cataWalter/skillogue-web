@@ -32,13 +32,15 @@ export const useUserProfile = (userId: string | undefined) => {
       ]);
 
       if (passionRes.error) throw new Error(passionRes.error.message);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setPassions(passionRes.data?.map((p: any) => p.passions.name) || []);
 
       if (languageRes.error) throw new Error(languageRes.error.message);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setLanguages(languageRes.data?.map((l: any) => l.languages.name) || []);
 
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'An error occurred');
     } finally {
       setLoading(false);
     }

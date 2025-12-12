@@ -3,7 +3,6 @@ import { X, ChevronDown } from 'lucide-react';
 
 interface Option {
     name: string;
-    [key: string]: any;
 }
 
 interface MultiSelectProps {
@@ -72,6 +71,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                 <input
                     id={inputId}
                     type="text"
+                    role="combobox"
+                    aria-controls={`${inputId}-listbox`}
                     className="flex-grow bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 min-w-[100px]"
                     placeholder={selected.length === 0 ? (placeholder || "Select...") : ""}
                     value={searchTerm}
@@ -84,7 +85,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
             </div>
 
             {isOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto" role="listbox">
+                <div id={`${inputId}-listbox`} className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto" role="listbox">
                     {filteredOptions.length > 0 ? (
                         filteredOptions.map((option) => (
                             <div
@@ -99,7 +100,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                             </div>
                         ))
                     ) : (
-                        <div className="px-4 py-2 text-gray-500" role="option" aria-disabled="true">No options found</div>
+                        <div className="px-4 py-2 text-gray-500">No options found</div>
                     )}
                 </div>
             )}

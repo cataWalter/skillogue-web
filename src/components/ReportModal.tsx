@@ -37,9 +37,10 @@ const ReportModal: React.FC<ReportModalProps> = ({
             toast.success('Report submitted. Thank you for keeping our community safe.');
             setReason('');
             onClose();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error submitting report:', error);
-            toast.error(error.message || 'Failed to submit report');
+            const message = error instanceof Error ? error.message : 'Failed to submit report';
+            toast.error(message);
         } finally {
             setIsSubmitting(false);
         }

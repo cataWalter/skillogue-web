@@ -1,7 +1,5 @@
 // src/types.ts
 
-import { Session } from '@supabase/supabase-js';
-
 // --- User & Profile Types ---
 
 /**

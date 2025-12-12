@@ -19,6 +19,7 @@ import {
     Lock
 } from 'lucide-react';
 import Avatar from '../../components/Avatar';
+import SearchSkeleton from '../../components/SearchSkeleton';
 
 // --- Type Definitions ---
 interface Passion {
@@ -457,7 +458,11 @@ const Search: React.FC = () => {
                     </div>
 
                     {loading && page === 1 ? (
-                        <div className="text-center py-12">Loading...</div>
+                        <div className="space-y-6">
+                            {[...Array(3)].map((_, i) => (
+                                <SearchSkeleton key={i} />
+                            ))}
+                        </div>
                     ) : results.length > 0 ? (
                         <div className="space-y-6">
                             {results.map(user => (
@@ -465,7 +470,10 @@ const Search: React.FC = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-12 bg-gray-900 rounded-2xl border border-gray-800">
+                        <div className="text-center py-12 bg-gray-900 rounded-2xl border border-gray-800 flex flex-col items-center">
+                            <div className="bg-gray-800 p-4 rounded-full mb-4">
+                                <User className="w-8 h-8 text-gray-500" />
+                            </div>
                             <p className="text-gray-400 text-lg">No profiles found matching your criteria.</p>
                             <button
                                 onClick={() => {

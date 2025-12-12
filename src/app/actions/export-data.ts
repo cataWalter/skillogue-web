@@ -55,8 +55,10 @@ export async function getUserData() {
             email: user.email,
             ...profile
         },
-        passions: passions?.map((p: any) => p.passions?.name) || [],
-        languages: languages?.map((l: any) => l.languages?.name) || [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        passions: passions?.map((p: any) => (Array.isArray(p.passions) ? p.passions[0]?.name : p.passions?.name)) || [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        languages: languages?.map((l: any) => (Array.isArray(l.languages) ? l.languages[0]?.name : l.languages?.name)) || [],
         messages: {
             sent: sentMessages || [],
             received: receivedMessages || []

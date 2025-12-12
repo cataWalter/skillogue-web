@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { User, Shield, Bell, Edit, ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
+import { User, Edit, ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
 
 const Settings: React.FC = () => {
     return (
@@ -52,6 +52,7 @@ const Settings: React.FC = () => {
                     <h2 className="text-xl font-semibold border-b border-gray-700 pb-2 mb-4">Account</h2>
                     <ul className="space-y-3 text-gray-300">
                         {/* <li><Link href="/settings/account" className="hover:underline">Change Email Address</Link></li> */}
+                        <li><Link href="/settings/verification" className="hover:underline text-indigo-400">Request Verification</Link></li>
                         <li><Link href="/reset-password" className="hover:underline">Change Password</Link></li>
                         <li className="text-red-400">
                             <Link href="/settings/delete-account" className="hover:underline">

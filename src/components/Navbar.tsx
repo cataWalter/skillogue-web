@@ -6,21 +6,15 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '../supabaseClient';
 import { Home, LayoutDashboard, LogOut, Menu, MessageSquare, Search, Settings, User, X } from 'lucide-react';
-import NotificationPopup from './NotificationPopup';
 import { Session } from '@supabase/supabase-js';
 import NotificationIcon from './NotificationIcon';
 
-// Define types for our state
-interface NotificationState {
-    message: string;
-    sender: string;
-}
+
 
 const Navbar: React.FC = () => {
     const [session, setSession] = useState<Session | null>(null);
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [unreadCount, setUnreadCount] = useState<number>(0);
-    const [notification, setNotification] = useState<NotificationState | null>(null);
     const previousUnreadCount = useRef<number>(0);
     const router = useRouter();
     const pathname = usePathname();
@@ -54,14 +48,12 @@ const Navbar: React.FC = () => {
 
             if (data && data.length > 0) {
                 const newCount = data[0].unread_count;
-                const newLastMessage = data[0].last_message;
-                const newSender = data[0].full_name;
 
                 setUnreadCount(newCount);
 
                 if (newCount > 0 && newCount > previousUnreadCount.current) {
                     if (!pathname?.startsWith('/messages')) {
-                        setNotification({ message: newLastMessage, sender: newSender });
+                        // Notification logic removed
                     }
                 }
                 previousUnreadCount.current = newCount;

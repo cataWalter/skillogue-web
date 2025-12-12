@@ -97,8 +97,31 @@ const Messages: React.FC = () => {
     useEffect(() => {
         if (user) {
             loadConversations();
-            const interval = setInterval(loadConversations, 15000);
-            return () => clearInterval(interval);
+
+            // Subscribe to new messages to update conversation list
+            const channel = supabase
+                .channel('conversations_update')
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `receiver_id=eq.${user.id}`,
+                }, () => {
+                    loadConversations();
+                })
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `sender_id=eq.${user.id}`,
+                }, () => {
+                    loadConversations();
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
         }
     }, [user, loadConversations]);
 

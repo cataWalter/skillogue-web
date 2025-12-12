@@ -44,7 +44,7 @@ export async function updateProfileAction(data: UpdateProfileInput) {
         }
 
         // 2. Update Profile
-        const profileUpdate: any = {
+        const profileUpdate: Record<string, unknown> = {
             first_name,
             last_name,
             about_me,
@@ -110,8 +110,9 @@ export async function updateProfileAction(data: UpdateProfileInput) {
         
         return { success: true };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Server Action Error:', error);
-        return { success: false, error: error.message || 'An unexpected error occurred' };
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+        return { success: false, error: message };
     }
 }

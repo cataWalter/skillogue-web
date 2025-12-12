@@ -46,7 +46,9 @@ const Profile: React.FC = () => {
                 supabase.from('profile_languages').select('languages(name)').eq('profile_id', user.id)
             ]);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             setPassions(passionRes.data?.map((p: any) => p.passions.name) || []);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             setLanguages(languageRes.data?.map((l: any) => l.languages.name) || []);
 
             setLoading(false);

@@ -49,9 +49,11 @@ const SignUp: React.FC = () => {
 
             alert('🎉 Check your email for the confirmation link!');
             router.push('/login');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Signup error:', error);
-            alert(error.error_description || error.message);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const err = error as any;
+            alert(err.error_description || err.message || 'An error occurred');
         } finally {
             setLoading(false);
         }

@@ -56,7 +56,7 @@ export default function DataExportPage() {
                     </p>
 
                     <div className="bg-gray-800/50 p-4 rounded-lg mb-8 text-sm text-gray-400">
-                        <p className="mb-2 font-semibold text-gray-300">What's included:</p>
+                        <p className="mb-2 font-semibold text-gray-300">What&apos;s included:</p>
                         <ul className="list-disc list-inside space-y-1">
                             <li>Profile details (Name, Bio, Location)</li>
                             <li>Account information (Email, ID)</li>

@@ -98,7 +98,9 @@ const UserProfile: React.FC = () => {
                 supabase.from('profile_languages').select('languages(name)').eq('profile_id', id)
             ]);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             setPassions(passionRes.data?.map((p: any) => p.passions.name) || []);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             setLanguages(languageRes.data?.map((l: any) => l.languages.name) || []);
 
             await checkBlockStatus(currentSession.user.id, id);
@@ -123,8 +125,9 @@ const UserProfile: React.FC = () => {
             setIsBlocked(true);
             toast.success('User blocked successfully');
             router.push('/dashboard');
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Error blocking user';
+            toast.error(message);
         }
     };
 
@@ -142,8 +145,9 @@ const UserProfile: React.FC = () => {
             if (error) throw error;
             setIsBlocked(false);
             toast.success('User unblocked');
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Error unblocking user';
+            toast.error(message);
         }
     };
 

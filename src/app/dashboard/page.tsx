@@ -48,6 +48,7 @@ const Dashboard: React.FC = () => {
                     return;
                 }
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const profileData = profileRes.data as any;
                 setProfile({
                     ...profileData,
