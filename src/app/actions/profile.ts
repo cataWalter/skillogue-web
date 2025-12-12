@@ -20,7 +20,7 @@ export async function updateProfileAction(data: UpdateProfileInput) {
         return { success: false, error: 'Validation failed', details: result.error.flatten().fieldErrors };
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

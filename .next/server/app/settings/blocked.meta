@@ -1,5 +1,16 @@
 {
   "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
     "x-next-cache-tags": "_N_T_/layout,_N_T_/settings/layout,_N_T_/settings/blocked/layout,_N_T_/settings/blocked/page,_N_T_/settings/blocked"
-  }
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/settings/blocked/__PAGE__",
+    "/settings/blocked",
+    "/settings",
+    "/_index",
+    "/_head"
+  ]
 }

@@ -18,7 +18,7 @@ async function checkDatabase() {
   console.log('Checking database connection...');
   
   // Check if we can connect
-  const { data, error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+  const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
   
   if (error) {
     console.error('Error connecting to database or profiles table missing:', error.message);
@@ -29,7 +29,7 @@ async function checkDatabase() {
     console.log('Successfully connected to profiles table.');
     
     // Check for privacy columns
-    const { data: profileData, error: profileError } = await supabase.from('profiles').select('is_private, show_age, show_location').limit(1);
+    const { error: profileError } = await supabase.from('profiles').select('is_private, show_age, show_location').limit(1);
     if (profileError) {
         console.error('Error checking privacy columns:', profileError.message);
         console.log('You might need to run the privacy_migration.sql script.');

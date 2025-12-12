@@ -24,9 +24,16 @@ jest.mock('@dicebear/collection', () => ({
 describe('Avatar Component', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        // Default mock implementation to avoid errors in tests that don't specify it
+        (createAvatar as jest.Mock).mockResolvedValue({
+            toDataUri: jest.fn().mockResolvedValue('data:image/svg+xml;base64,default'),
+        });
     });
 
-    it('renders loading state initially', () => {
+    it('renders loading state initially', async () => {
+        // Mock a pending promise so state doesn't update during test
+        (createAvatar as jest.Mock).mockReturnValue(new Promise(() => {}));
+        
         render(<Avatar seed="test-seed" />);
         const loader = screen.getByLabelText('Loading avatar');
         expect(loader).toBeInTheDocument();

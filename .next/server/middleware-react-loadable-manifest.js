@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST='{"components\\\\Footer.tsx -> ./Modal":{"id":6003,"files":["static/chunks/6003.5fc6eeb38252f310.js"]}}';

@@ -12,6 +12,9 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    turbopackUseSystemTlsCerts: true,
+  },
 };
 
 module.exports = nextConfig;
