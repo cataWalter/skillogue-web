@@ -70,7 +70,7 @@ const Onboarding: React.FC = () => {
             setAvailablePassions(allPassions || []);
 
             const { data: countryData } = await supabase.rpc('get_distinct_countries');
-            setCountries(countryData?.map((c: any) => c.country) || []);
+            setCountries(countryData?.map((c: { country: string }) => c.country) || []);
 
             setLoading(false);
         };
@@ -83,7 +83,7 @@ const Onboarding: React.FC = () => {
             const fetchRegions = async () => {
                 const { data, error } = await supabase.rpc('get_distinct_regions', { p_country: location.country });
                 if (error) console.error("Error fetching regions:", error);
-                else setRegions(data.map((r: any) => r.region).filter(Boolean));
+                else setRegions(data.map((r: { region: string }) => r.region).filter(Boolean));
             };
             fetchRegions();
         } else {
@@ -99,7 +99,7 @@ const Onboarding: React.FC = () => {
                     p_region: location.region || null
                 });
                 if (error) console.error("Error fetching cities:", error);
-                else setCities(data.map((c: any) => c.city));
+                else setCities(data.map((c: { city: string }) => c.city));
             };
             fetchCities();
         } else {
@@ -218,9 +218,10 @@ const Onboarding: React.FC = () => {
             }
 
             router.push('/dashboard');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error completing onboarding:', err);
-            setError(err.message || 'Failed to save profile');
+            const message = err instanceof Error ? err.message : 'Failed to save profile';
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -235,7 +236,7 @@ const Onboarding: React.FC = () => {
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                         Welcome to Skillogue!
                     </h1>
-                    <p className="text-gray-400 mt-2">Let's set up your profile to find your tribe.</p>
+                    <p className="text-gray-400 mt-2">Let&apos;s set up your profile to find your tribe.</p>
                 </div>
 
                 {/* Progress Bar */}

@@ -31,7 +31,27 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Protected routes
+  const protectedRoutes = ['/dashboard', '/messages', '/settings', '/profile', '/edit-profile', '/onboarding', '/search', '/user']
+  const isProtectedRoute = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
+
+  if (!user && isProtectedRoute) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Optional: Redirect logged in users away from auth pages
+  const authRoutes = ['/login', '/signup', '/forgot-password']
+  const isAuthRoute = authRoutes.some(route => request.nextUrl.pathname.startsWith(route))
+
+  if (user && isAuthRoute) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
 
   return response
 }

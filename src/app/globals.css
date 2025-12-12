@@ -1,53 +1,105 @@
-/* src/index.css */
+/* src/app/globals.css */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-    --color-primary: #4F46E5;
-    --color-secondary: #7C3AED;
-    --color-accent: #10B981;
-    --color-accent-secondary: #F59E0B;
-    --color-background: #FFFFFF;
-    --color-background-secondary: #F3F4F6;
-    --color-text: #1F2937;
-    --color-text-secondary: #4B5563;
-    --color-text-tertiary: #6B7280;
-    --color-success: #059669;
-    --color-warning: #D97706;
-    --color-error: #DC2626;
-}
-
-.dark {
-    --color-primary: #6366F1;
-    --color-secondary: #8B5CF6;
-    --color-accent: #10B981;
-    --color-accent-secondary: #F59E0B;
-    --color-background: #000000;
-    --color-background-secondary: #111827;
-    --color-text: #FFFFFF;
-    --color-text-secondary: #D1D5DB;
-    --color-text-tertiary: #9CA3AF;
+    /* Light Mode - Clean & Energetic */
+    --color-primary: #6366F1; /* Indigo 500 */
+    --color-secondary: #EC4899; /* Pink 500 */
+    --color-accent: #06B6D4; /* Cyan 500 */
+    --color-background: #F8FAFC; /* Slate 50 */
+    --color-background-secondary: #FFFFFF;
+    --color-text: #0F172A; /* Slate 900 */
+    --color-text-secondary: #475569; /* Slate 600 */
+    --color-text-tertiary: #94A3B8; /* Slate 400 */
     --color-success: #10B981;
     --color-warning: #F59E0B;
     --color-error: #EF4444;
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+}
+
+.dark {
+    /* Dark Mode - Deep Space & Neon */
+    --color-primary: #818CF8; /* Indigo 400 */
+    --color-secondary: #F472B6; /* Pink 400 */
+    --color-accent: #22D3EE; /* Cyan 400 */
+    --color-background: #0B0F19; /* Custom Deep Dark Blue */
+    --color-background-secondary: #111827; /* Gray 900 */
+    --color-text: #F1F5F9; /* Slate 100 */
+    --color-text-secondary: #94A3B8; /* Slate 400 */
+    --color-text-tertiary: #64748B; /* Slate 500 */
+    --color-success: #34D399;
+    --color-warning: #FBBF24;
+    --color-error: #F87171;
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(17, 24, 39, 0.7);
 }
 
 body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-        sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--color-background);
     color: var(--color-text);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-        monospace;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-text-tertiary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary);
+}
+
+/* Glassmorphism Utilities */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+}
+
+.glass-card {
+    background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Gradient Text */
+.text-gradient {
+    background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Animations */
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
 }
 
 /* Smooth, subtle scrollbar */

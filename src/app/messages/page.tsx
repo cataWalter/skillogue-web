@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Send, Flag, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Flag, ShieldAlert, MessageSquare } from 'lucide-react';
 import { User as AuthUser } from '@supabase/supabase-js';
 import Avatar from '../../components/Avatar';
 import ReportModal from '../../components/ReportModal';
@@ -58,6 +58,7 @@ const Messages: React.FC = () => {
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const userScrolledUp = useRef(false);
+    const isLoadingRef = useRef(false);
     const prevScrollHeightRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -110,7 +111,8 @@ const Messages: React.FC = () => {
             if (!selectedChat || !user) return;
             // Prevent duplicate loading or loading when no more messages
             // Note: We allow page 1 to reload to refresh chat
-            if (loadingMore) return;
+            if (isLoadingRef.current) return;
+            isLoadingRef.current = true;
 
             if (page === 1) setLoading(true); else setLoadingMore(true);
 
@@ -146,6 +148,7 @@ const Messages: React.FC = () => {
 
             setLoading(false);
             setLoadingMore(false);
+            isLoadingRef.current = false;
         };
 
         loadMessages();
@@ -302,7 +305,14 @@ const Messages: React.FC = () => {
                 </div>
                 <div className="flex-grow overflow-y-auto">
                     {conversations.length === 0 ? (
-                        <div className="p-4 text-gray-400 text-center">No conversations yet.</div>
+                        <div className="flex flex-col items-center justify-center h-64 p-6 text-center text-gray-400">
+                            <MessageSquare className="w-12 h-12 mb-4 text-gray-600" />
+                            <p className="text-lg font-medium text-white">No conversations yet</p>
+                            <p className="text-sm mt-2">Start connecting with people who share your passions!</p>
+                            <Link href="/search" className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition">
+                                Find People
+                            </Link>
+                        </div>
                     ) : (
                         conversations.map(convo => (
                             <ConversationItem

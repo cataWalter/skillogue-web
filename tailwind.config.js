@@ -11,7 +11,6 @@ module.exports = {
         primary: 'var(--color-primary)',
         secondary: 'var(--color-secondary)',
         accent: 'var(--color-accent)',
-        'accent-secondary': 'var(--color-accent-secondary)',
         background: 'var(--color-background)',
         'background-secondary': 'var(--color-background-secondary)',
         text: 'var(--color-text)',
@@ -21,6 +20,14 @@ module.exports = {
         warning: 'var(--color-warning)',
         error: 'var(--color-error)',
       },
+      animation: {
+        'float': 'float 6s ease-in-out infinite',
+        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'hero-pattern': "url('/grid.svg')", // Assuming you might add a pattern later
+      }
     },
   },
   plugins: [],

@@ -44,7 +44,7 @@ const BlockedUsersPage: React.FC = () => {
             toast.error('Failed to load blocked users');
         } else {
             // Transform data to match interface if needed, though Supabase returns nested objects
-            setBlockedUsers(data as any);
+            setBlockedUsers(data as unknown as BlockedUser[]);
         }
         setLoading(false);
     };
@@ -71,9 +71,10 @@ const BlockedUsersPage: React.FC = () => {
             toast.success(`${userName} has been unblocked`);
             // Refresh the list
             setBlockedUsers(prev => prev.filter(u => u.blocked_user_id !== userId));
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error unblocking user:', error);
-            toast.error(error.message || 'Failed to unblock user');
+            const message = error instanceof Error ? error.message : 'Failed to unblock user';
+            toast.error(message);
         }
     };
 
@@ -105,7 +106,7 @@ const BlockedUsersPage: React.FC = () => {
                     </div>
                     <h3 className="text-xl font-semibold text-white mb-2">No Blocked Users</h3>
                     <p className="text-gray-400">
-                        You haven't blocked anyone yet.
+                        You haven&apos;t blocked anyone yet.
                     </p>
                 </div>
             ) : (

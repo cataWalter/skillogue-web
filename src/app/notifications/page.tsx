@@ -64,7 +64,15 @@ const NotificationsPage: React.FC = () => {
 
             <div className="bg-gray-900/70 border border-gray-800 rounded-xl shadow-lg">
                 {notifications.length === 0 ? (
-                    <p className="text-gray-400 p-12 text-center">You have no notifications yet.</p>
+                    <div className="flex flex-col items-center justify-center p-12 text-center">
+                        <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                            <Bell className="w-8 h-8 text-gray-500" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-white mb-2">No notifications yet</h3>
+                        <p className="text-gray-400">
+                            We&apos;ll let you know when something important happens.
+                        </p>
+                    </div>
                 ) : (
                     <ul className="divide-y divide-gray-800">
                         {notifications.map(n => (

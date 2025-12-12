@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogIn, Mail, UserPlus } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 
 const Login: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
@@ -23,9 +23,10 @@ const Login: React.FC = () => {
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) throw error;
             router.push('/dashboard');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Login error:', error);
-            alert(error.error_description || error.message);
+            const message = error instanceof Error ? error.message : 'An error occurred';
+            alert(message);
         } finally {
             setLoading(false);
         }
@@ -114,7 +115,7 @@ const Login: React.FC = () => {
                 {/* Footer */}
                 <div className="bg-gray-800/50 p-6 text-center border-t border-gray-800">
                     <p className="text-gray-400 text-sm mb-4">
-                        Don't have an account?{' '}
+                        Don&apos;t have an account?{' '}
                         <Link href="/signup" className="text-indigo-400 hover:text-indigo-300 font-medium transition">
                             Sign up
                         </Link>

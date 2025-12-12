@@ -1,5 +1,6 @@
 // src/components/Avatar.tsx
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { createAvatar } from '@dicebear/core';
 
 // Import collections
@@ -73,11 +74,15 @@ const Avatar: React.FC<AvatarProps> = ({ seed, className, alt }) => {
     }
 
     return (
-        <img
-            src={avatarSvg}
-            alt={alt || "User Avatar"}
-            className={className || 'w-12 h-12 rounded-full object-cover'}
-        />
+        <div className={`relative ${className || 'w-12 h-12 rounded-full'}`}>
+            <Image
+                src={avatarSvg}
+                alt={alt || "User Avatar"}
+                fill
+                className="rounded-full object-cover"
+                unoptimized
+            />
+        </div>
     );
 };
 

@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
+import { Session } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import MultiSelect from '../../components/MultiSelect';
 import {
     Save,
     Trash2,
     Zap,
-    ArrowLeft,
-    ArrowRight,
     User,
     MapPin,
     Heart,
@@ -165,7 +164,6 @@ const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
 const Search: React.FC = () => {
     const searchParams = useSearchParams();
     const initialPassion = searchParams?.get('passion');
-    const router = useRouter();
 
     const [query, setQuery] = useState('');
     const [location, setLocation] = useState('');
@@ -184,7 +182,7 @@ const Search: React.FC = () => {
     const [saveSearchName, setSaveSearchName] = useState('');
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
-    const [session, setSession] = useState<any>(null);
+    const [session, setSession] = useState<Session | null>(null);
 
     useEffect(() => {
         const loadInitialData = async () => {

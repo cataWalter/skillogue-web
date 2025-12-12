@@ -3,7 +3,9 @@
 
 import React, { useState, ReactNode } from 'react';
 import { Github, Linkedin, Twitter } from 'lucide-react';
-import Modal from './Modal';
+import dynamic from 'next/dynamic';
+
+const Modal = dynamic(() => import('./Modal'), { ssr: false });
 
 // Define the type for the modal's state
 interface ModalState {

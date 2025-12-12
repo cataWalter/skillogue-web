@@ -50,9 +50,10 @@ const DeleteAccount: React.FC = () => {
             // If we need to show a message, we could use a query param like /?deleted=true
             router.push('/?deleted=true');
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Account deletion error:', err);
-            setErrorMessage(`Failed to delete account: ${err.message || 'An unexpected error occurred. Please try again later.'}`);
+            const message = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again later.';
+            setErrorMessage(`Failed to delete account: ${message}`);
         } finally {
             setIsLoading(false);
         }
@@ -74,7 +75,7 @@ const DeleteAccount: React.FC = () => {
                 <div className="mt-8 space-y-6">
                     <div>
                         <label htmlFor="confirmation" className="block text-sm font-medium text-gray-300 mb-2">
-                            To confirm, please type "<strong>DELETE</strong>" below:
+                            To confirm, please type &quot;<strong>DELETE</strong>&quot; below:
                         </label>
                         <input
                             id="confirmation"

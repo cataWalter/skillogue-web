@@ -50,7 +50,6 @@ const EditProfile: React.FC = () => {
     const [countries, setCountries] = useState<string[]>([]);
     const [regions, setRegions] = useState<string[]>([]);
     const [cities, setCities] = useState<string[]>([]);
-    const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const router = useRouter();
 
@@ -113,14 +112,13 @@ const EditProfile: React.FC = () => {
                     if (profileData.locations.country) fetchRegions(profileData.locations.country);
                     if (profileData.locations.region) fetchCities(profileData.locations.country, profileData.locations.region);
                 }
-                setIsProfileComplete(true);
             }
 
             setSelectedLanguages(currentLanguages);
             setSelectedPassions(currentPassions);
             setAvailableLanguages(allLanguagesRes.data || []);
             setAvailablePassions(allPassionsRes.data || []);
-            setCountries(countriesRes.data?.map((c: any) => c.country) || []);
+            setCountries(countriesRes.data?.map((c: { country: string }) => c.country) || []);
 
             setLoading(false);
         };
@@ -130,12 +128,12 @@ const EditProfile: React.FC = () => {
 
     const fetchRegions = async (country: string) => {
         const { data } = await supabase.rpc('get_distinct_regions', { p_country: country });
-        setRegions(data?.map((r: any) => r.region) || []);
+        setRegions(data?.map((r: { region: string }) => r.region) || []);
     };
 
     const fetchCities = async (country: string, region: string) => {
         const { data } = await supabase.rpc('get_distinct_cities', { p_country: country, p_region: region });
-        setCities(data?.map((c: any) => c.city) || []);
+        setCities(data?.map((c: { city: string }) => c.city) || []);
     };
 
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -185,9 +183,9 @@ const EditProfile: React.FC = () => {
             }
 
             router.push('/profile');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error updating profile:', err);
-            setError(err.message || 'Failed to update profile');
+            setError(err instanceof Error ? err.message : 'Failed to update profile');
         } finally {
             setLoading(false);
         }
