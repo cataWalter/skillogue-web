@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import MultiSelect from '../components/MultiSelect';
+import SEO from '../components/SEO';
 
 const Onboarding = () => {
     const [step, setStep] = useState(1);
@@ -248,7 +249,7 @@ const Onboarding = () => {
                                 <h2 className="text-xl font-semibold text-center">A little about you...</h2>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">Age</label>
-                                    <input type="number" name="age" value={profile.age} onChange={handleProfileChange} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500" min="16" max="120" required/>
+                                    <input type="number" name="age" value={profile.age} onChange={handleProfileChange} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500" min="16" max="120" required />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">Gender</label>

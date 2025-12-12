@@ -47,7 +47,7 @@ as the all-in-one backend.
 | **Real-time Chat**       | **Supabase Realtime**                          | Powers our one-on-one private messaging. It's built into Supabase, allowing us to subscribe to database changes for a simple, integrated setup. |
 | **Authentication**       | **Supabase Auth**                              | Handles all user sign-up, login, and session management. It's a complete, secure system that's part of the Supabase platform.                   |
 | **Forms & Validation**   | **React Hook Form** & **Zod**                  | **React Hook Form** manages form state efficiently. **Zod** provides strict, type-safe validation for both frontend forms and backend data.     |
-| **Deployment & Hosting** | **Vercel** (Frontend) & **Supabase** (Backend) | **Vercel** offers the best deployment experience for React. **Supabase** hosts our database and backend services, creating a clean separation.  |
+| Deployment & Hosting | **Vercel** (Frontend) & **Supabase** (Backend) | **Vercel** offers the best deployment experience for React. **Supabase** hosts our database and backend services, creating a clean separation.  |
 
 ## Todo
 
@@ -217,8 +217,4 @@ ProtectedRoute.js shows "Loading session...".
 
 
 Proposed Solution: A centralized LoadingSpinner.js or LoadingScreen.js component could be used across the application for a more consistent user experience, as suggested in the README.md to replace simple text with skeleton loaders.
-
-
-
-
 
