@@ -317,7 +317,7 @@ const Search: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white p-6">
+        <div className="min-h-screen bg-black text-white p-4 sm:p-6">
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
                 {/* Filters Sidebar */}
                 <div className="lg:col-span-1 space-y-6">

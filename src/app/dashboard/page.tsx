@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <h1 className="text-4xl font-extrabold text-white sm:text-5xl">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
                 Welcome back, <span className="text-indigo-400">{profile?.first_name}</span>!
             </h1>
 

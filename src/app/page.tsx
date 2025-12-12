@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <>
       <section className="px-6 py-16 text-center max-w-5xl mx-auto">
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
+        <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
           Connect by Passion
         </h1>
         <p className="text-xl md:text-2xl text-gray-300 mb-10">
@@ -14,13 +14,13 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/login"
-            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full font-semibold hover:shadow-lg transform hover:scale-105 transition"
+            className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full font-semibold hover:shadow-lg transform hover:scale-105 transition"
           >
             Get Started
           </Link>
           <Link
             href="/search"
-            className="px-8 py-4 border border-gray-600 rounded-full font-semibold hover:bg-gray-800 transition"
+            className="px-6 py-3 sm:px-8 sm:py-4 border border-gray-600 rounded-full font-semibold hover:bg-gray-800 transition"
           >
             Explore Connections
           </Link>
@@ -28,7 +28,7 @@ export default function Home() {
       </section>
 
       <section className="px-6 py-20 bg-gray-900/50">
-        <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-12 text-center">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-8 md:gap-12 text-center">
           <div className="flex flex-col items-center">
             <div className="p-4 bg-purple-600/20 rounded-full mb-4">
               <Sparkles className="h-12 w-12 text-purple-400" />

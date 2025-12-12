@@ -74,26 +74,26 @@ const Navbar: React.FC = () => {
 
     const NavLinks: React.FC = () => (
         <>
-            <Link href="/" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
+            <Link href="/" className="flex items-center gap-2 px-3 py-3 md:py-2 text-base md:text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <Home size={18} />
                 <span>Home</span>
             </Link>
 
-            <Link href="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
+            <Link href="/profile" className="flex items-center gap-2 px-3 py-3 md:py-2 text-base md:text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <User size={18} />
                 <span>Profile</span>
             </Link>
 
-            <Link href="/search" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
+            <Link href="/search" className="flex items-center gap-2 px-3 py-3 md:py-2 text-base md:text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <Search size={18} />
                 <span>Search</span>
             </Link>
 
-            <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
+            <Link href="/dashboard" className="flex items-center gap-2 px-3 py-3 md:py-2 text-base md:text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <LayoutDashboard size={18} />
                 <span>Dashboard</span>
             </Link>
-            <Link href="/messages" className="relative flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
+            <Link href="/messages" className="relative flex items-center gap-2 px-3 py-3 md:py-2 text-base md:text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                 <MessageSquare size={18} />
                 <span>Messages</span>
                 {unreadCount > 0 && (
@@ -105,7 +105,7 @@ const Navbar: React.FC = () => {
                 )}
             </Link>
 
-            <Link href="/settings" className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
+            <Link href="/settings" className="flex items-center gap-2 text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-3 md:py-2 rounded-md text-base md:text-sm font-medium transition">
                 <Settings size={18} />
                 <span>Settings</span>
             </Link>
@@ -158,7 +158,7 @@ const Navbar: React.FC = () => {
                             {session ? (
                                 <>
                                     <NavLinks />
-                                    <button onClick={handleLogout} className="flex items-center gap-2 w-full text-left mt-4 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
+                                    <button onClick={handleLogout} className="flex items-center gap-2 w-full text-left mt-4 px-3 py-3 md:py-2 text-base md:text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition">
                                         <LogOut size={18} />
                                         <span>Log Out</span>
                                     </button>

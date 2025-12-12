@@ -67,8 +67,8 @@ const Footer: React.FC = () => {
         <>
             <footer className="bg-gray-800 text-white">
                 <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                    <div className="xl:grid xl:grid-cols-3 xl:gap-8">
-                        <div className="space-y-8 xl:col-span-1">
+                    <div className="md:grid md:grid-cols-3 md:gap-8">
+                        <div className="space-y-8 md:col-span-1">
                             <h2 className="text-white text-3xl font-bold">
                                 Skill<span className="text-indigo-400">ogue</span>
                             </h2>
@@ -106,7 +106,7 @@ const Footer: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="mt-12 md:mt-0 xl:col-span-2">
+                        <div className="mt-12 md:mt-0 md:col-span-2">
                             <div className="grid grid-cols-2 gap-8">
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">

@@ -194,13 +194,13 @@ const EditProfile: React.FC = () => {
     if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
 
     return (
-        <div className="min-h-screen bg-black text-white p-6">
-            <div className="max-w-3xl mx-auto">
+        <div className="flex-grow p-4 sm:p-6 w-full">
+            <div className="max-w-4xl mx-auto">
                 <div className="flex items-center gap-4 mb-8">
                     <Link href="/profile" className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition">
                         <ArrowLeft size={24} />
                     </Link>
-                    <h1 className="text-3xl font-bold">Edit Profile</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold">Edit Profile</h1>
                 </div>
 
                 {error && (
@@ -210,7 +210,7 @@ const EditProfile: React.FC = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-8 bg-gray-900 p-8 rounded-2xl border border-gray-800">
+                <form onSubmit={handleSubmit} className="space-y-8 bg-gray-900 p-6 sm:p-8 rounded-2xl border border-gray-800">
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
