@@ -47,9 +47,11 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
         option.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const inputId = `multiselect-${label.replace(/\s+/g, '-').toLowerCase()}`;
+
     return (
         <div className="relative" ref={wrapperRef}>
-            <label className="block text-sm font-medium text-gray-300 mb-2">{label}</label>
+            <label htmlFor={inputId} className="block text-sm font-medium text-gray-300 mb-2">{label}</label>
             <div className="flex flex-wrap gap-2 p-2 border border-gray-700 rounded-lg bg-gray-900 cursor-text" onClick={() => setIsOpen(true)}>
                 {selected.map((item) => (
                     <span key={item} className="flex items-center gap-2 bg-indigo-600 text-white text-sm px-2 py-1 rounded-full">
@@ -61,24 +63,28 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                                 handleRemove(item);
                             }}
                             className="text-white hover:text-gray-200 focus:outline-none"
+                            aria-label={`Remove ${item}`}
                         >
                             <X size={14} />
                         </button>
                     </span>
                 ))}
                 <input
+                    id={inputId}
                     type="text"
                     className="flex-grow bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 min-w-[100px]"
                     placeholder={selected.length === 0 ? (placeholder || "Select...") : ""}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onFocus={() => setIsOpen(true)}
+                    aria-expanded={isOpen}
+                    aria-haspopup="listbox"
                 />
                 <ChevronDown className="text-gray-400 ml-auto self-center" size={20} />
             </div>
 
             {isOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto" role="listbox">
                     {filteredOptions.length > 0 ? (
                         filteredOptions.map((option) => (
                             <div
@@ -86,12 +92,14 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                                 onClick={() => handleSelect(option.name)}
                                 className={`px-4 py-2 cursor-pointer hover:bg-gray-700 ${selected.includes(option.name) ? 'bg-indigo-900/50 text-indigo-300' : 'text-gray-300'
                                     }`}
+                                role="option"
+                                aria-selected={selected.includes(option.name)}
                             >
                                 {option.name}
                             </div>
                         ))
                     ) : (
-                        <div className="px-4 py-2 text-gray-500">No options found</div>
+                        <div className="px-4 py-2 text-gray-500" role="option" aria-disabled="true">No options found</div>
                     )}
                 </div>
             )}

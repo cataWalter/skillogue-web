@@ -55,12 +55,16 @@ const ReportModal: React.FC<ReportModalProps> = ({
                 <p className="text-gray-300">
                     Please describe why you are reporting this user. This will be reviewed by our team.
                 </p>
-                <textarea
-                    className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    placeholder="Reason for reporting..."
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                />
+                <div>
+                    <label htmlFor="report-reason" className="sr-only">Reason for reporting</label>
+                    <textarea
+                        id="report-reason"
+                        className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="Reason for reporting..."
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                    />
+                </div>
                 <div className="flex justify-end gap-3">
                     <Button variant="secondary" onClick={onClose} className="!w-auto">
                         Cancel

@@ -8,6 +8,8 @@ import { ArrowLeft, Loader2, Send, Flag, ShieldAlert } from 'lucide-react';
 import { User as AuthUser } from '@supabase/supabase-js';
 import Avatar from '../../components/Avatar';
 import ReportModal from '../../components/ReportModal';
+import ConversationItem from '../../components/ConversationItem';
+import MessageItem from '../../components/MessageItem';
 
 // --- Type Definitions ---
 interface Profile {
@@ -279,7 +281,7 @@ const Messages: React.FC = () => {
         }
     };
 
-    const selectChat = (id: string) => {
+    const selectChat = useCallback((id: string) => {
         setSelectedChat(id);
         setPage(1);
         setMessages([]);
@@ -287,7 +289,7 @@ const Messages: React.FC = () => {
         userScrolledUp.current = false;
         // Update URL without reload
         router.push(`/messages?conversation=${id}`);
-    };
+    }, [router]);
 
     const currentChatUser = conversations.find(c => c.user_id === selectedChat);
 
@@ -303,28 +305,15 @@ const Messages: React.FC = () => {
                         <div className="p-4 text-gray-400 text-center">No conversations yet.</div>
                     ) : (
                         conversations.map(convo => (
-                            <div
+                            <ConversationItem
                                 key={convo.user_id}
-                                onClick={() => selectChat(convo.user_id)}
-                                className={`p-4 border-b border-gray-800 cursor-pointer hover:bg-gray-900 transition ${selectedChat === convo.user_id ? 'bg-gray-900' : ''}`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Avatar seed={convo.user_id} className="w-12 h-12" />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-baseline">
-                                            <h3 className="font-semibold truncate">{convo.full_name}</h3>
-                                            {convo.unread > 0 && (
-                                                <span className="bg-indigo-600 text-xs px-2 py-0.5 rounded-full">
-                                                    {convo.unread}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className={`text-sm truncate ${convo.unread > 0 ? 'text-white font-medium' : 'text-gray-400'}`}>
-                                            {convo.last_message}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+                                userId={convo.user_id}
+                                fullName={convo.full_name}
+                                lastMessage={convo.last_message}
+                                unread={convo.unread}
+                                isSelected={selectedChat === convo.user_id}
+                                onClick={selectChat}
+                            />
                         ))
                     )}
                 </div>
@@ -373,25 +362,14 @@ const Messages: React.FC = () => {
                                 const isMe = msg.sender_id === user?.id;
                                 const showAvatar = !isMe && (index === 0 || messages[index - 1].sender_id !== msg.sender_id);
                                 return (
-                                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-2`}>
-                                        {!isMe && (
-                                            <div className="w-8 mr-2 flex-shrink-0">
-                                                {showAvatar && <Avatar seed={msg.sender_id} className="w-8 h-8" />}
-                                            </div>
-                                        )}
-                                        <div
-                                            className={`max-w-[70%] px-4 py-2 rounded-2xl ${
-                                                isMe
-                                                    ? 'bg-indigo-600 text-white rounded-br-none'
-                                                    : 'bg-gray-800 text-gray-200 rounded-bl-none'
-                                            }`}
-                                        >
-                                            <p>{msg.content}</p>
-                                            <p className={`text-[10px] mt-1 ${isMe ? 'text-indigo-200' : 'text-gray-500'} text-right`}>
-                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </p>
-                                        </div>
-                                    </div>
+                                    <MessageItem
+                                        key={msg.id}
+                                        content={msg.content}
+                                        createdAt={msg.created_at}
+                                        isMe={isMe}
+                                        showAvatar={showAvatar}
+                                        senderId={msg.sender_id}
+                                    />
                                 );
                             })}
                             {loading && (

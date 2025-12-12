@@ -67,6 +67,7 @@ const Settings: React.FC = () => {
                     <ul className="space-y-3 text-gray-300">
                         <li><Link href="/settings/privacy" className="hover:underline">Profile Visibility & Privacy</Link></li>
                         <li><Link href="/settings/blocked" className="hover:underline">Manage blocked users</Link></li>
+                        <li><Link href="/settings/data-export" className="hover:underline">Download my data</Link></li>
                     </ul>
                 </div>
 

@@ -11,6 +11,7 @@ const SignUp: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
+    const [agreed, setAgreed] = useState<boolean>(false);
     const router = useRouter();
 
     const isPasswordValid = (): boolean => {
@@ -33,6 +34,11 @@ const SignUp: React.FC = () => {
 
         if (!isPasswordValid()) {
             alert('Please ensure your password meets all the strength requirements.');
+            return;
+        }
+
+        if (!agreed) {
+            alert('You must agree to the Terms of Service and Privacy Policy to create an account.');
             return;
         }
 
@@ -91,6 +97,19 @@ const SignUp: React.FC = () => {
                             disabled={loading}
                         />
                         <PasswordStrengthMeter password={password} />
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                        <input
+                            id="agreed"
+                            type="checkbox"
+                            checked={agreed}
+                            onChange={(e) => setAgreed(e.target.checked)}
+                            className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="agreed" className="text-sm text-gray-400">
+                            I agree to the <Link href="/terms-of-service" className="text-indigo-400 hover:underline" target="_blank">Terms of Service</Link> and <Link href="/privacy-policy" className="text-indigo-400 hover:underline" target="_blank">Privacy Policy</Link>.
+                        </label>
                     </div>
 
                     <button

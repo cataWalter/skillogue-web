@@ -148,7 +148,12 @@ const Navbar: React.FC = () => {
                     {/* Mobile menu button */}
                     <div className="flex items-center md:hidden">
                         {session && <NotificationIcon />} {/* 👈 Also add to mobile view */}
-                        <button onClick={() => setIsOpen(!isOpen)} className="ml-2 text-gray-400 hover:text-white focus:outline-none">
+                        <button 
+                            onClick={() => setIsOpen(!isOpen)} 
+                            className="ml-2 text-gray-400 hover:text-white focus:outline-none"
+                            aria-label={isOpen ? "Close menu" : "Open menu"}
+                            aria-expanded={isOpen}
+                        >
                             {isOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
                     </div>

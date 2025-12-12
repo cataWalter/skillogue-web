@@ -24,6 +24,9 @@ const NotificationIcon: React.FC = () => {
             <button
                 onClick={() => setDropdownOpen(!isDropdownOpen)}
                 className="relative p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition"
+                aria-label="Notifications"
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="true"
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (

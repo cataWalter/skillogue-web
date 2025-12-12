@@ -21,9 +21,10 @@ import type { Options as CoreOptions } from '@dicebear/core';
 interface AvatarProps {
     seed: string;
     className?: string;
+    alt?: string;
 }
 
-const Avatar: React.FC<AvatarProps> = ({ seed, className }) => {
+const Avatar: React.FC<AvatarProps> = ({ seed, className, alt }) => {
     const [avatarSvg, setAvatarSvg] = useState<string>('');
 
     useEffect(() => {
@@ -74,7 +75,7 @@ const Avatar: React.FC<AvatarProps> = ({ seed, className }) => {
     return (
         <img
             src={avatarSvg}
-            alt="User Avatar"
+            alt={alt || "User Avatar"}
             className={className || 'w-12 h-12 rounded-full object-cover'}
         />
     );
