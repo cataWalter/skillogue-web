@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Space_Grotesk, Outfit } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -7,7 +7,15 @@ import CookieBanner from "../components/CookieBanner";
 import { NotificationProvider } from "../context/NotificationContext";
 import { Toaster } from 'react-hot-toast';
 
-const inter = Inter({ subsets: ["latin"] });
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ["latin"],
+  variable: '--font-space-grotesk',
+});
+
+const outfit = Outfit({ 
+  subsets: ["latin"],
+  variable: '--font-outfit',
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://skillogue.com'),
@@ -47,8 +55,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-black text-white flex flex-col min-h-screen`}>
+    <html lang="en" className={`${spaceGrotesk.variable} ${outfit.variable}`}>
+      <body className="font-sans bg-background text-text flex flex-col min-h-screen selection:bg-primary selection:text-white">
         <NotificationProvider>
           <Navbar />
           <main className="flex-grow flex flex-col">

@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Send, Flag, ShieldAlert, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Flag, ShieldAlert, MessageSquare, Ban, Paperclip } from 'lucide-react';
 import { User as AuthUser } from '@supabase/supabase-js';
 import Avatar from '../../components/Avatar';
 import ReportModal from '../../components/ReportModal';
@@ -26,6 +26,8 @@ interface Message {
     content: string;
     sender: Profile;
     receiver: Profile;
+    attachment_url?: string;
+    attachment_type?: string;
 }
 
 interface Conversation {
@@ -55,6 +57,9 @@ const Messages: React.FC = () => {
     const [isBlocked, setIsBlocked] = useState(false);
     const [isBlocking, setIsBlocking] = useState(false);
     const [isReportModalOpen, setReportModalOpen] = useState(false);
+    const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const userScrolledUp = useRef(false);
@@ -177,34 +182,31 @@ const Messages: React.FC = () => {
         loadMessages();
     }, [selectedChat, user, page]);
 
-    // Check block status
+    // Presence
     useEffect(() => {
-        const checkBlockStatus = async () => {
-            if (!user || !selectedChat) return;
+        if (!user) return;
 
-            // Check if I blocked them
-            const { data: blockData } = await supabase
-                .from('blocks')
-                .select('*')
-                .eq('blocker_id', user.id)
-                .eq('blocked_id', selectedChat)
-                .single();
-            
-            setIsBlocking(!!blockData);
+        const presenceChannel = supabase.channel('online-users')
+            .on('presence', { event: 'sync' }, () => {
+                const newState = presenceChannel.presenceState();
+                const onlineIds = new Set<string>();
+                for (const id in newState) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const state = newState[id] as any[];
+                    if (state[0]?.user_id) onlineIds.add(state[0].user_id);
+                }
+                setOnlineUsers(onlineIds);
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await presenceChannel.track({ user_id: user.id, online_at: new Date().toISOString() });
+                }
+            });
 
-            // Check if they blocked me
-            const { data: blockedByData } = await supabase
-                .from('blocks')
-                .select('*')
-                .eq('blocker_id', selectedChat)
-                .eq('blocked_id', user.id)
-                .single();
-            
-            setIsBlocked(!!blockedByData);
+        return () => {
+            supabase.removeChannel(presenceChannel);
         };
-
-        checkBlockStatus();
-    }, [user, selectedChat]);
+    }, [user]);
 
     // Real-time subscription
     useEffect(() => {
@@ -268,6 +270,74 @@ const Messages: React.FC = () => {
                 setPage(prev => prev + 1);
             }
             userScrolledUp.current = scrollTop + messagesContainerRef.current.clientHeight < scrollHeight - 50;
+        }
+    };
+
+    const checkBlockedStatus = useCallback(async () => {
+        if (!selectedChat || !user) return;
+        const { data } = await supabase.rpc('is_blocked', { target_id: selectedChat });
+        setIsBlocking(!!data);
+    }, [selectedChat, user]);
+
+    useEffect(() => {
+        checkBlockedStatus();
+    }, [checkBlockedStatus]);
+
+    const blockUser = async () => {
+        if (!selectedChat || !user) return;
+        if (!confirm('Are you sure you want to block this user? They will not be able to message you.')) return;
+
+        const { error } = await supabase.rpc('block_user', { target_id: selectedChat });
+        if (error) {
+            console.error('Error blocking user:', error);
+            alert('Failed to block user');
+        } else {
+            setIsBlocking(true);
+            alert('User blocked');
+            setSelectedChat(null);
+            loadConversations();
+            router.push('/messages');
+        }
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0 || !selectedChat || !user) return;
+        
+        const file = e.target.files[0];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        setUploading(true);
+        try {
+            const { error: uploadError } = await supabase.storage
+                .from('chat-attachments')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('chat-attachments')
+                .getPublicUrl(filePath);
+
+            // Send message with attachment
+            const { error: msgError } = await supabase.from('messages').insert({
+                sender_id: user.id,
+                receiver_id: selectedChat,
+                content: 'Sent an image',
+                attachment_url: publicUrl,
+                attachment_type: 'image'
+            });
+
+            if (msgError) throw msgError;
+            
+            // Optimistic update could be added here, but for simplicity we wait for real-time
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('Failed to upload file');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -345,6 +415,7 @@ const Messages: React.FC = () => {
                                 lastMessage={convo.last_message}
                                 unread={convo.unread}
                                 isSelected={selectedChat === convo.user_id}
+                                isOnline={onlineUsers.has(convo.user_id)}
                                 onClick={selectChat}
                             />
                         ))
@@ -371,13 +442,22 @@ const Messages: React.FC = () => {
                                     </h2>
                                 </Link>
                             </div>
-                            <button
-                                onClick={() => setReportModalOpen(true)}
-                                className="text-gray-400 hover:text-red-400 transition p-2"
-                                title="Report User"
-                            >
-                                <Flag size={20} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={blockUser}
+                                    className="text-gray-400 hover:text-red-400 transition p-2"
+                                    title="Block User"
+                                >
+                                    <Ban size={20} />
+                                </button>
+                                <button
+                                    onClick={() => setReportModalOpen(true)}
+                                    className="text-gray-400 hover:text-yellow-400 transition p-2"
+                                    title="Report User"
+                                >
+                                    <Flag size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Messages List */}
@@ -402,6 +482,8 @@ const Messages: React.FC = () => {
                                         isMe={isMe}
                                         showAvatar={showAvatar}
                                         senderId={msg.sender_id}
+                                        attachmentUrl={msg.attachment_url}
+                                        attachmentType={msg.attachment_type}
                                     />
                                 );
                             })}
@@ -429,7 +511,23 @@ const Messages: React.FC = () => {
                             </div>
                         ) : (
                             <form onSubmit={sendMessage} className="p-4 border-t border-gray-800 bg-gray-900/50">
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 items-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="text-gray-400 hover:text-white p-2"
+                                        disabled={uploading}
+                                        title="Attach Image"
+                                    >
+                                        {uploading ? <Loader2 size={20} className="animate-spin" /> : <Paperclip size={20} />}
+                                    </button>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileSelect}
+                                        className="hidden"
+                                        accept="image/*"
+                                    />
                                     <input
                                         type="text"
                                         value={newMessage}

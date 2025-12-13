@@ -4,6 +4,7 @@
 import React, { useState, ReactNode } from 'react';
 import { Github, Linkedin, Twitter } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 
 const Modal = dynamic(() => import('./Modal'), { ssr: false });
 
@@ -122,12 +123,12 @@ const Footer: React.FC = () => {
                                             </button>
                                         </li>
                                         <li>
-                                            <button
-                                                onClick={() => openModal('Contact Us', <p className="text-gray-300">Email us at <a href="mailto:support@skillogue.com" className="text-indigo-400">support@skillogue.com</a></p>)}
+                                            <Link
+                                                href="/contact"
                                                 className="text-base text-gray-300 hover:text-white text-left transition"
                                             >
                                                 Contact Us
-                                            </button>
+                                            </Link>
                                         </li>
                                         <li>
                                             <button

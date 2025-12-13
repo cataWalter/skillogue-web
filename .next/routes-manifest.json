@@ -67,6 +67,12 @@
       "namedRegex": "^/admin/verification(?:/)?$"
     },
     {
+      "page": "/contact",
+      "regex": "^/contact(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/contact(?:/)?$"
+    },
+    {
       "page": "/dashboard",
       "regex": "^/dashboard(?:/)?$",
       "routeKeys": {},
@@ -77,6 +83,12 @@
       "regex": "^/edit\\-profile(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/edit\\-profile(?:/)?$"
+    },
+    {
+      "page": "/favorites",
+      "regex": "^/favorites(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/favorites(?:/)?$"
     },
     {
       "page": "/forgot-password",

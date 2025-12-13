@@ -10,6 +10,10 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
+  moduleNameMapper: {
+    '^@dicebear/collection$': '<rootDir>/__mocks__/@dicebear/collection.js',
+    '^@dicebear/core$': '<rootDir>/__mocks__/@dicebear/core.js',
+  },
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
