@@ -111,6 +111,70 @@ describe('Dashboard Integration Flow', () => {
     expect(screen.getByText('Bob')).toBeInTheDocument();
   });
 
+  it('handles partial data fetch errors gracefully', async () => {
+    // Mock errors for secondary data
+    (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'get_recent_conversations') return Promise.resolve({ data: null, error: { message: 'Convo Error' } });
+      if (fn === 'get_suggested_profiles') return Promise.resolve({ data: null, error: { message: 'Suggest Error' } });
+      return Promise.resolve({ data: [], error: null });
+    });
+
+    (supabase.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({ 
+                  data: {
+                      ...mockProfile,
+                      passions_count: [{ count: 0 }],
+                      languages_count: [{ count: 0 }]
+                  }, 
+                  error: null 
+              }),
+            })),
+          })),
+        };
+      }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: null, error: { message: 'Passions Error' } }),
+          })),
+        };
+      }
+      return { select: jest.fn() };
+    });
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith("Error fetching conversations:", expect.objectContaining({ message: 'Convo Error' }));
+    expect(consoleSpy).toHaveBeenCalledWith("Error fetching suggestions:", expect.objectContaining({ message: 'Suggest Error' }));
+    expect(consoleSpy).toHaveBeenCalledWith("Error fetching passions:", expect.objectContaining({ message: 'Passions Error' }));
+
+    consoleSpy.mockRestore();
+  });
+
+  it('handles conversation with no timestamp', async () => {
+    const convoNoTime = { ...mockConversations[0], last_message_time: null };
+    (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'get_recent_conversations') return Promise.resolve({ data: [convoNoTime], error: null });
+      return Promise.resolve({ data: [], error: null });
+    });
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
+    });
+  });
+
   it('redirects to onboarding if profile is incomplete', async () => {
     // Mock incomplete profile
     (supabase.from as jest.Mock).mockImplementation((table) => {

@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useAuth } from '../../src/hooks/useAuth';
 import { supabase } from '../../src/supabaseClient';
 
@@ -57,19 +57,47 @@ describe('useAuth Hook', () => {
     });
 
     it('should handle auth state changes', async () => {
+        let authCallback: any;
         (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null } });
         
-        // Mock onAuthStateChange to trigger the callback immediately
+        // Mock onAuthStateChange to capture callback
         (supabase.auth.onAuthStateChange as jest.Mock).mockImplementation((callback) => {
-            callback('SIGNED_IN', mockSession);
+            authCallback = callback;
             return { data: { subscription: { unsubscribe: jest.fn() } } };
         });
 
         const { result } = renderHook(() => useAuth());
 
+        // Initial state
         await waitFor(() => {
-            expect(result.current.session).toEqual(mockSession);
-            expect(result.current.user).toEqual(mockSession.user);
+            expect(result.current.loading).toBe(false);
         });
+
+        // Trigger SIGNED_IN
+        await act(async () => {
+            authCallback('SIGNED_IN', mockSession);
+        });
+
+        expect(result.current.session).toEqual(mockSession);
+        expect(result.current.user).toEqual(mockSession.user);
+        expect(result.current.loading).toBe(false);
+
+        // Trigger SIGNED_OUT
+        await act(async () => {
+            authCallback('SIGNED_OUT', null);
+        });
+
+        expect(result.current.session).toBeNull();
+        expect(result.current.user).toBeNull();
+        expect(result.current.loading).toBe(false);
+
+        // Trigger USER_UPDATED
+        const updatedSession = { ...mockSession, user: { ...mockSession.user, email: 'updated@example.com' } };
+        await act(async () => {
+            authCallback('USER_UPDATED', updatedSession);
+        });
+
+        expect(result.current.user?.email).toBe('updated@example.com');
+        expect(result.current.loading).toBe(false);
     });
 });

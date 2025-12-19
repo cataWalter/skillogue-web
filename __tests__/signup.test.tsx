@@ -84,4 +84,25 @@ describe('SignUp Page', () => {
       expect(mockPush).toHaveBeenCalledWith('/login')
     })
   })
+
+  it('handles signup error', async () => {
+    (supabase.auth.signUp as jest.Mock).mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'Signup failed' },
+    });
+
+    render(<SignUp />);
+
+    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } });
+    
+    const checkbox = screen.getByRole('checkbox');
+    fireEvent.click(checkbox);
+    
+    fireEvent.click(screen.getByRole('button'));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Signup failed');
+    });
+  });
 })

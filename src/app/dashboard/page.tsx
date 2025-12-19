@@ -79,30 +79,36 @@ const Dashboard: React.FC = () => {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-6 sm:mb-8">
                 Welcome back, <span className="text-indigo-400">{profile?.first_name}</span>!
             </h1>
 
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Link href="/messages" className="bg-gray-900 p-6 rounded-2xl border border-gray-800 hover:border-purple-600 transition-all duration-300 transform hover:scale-105">
-                    <MessageSquare className="h-8 w-8 text-purple-400 mb-2" />
-                    <h2 className="text-xl font-bold text-white">Messages</h2>
-                    <p className="mt-1 text-gray-400">View your conversations</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                <Link href="/messages" className="bg-gray-900 p-5 sm:p-6 rounded-2xl border border-gray-800 hover:border-purple-600 transition-all duration-300 transform hover:scale-105 flex sm:block items-center gap-4 sm:gap-0">
+                    <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400 mb-0 sm:mb-2" />
+                    <div>
+                        <h2 className="text-lg sm:text-xl font-bold text-white">Messages</h2>
+                        <p className="text-sm sm:text-base text-gray-400">View your conversations</p>
+                    </div>
                 </Link>
-                <Link href="/profile" className="bg-gray-900 p-6 rounded-2xl border border-gray-800 hover:border-indigo-600 transition-all duration-300 transform hover:scale-105">
-                    <User className="h-8 w-8 text-indigo-400 mb-2" />
-                    <h2 className="text-xl font-bold text-white">Your Profile</h2>
-                    <p className="mt-1 text-gray-400">Update your details</p>
+                <Link href="/profile" className="bg-gray-900 p-5 sm:p-6 rounded-2xl border border-gray-800 hover:border-indigo-600 transition-all duration-300 transform hover:scale-105 flex sm:block items-center gap-4 sm:gap-0">
+                    <User className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-400 mb-0 sm:mb-2" />
+                    <div>
+                        <h2 className="text-lg sm:text-xl font-bold text-white">Your Profile</h2>
+                        <p className="text-sm sm:text-base text-gray-400">Update your details</p>
+                    </div>
                 </Link>
-                <Link href="/search" className="bg-gray-900 p-6 rounded-2xl border border-gray-800 hover:border-pink-600 transition-all duration-300 transform hover:scale-105">
-                    <Search className="h-8 w-8 text-pink-400 mb-2" />
-                    <h2 className="text-xl font-bold text-white">Discover</h2>
-                    <p className="mt-1 text-gray-400">Find new connections</p>
+                <Link href="/search" className="bg-gray-900 p-5 sm:p-6 rounded-2xl border border-gray-800 hover:border-pink-600 transition-all duration-300 transform hover:scale-105 flex sm:block items-center gap-4 sm:gap-0">
+                    <Search className="h-6 w-6 sm:h-8 sm:w-8 text-pink-400 mb-0 sm:mb-2" />
+                    <div>
+                        <h2 className="text-lg sm:text-xl font-bold text-white">Discover</h2>
+                        <p className="text-sm sm:text-base text-gray-400">Find new connections</p>
+                    </div>
                 </Link>
             </div>
 
-            <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="mt-8 sm:mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
                 {/* Main Content Area */}
                 <div className="lg:col-span-2 space-y-8">
                     {/* Profile Completion Widget */}

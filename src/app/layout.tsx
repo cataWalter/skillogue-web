@@ -6,6 +6,8 @@ import Footer from "../components/Footer";
 import CookieBanner from "../components/CookieBanner";
 import { NotificationProvider } from "../context/NotificationContext";
 import { Toaster } from 'react-hot-toast';
+import AnalyticsTracker from "../components/AnalyticsTracker";
+import { Suspense } from "react";
 
 const spaceGrotesk = Space_Grotesk({ 
   subsets: ["latin"],
@@ -47,6 +49,12 @@ export const metadata: Metadata = {
     description: "Connect with people who share your passions and skills.",
     images: ["/og-image.jpg"],
   },
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/logo192.png',
+  },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -58,6 +66,9 @@ export default function RootLayout({
     <html lang="en" className={`${spaceGrotesk.variable} ${outfit.variable}`}>
       <body className="font-sans bg-background text-text flex flex-col min-h-screen selection:bg-primary selection:text-white">
         <NotificationProvider>
+          <Suspense fallback={null}>
+            <AnalyticsTracker />
+          </Suspense>
           <Navbar />
           <main className="flex-grow flex flex-col">
             {children}

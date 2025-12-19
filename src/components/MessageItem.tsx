@@ -7,11 +7,9 @@ interface MessageItemProps {
     isMe: boolean;
     showAvatar: boolean;
     senderId: string;
-    attachmentUrl?: string;
-    attachmentType?: string;
 }
 
-const MessageItem: React.FC<MessageItemProps> = React.memo(({ content, createdAt, isMe, showAvatar, senderId, attachmentUrl, attachmentType }) => {
+const MessageItem: React.FC<MessageItemProps> = React.memo(({ content, createdAt, isMe, showAvatar, senderId }) => {
     return (
         <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-2`}>
             {!isMe && (
@@ -26,10 +24,6 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ content, createdAt
                         : 'bg-gray-800 text-gray-200 rounded-bl-none'
                 }`}
             >
-                {attachmentUrl && attachmentType === 'image' && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={attachmentUrl} alt="Attachment" className="max-w-full rounded-lg mb-2" />
-                )}
                 <p>{content}</p>
                 <p className={`text-[10px] mt-1 ${isMe ? 'text-indigo-200' : 'text-gray-500'} text-right`}>
                     {new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

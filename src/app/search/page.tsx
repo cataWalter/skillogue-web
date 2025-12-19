@@ -440,6 +440,7 @@ const Search: React.FC = () => {
                                         <button
                                             onClick={() => deleteSavedSearch(search.id)}
                                             className="text-gray-500 hover:text-red-400 ml-2"
+                                            title="Delete Search"
                                         >
                                             <Trash2 size={14} />
                                         </button>

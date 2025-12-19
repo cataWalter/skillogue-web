@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Send, Flag, ShieldAlert, MessageSquare, Ban, Paperclip } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Flag, ShieldAlert, MessageSquare, Ban } from 'lucide-react';
 import { User as AuthUser } from '@supabase/supabase-js';
 import Avatar from '../../components/Avatar';
 import ReportModal from '../../components/ReportModal';
@@ -26,8 +26,6 @@ interface Message {
     content: string;
     sender: Profile;
     receiver: Profile;
-    attachment_url?: string;
-    attachment_type?: string;
 }
 
 interface Conversation {
@@ -58,8 +56,6 @@ const Messages: React.FC = () => {
     const [isBlocking, setIsBlocking] = useState(false);
     const [isReportModalOpen, setReportModalOpen] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
-    const [uploading, setUploading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const userScrolledUp = useRef(false);
@@ -300,47 +296,6 @@ const Messages: React.FC = () => {
         }
     };
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0 || !selectedChat || !user) return;
-        
-        const file = e.target.files[0];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
-
-        setUploading(true);
-        try {
-            const { error: uploadError } = await supabase.storage
-                .from('chat-attachments')
-                .upload(filePath, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('chat-attachments')
-                .getPublicUrl(filePath);
-
-            // Send message with attachment
-            const { error: msgError } = await supabase.from('messages').insert({
-                sender_id: user.id,
-                receiver_id: selectedChat,
-                content: 'Sent an image',
-                attachment_url: publicUrl,
-                attachment_type: 'image'
-            });
-
-            if (msgError) throw msgError;
-            
-            // Optimistic update could be added here, but for simplicity we wait for real-time
-        } catch (error) {
-            console.error('Error uploading file:', error);
-            alert('Failed to upload file');
-        } finally {
-            setUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
-    };
-
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newMessage.trim() || !selectedChat || !user) return;
@@ -374,6 +329,16 @@ const Messages: React.FC = () => {
             alert('Failed to send message');
         } else {
             loadConversations();
+            
+            // Send Push Notification
+            supabase.functions.invoke('send-push', {
+                body: {
+                    receiver_id: selectedChat,
+                    title: 'New Message',
+                    body: content,
+                    url: `/messages?conversation=${user.id}`
+                }
+            }).catch(err => console.error('Failed to send push:', err));
         }
     };
 
@@ -428,34 +393,34 @@ const Messages: React.FC = () => {
                 {selectedChat ? (
                     <>
                         {/* Chat Header */}
-                        <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
-                            <div className="flex items-center gap-3">
-                                <button onClick={() => setSelectedChat(null)} className="md:hidden text-gray-400 hover:text-white">
-                                    <ArrowLeft size={24} />
+                        <div className="p-3 sm:p-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <button onClick={() => setSelectedChat(null)} className="md:hidden text-gray-400 hover:text-white p-1">
+                                    <ArrowLeft size={20} />
                                 </button>
                                 <Link href={`/user/${selectedChat}`}>
-                                    <Avatar seed={selectedChat} className="w-10 h-10 cursor-pointer hover:opacity-80 transition" />
+                                    <Avatar seed={selectedChat} className="w-8 h-8 sm:w-10 sm:h-10 cursor-pointer hover:opacity-80 transition" />
                                 </Link>
                                 <Link href={`/user/${selectedChat}`} className="hover:underline">
-                                    <h2 className="font-bold text-lg">
+                                    <h2 className="font-bold text-base sm:text-lg truncate max-w-[150px] sm:max-w-xs">
                                         {currentChatUser?.full_name || 'Chat'}
                                     </h2>
                                 </Link>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2">
                                 <button
                                     onClick={blockUser}
                                     className="text-gray-400 hover:text-red-400 transition p-2"
                                     title="Block User"
                                 >
-                                    <Ban size={20} />
+                                    <Ban size={18} className="sm:w-5 sm:h-5" />
                                 </button>
                                 <button
                                     onClick={() => setReportModalOpen(true)}
                                     className="text-gray-400 hover:text-yellow-400 transition p-2"
                                     title="Report User"
                                 >
-                                    <Flag size={20} />
+                                    <Flag size={18} className="sm:w-5 sm:h-5" />
                                 </button>
                             </div>
                         </div>
@@ -464,7 +429,8 @@ const Messages: React.FC = () => {
                         <div
                             ref={messagesContainerRef}
                             onScroll={handleScroll}
-                            className="flex-grow overflow-y-auto p-4 space-y-4 bg-black"
+                            data-testid="messages-container"
+                            className="flex-grow overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-black"
                         >
                             {loadingMore && (
                                 <div className="flex justify-center py-2">
@@ -482,8 +448,6 @@ const Messages: React.FC = () => {
                                         isMe={isMe}
                                         showAvatar={showAvatar}
                                         senderId={msg.sender_id}
-                                        attachmentUrl={msg.attachment_url}
-                                        attachmentType={msg.attachment_type}
                                     />
                                 );
                             })}
@@ -512,22 +476,6 @@ const Messages: React.FC = () => {
                         ) : (
                             <form onSubmit={sendMessage} className="p-4 border-t border-gray-800 bg-gray-900/50">
                                 <div className="flex gap-2 items-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="text-gray-400 hover:text-white p-2"
-                                        disabled={uploading}
-                                        title="Attach Image"
-                                    >
-                                        {uploading ? <Loader2 size={20} className="animate-spin" /> : <Paperclip size={20} />}
-                                    </button>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        onChange={handleFileSelect}
-                                        className="hidden"
-                                        accept="image/*"
-                                    />
                                     <input
                                         type="text"
                                         value={newMessage}

@@ -53,8 +53,13 @@ const UserProfile: React.FC = () => {
                 return;
             }
 
-            // Check if I am blocked by this user (optional, requires RLS adjustment or just rely on profile fetch failing if RLS is strict)
-            // For now, we'll skip explicit check and rely on profile visibility or just show the profile.
+            // Check if I am blocked by this user
+            const { data: blockedByData } = await supabase.rpc('is_blocked_by', { target_id: id });
+            if (blockedByData) {
+                setIsBlockedByProfileUser(true);
+                setLoading(false);
+                return;
+            }
             
             checkBlockStatus(currentSession.user.id, id);
 
@@ -216,8 +221,7 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
             ) : (
                 <button
                     onClick={handleUnblock}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
-                >
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"                    title="Unblock User"                >
                     <UserX size={18} />
                     <span>Unblock</span>
                 </button>

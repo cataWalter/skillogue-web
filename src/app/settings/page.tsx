@@ -3,10 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { User, Edit, ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
+import PushNotificationToggle from '../../components/PushNotificationToggle';
 
 const Settings: React.FC = () => {
     return (
-        <main className="flex-grow p-6 max-w-4xl mx-auto w-full">
+        <main className="flex-grow p-4 sm:p-6 max-w-4xl mx-auto w-full">
             <div className="flex items-center mb-8">
                 <Link href="/dashboard" className="text-gray-400 hover:text-white transition flex items-center gap-2">
                     <ArrowLeft size={20} />
@@ -14,8 +15,8 @@ const Settings: React.FC = () => {
                 </Link>
             </div>
 
-            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-3">
-                <SettingsIcon size={36} /> Settings
+            <h1 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-3">
+                <SettingsIcon className="w-8 h-8 sm:w-9 sm:h-9" /> Settings
             </h1>
             <p className="text-gray-400 mb-10">
                 Manage your account, privacy, and notification preferences.
@@ -73,13 +74,10 @@ const Settings: React.FC = () => {
                 </div>
 
                 {/* Notification Settings */}
-                {/* <div>
+                <div>
                     <h2 className="text-xl font-semibold border-b border-gray-700 pb-2 mb-4">Notifications</h2>
-                    <ul className="space-y-3 text-gray-300">
-                        <li><Link href="/settings/notifications" className="hover:underline">Manage email notifications</Link></li>
-                        <li><Link href="/settings/notifications" className="hover:underline">In-app alert preferences</Link></li>
-                    </ul>
-                </div> */}
+                    <PushNotificationToggle />
+                </div>
             </div>
         </main>
     );

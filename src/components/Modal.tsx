@@ -47,6 +47,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer 
 
     const content = (
         <div 
+            data-testid="modal-backdrop"
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity"
             onClick={handleBackdropClick}
             role="dialog"
