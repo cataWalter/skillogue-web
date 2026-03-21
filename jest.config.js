@@ -16,6 +16,7 @@ const customJestConfig = {
     '^@dicebear/core$': '<rootDir>/__mocks__/@dicebear/core.js',
   },
   setupFiles: ['<rootDir>/jest.env.js'],
+  testPathIgnorePatterns: ['/node_modules/', '/__tests__/e2e/'],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

@@ -133,6 +133,27 @@ ALTER TABLE saved_searches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE verification_requests ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for idempotency)
+DROP POLICY IF EXISTS "Allow public read access to passions" ON passions;
+DROP POLICY IF EXISTS "Allow public read access to languages" ON languages;
+DROP POLICY IF EXISTS "Allow public read access to locations" ON locations;
+DROP POLICY IF EXISTS "Allow public read access to profiles" ON profiles;
+DROP POLICY IF EXISTS "Allow users to update own profile" ON profiles;
+DROP POLICY IF EXISTS "Allow public read access to user_passions" ON user_passions;
+DROP POLICY IF EXISTS "Allow users to manage own passions" ON user_passions;
+DROP POLICY IF EXISTS "Allow public read access to profile_languages" ON profile_languages;
+DROP POLICY IF EXISTS "Allow users to manage own languages" ON profile_languages;
+DROP POLICY IF EXISTS "Allow users to read own messages" ON messages;
+DROP POLICY IF EXISTS "Allow users to send messages" ON messages;
+DROP POLICY IF EXISTS "Allow users to read own notifications" ON notifications;
+DROP POLICY IF EXISTS "Allow users to update own notifications" ON notifications;
+DROP POLICY IF EXISTS "Allow users to read own favorites" ON favorites;
+DROP POLICY IF EXISTS "Allow users to manage own favorites" ON favorites;
+DROP POLICY IF EXISTS "Allow users to manage own saved searches" ON saved_searches;
+DROP POLICY IF EXISTS "Allow users to create reports" ON reports;
+DROP POLICY IF EXISTS "Allow users to create verification requests" ON verification_requests;
+DROP POLICY IF EXISTS "Allow users to read own verification requests" ON verification_requests;
+
 -- Create policies for public read access to passions and languages
 CREATE POLICY "Allow public read access to passions" ON passions
     FOR SELECT USING (true);
