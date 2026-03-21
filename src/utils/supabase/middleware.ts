@@ -2,7 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 const getSupabaseUrl = (): string => {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return (url && url.trim()) ? url : 'https://example.supabase.co';
 };
 
 const getSupabaseAnonKey = (): string => {

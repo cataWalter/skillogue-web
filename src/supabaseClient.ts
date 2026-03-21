@@ -4,17 +4,16 @@ const getSupabaseClient = (): SupabaseClient => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // Return a mock client for build time when env vars aren't available
-    // The actual client will be used at runtime when env vars are present
-    return createClient('http://localhost:54321', 'placeholder-key', {
-      auth: {
-        persistSession: false,
-      },
-    });
-  }
+  // If env vars are missing or empty, use a valid placeholder URL for build time
+  // At runtime, the real Supabase client will be used when env vars are available
+  const url = (supabaseUrl && supabaseUrl.trim()) ? supabaseUrl : 'https://placeholder.supabase.co';
+  const key = (supabaseAnonKey && supabaseAnonKey.trim()) ? supabaseAnonKey : 'placeholder-key';
 
-  return createClient(supabaseUrl, supabaseAnonKey);
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+    },
+  });
 };
 
 export const supabase = getSupabaseClient();
