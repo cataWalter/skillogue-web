@@ -66,18 +66,20 @@ export default function RootLayout({
     <html lang="en" className={`${spaceGrotesk.variable} ${outfit.variable}`}>
       <body className="font-sans bg-background text-text flex flex-col min-h-screen selection:bg-primary selection:text-white">
         <div className="gradient-mesh" aria-hidden="true" />
-        <NotificationProvider>
-          <Suspense fallback={null}>
-            <AnalyticsTracker />
-          </Suspense>
-          <Navbar />
-          <main className="flex-grow flex flex-col">
-            {children}
-          </main>
-          <Footer />
-          <CookieBanner />
-          <Toaster position="top-right" />
-        </NotificationProvider>
+        <Suspense fallback={null}>
+          <NotificationProvider>
+            <Suspense fallback={null}>
+              <AnalyticsTracker />
+            </Suspense>
+            <Navbar />
+            <main className="flex-grow flex flex-col">
+              {children}
+            </main>
+            <Footer />
+            <CookieBanner />
+            <Toaster position="top-right" />
+          </NotificationProvider>
+        </Suspense>
       </body>
     </html>
   );

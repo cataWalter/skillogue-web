@@ -1,6 +1,8 @@
 // src/supabaseClient.js
 import { createClient } from '@supabase/supabase-js';
 
+let supabaseInstance = null;
+
 const getSupabaseClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -17,6 +19,20 @@ const getSupabaseClient = () => {
   });
 };
 
-const supabase = getSupabaseClient();
+// Lazy initialize the supabase client on first use
+const getSupabase = () => {
+  if (!supabaseInstance) {
+    supabaseInstance = getSupabaseClient();
+  }
+  return supabaseInstance;
+};
 
-export { supabase };
+// Keep the old export for backward compatibility
+const supabase = new Proxy({}, {
+  get: (target, prop) => {
+    const client = getSupabase();
+    return client[prop];
+  },
+});
+
+export { supabase, getSupabase };
