@@ -1,0 +1,100 @@
+#!/bin/bash
+
+# Supabase Database Population Script using CURL
+# This script populates the Supabase database with sample data
+
+SUPABASE_URL="https://nsbgzdxxzeznozgtsplm.supabase.co"
+SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYmd6ZHh4emV6bm96Z3RzcGxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMjc4NzAsImV4cCI6MjA4OTYwMzg3MH0.tHMboH_uJEy8Ch-FM5i9A5O4oZl_GcqHS9bJ6rLzlDM"
+
+echo "========================================="
+echo "Populating Supabase Database with CURL"
+echo "========================================="
+
+# 1. Insert Passions
+echo ""
+echo "1. Inserting Passions..."
+curl -X POST "${SUPABASE_URL}/rest/v1/passions" \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: resolution=merge-duplicates" \
+  -d '[
+    {"id": 1, "name": "Photography"},
+    {"id": 2, "name": "Travel"},
+    {"id": 3, "name": "Cooking"},
+    {"id": 4, "name": "Music"},
+    {"id": 5, "name": "Sports"},
+    {"id": 6, "name": "Reading"},
+    {"id": 7, "name": "Gaming"},
+    {"id": 8, "name": "Art"},
+    {"id": 9, "name": "Technology"},
+    {"id": 10, "name": "Fitness"},
+    {"id": 11, "name": "Movies"},
+    {"id": 12, "name": "Dancing"},
+    {"id": 13, "name": "Writing"},
+    {"id": 14, "name": "Nature"},
+    {"id": 15, "name": "Fashion"}
+  ]'
+echo " ✓ Passions inserted"
+
+# 2. Insert Languages
+echo ""
+echo "2. Inserting Languages..."
+curl -X POST "${SUPABASE_URL}/rest/v1/languages" \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: resolution=merge-duplicates" \
+  -d '[
+    {"id": 1, "name": "English"},
+    {"id": 2, "name": "Spanish"},
+    {"id": 3, "name": "French"},
+    {"id": 4, "name": "German"},
+    {"id": 5, "name": "Italian"},
+    {"id": 6, "name": "Portuguese"},
+    {"id": 7, "name": "Chinese"},
+    {"id": 8, "name": "Japanese"},
+    {"id": 9, "name": "Korean"},
+    {"id": 10, "name": "Arabic"},
+    {"id": 11, "name": "Russian"},
+    {"id": 12, "name": "Turkish"}
+  ]'
+echo " ✓ Languages inserted"
+
+# 3. Insert Locations
+echo ""
+echo "3. Inserting Locations..."
+curl -X POST "${SUPABASE_URL}/rest/v1/locations" \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"city": "New York", "region": "New York", "country": "USA"},
+    {"city": "Los Angeles", "region": "California", "country": "USA"},
+    {"city": "London", "region": "England", "country": "UK"},
+    {"city": "Paris", "region": "Ile-de-France", "country": "France"},
+    {"city": "Tokyo", "region": "Tokyo", "country": "Japan"},
+    {"city": "Berlin", "region": "Berlin", "country": "Germany"},
+    {"city": "Sydney", "region": "New South Wales", "country": "Australia"},
+    {"city": "Toronto", "region": "Ontario", "country": "Canada"},
+    {"city": "Istanbul", "region": "Istanbul", "country": "Turkey"},
+    {"city": "Barcelona", "region": "Catalonia", "country": "Spain"}
+  ]'
+echo " ✓ Locations inserted"
+
+echo ""
+echo "========================================="
+echo "Sample data insertion complete!"
+echo "========================================="
+echo ""
+echo "Note: To insert user profiles, you need to:"
+echo "1. Create users through Supabase Auth first"
+echo "2. Then insert profile data linked to those user IDs"
+echo ""
+echo "Example CURL for inserting a profile (after user creation):"
+echo ""
+echo 'curl -X POST "${SUPABASE_URL}/rest/v1/profiles" \'
+echo '  -H "apikey: ${SUPABASE_ANON_KEY}" \'
+echo '  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \'
+echo '  -H "Content-Type: application/json" \'
+echo '  -d '"'"'{"id": "USER_UUID_HERE", "first_name": "John", "last_name": "Doe", "about_me": "Hello!", "age": 28, "gender": "male", "verified": true}'"'"'
