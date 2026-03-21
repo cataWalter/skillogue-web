@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 const getSupabaseUrl = (): string => {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
 };
 
 const getSupabaseAnonKey = (): string => {

@@ -7,7 +7,7 @@ const getSupabaseClient = (): SupabaseClient => {
   if (!supabaseUrl || !supabaseAnonKey) {
     // Return a mock client for build time when env vars aren't available
     // The actual client will be used at runtime when env vars are present
-    return createClient('https://placeholder.supabase.co', 'placeholder-key', {
+    return createClient('http://localhost:54321', 'placeholder-key', {
       auth: {
         persistSession: false,
       },
