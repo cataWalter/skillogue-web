@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../supabaseClient';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { appClient } from '../../lib/appClient';
 import MultiSelect from '../../components/MultiSelect';
 import Link from 'next/link';
-import { updateProfileAction } from '../actions/profile';
+import { updateProfile } from '../actions/profile';
 
 interface ProfileState {
     first_name: string;
@@ -56,7 +56,7 @@ const EditProfile: React.FC = () => {
     useEffect(() => {
         const loadInitialData = async () => {
             setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await appClient.auth.getUser();
             if (!user) {
                 router.push('/login');
                 return;
@@ -70,15 +70,16 @@ const EditProfile: React.FC = () => {
                 allPassionsRes,
                 countriesRes
             ] = await Promise.all([
-                supabase.from('profiles').select(`*, locations(*)`).eq('id', user.id).single(),
-                supabase.from('profile_languages').select('languages(name)').eq('profile_id', user.id),
-                supabase.from('profile_passions').select('passions(name)').eq('profile_id', user.id),
-                supabase.from('languages').select('id, name'),
-                supabase.from('passions').select('id, name'),
-                supabase.rpc('get_distinct_countries')
+                appClient.from('profiles').select(`*, locations(*)`).eq('id', user.id).single(),
+                appClient.from('profile_languages').select('languages(name)').eq('profile_id', user.id),
+                appClient.from('profile_passions').select('passions(name)').eq('profile_id', user.id),
+                appClient.from('languages').select('id, name'),
+                appClient.from('passions').select('id, name'),
+                appClient.rpc('get_distinct_countries')
             ]);
 
-            const { data: profileData, error: profileError } = profileRes;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: profileData, error: profileError } = profileRes as any;
             if (profileError && profileError.code !== 'PGRST116') {
                 setError('Failed to load profile.');
                 console.error(profileError);
@@ -86,11 +87,13 @@ const EditProfile: React.FC = () => {
                 return;
             }
 
-            const currentLanguages = (languageRes.data as { languages: { name: string } | null }[] | null)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const currentLanguages = ((languageRes as any).data as { languages: { name: string } | null }[] | null)
                 ?.map(item => item.languages?.name)
                 .filter((name): name is string => !!name) || [];
 
-            const currentPassions = (passionRes.data as { passions: { name: string } | null }[] | null)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const currentPassions = ((passionRes as any).data as { passions: { name: string } | null }[] | null)
                 ?.map(item => item.passions?.name)
                 .filter((name): name is string => !!name) || [];
 
@@ -116,9 +119,12 @@ const EditProfile: React.FC = () => {
 
             setSelectedLanguages(currentLanguages);
             setSelectedPassions(currentPassions);
-            setAvailableLanguages(allLanguagesRes.data || []);
-            setAvailablePassions(allPassionsRes.data || []);
-            setCountries(countriesRes.data?.map((c: { country: string }) => c.country) || []);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setAvailableLanguages((allLanguagesRes as any).data || []);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setAvailablePassions((allPassionsRes as any).data || []);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setCountries((countriesRes as any).data?.map((c: { country: string }) => c.country) || []);
 
             setLoading(false);
         };
@@ -127,12 +133,14 @@ const EditProfile: React.FC = () => {
     }, [router]);
 
     const fetchRegions = async (country: string) => {
-        const { data } = await supabase.rpc('get_distinct_regions', { p_country: country });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (appClient as any).rpc('get_distinct_regions', { p_country: country });
         setRegions(data?.map((r: { region: string }) => r.region) || []);
     };
 
     const fetchCities = async (country: string, region: string) => {
-        const { data } = await supabase.rpc('get_distinct_cities', { p_country: country, p_region: region });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (appClient as any).rpc('get_distinct_cities', { p_country: country, p_region: region });
         setCities(data?.map((c: { city: string }) => c.city) || []);
     };
 
@@ -159,7 +167,7 @@ const EditProfile: React.FC = () => {
         setError('');
 
         try {
-            const result = await updateProfileAction({
+            const result = await updateProfile({
                 first_name: profile.first_name,
                 last_name: profile.last_name,
                 about_me: profile.about_me,

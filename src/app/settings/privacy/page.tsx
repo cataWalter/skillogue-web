@@ -1,7 +1,8 @@
 'use client';
 
+import { appClient } from '../../../lib/appClient';
+
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../../supabaseClient';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Lock, Eye, MapPin, Calendar } from 'lucide-react';
 import Link from 'next/link';
@@ -18,13 +19,13 @@ const PrivacySettings: React.FC = () => {
 
     useEffect(() => {
         const fetchSettings = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await appClient.auth.getUser();
             if (!user) {
                 router.push('/login');
                 return;
             }
 
-            const { data, error } = await supabase
+            const { data, error } = await appClient
                 .from('profiles')
                 .select('is_private, show_age, show_location')
                 .eq('id', user.id)
@@ -50,10 +51,10 @@ const PrivacySettings: React.FC = () => {
         // Optimistic update
         setSettings(prev => ({ ...prev, [key]: value }));
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await appClient.auth.getUser();
         if (!user) return;
 
-        const { error } = await supabase
+        const { error } = await appClient
             .from('profiles')
             .update({ [key]: value })
             .eq('id', user.id);

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../../supabaseClient';
-import { Session } from '@supabase/supabase-js';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+type Session = { user: { id: string } } | null;
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { appClient } from '../../lib/appClient';
 import MultiSelect from '../../components/MultiSelect';
 import {
     Save,
@@ -54,6 +54,20 @@ interface SearchResult {
     show_age?: boolean;
     show_location?: boolean;
 }
+
+const mergeUniqueResults = (existing: SearchResult[], incoming: SearchResult[]) => {
+    const resultMap = new Map<string, SearchResult>();
+
+    for (const result of existing) {
+        resultMap.set(result.id, result);
+    }
+
+    for (const result of incoming) {
+        resultMap.set(result.id, result);
+    }
+
+    return Array.from(resultMap.values());
+};
 
 const PAGE_SIZE = 10;
 
@@ -141,8 +155,8 @@ const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
                 {user.profile_languages && user.profile_languages.length > 0 && (
                     <DetailItem icon={<Languages size={18} />} label="Languages">
                         <div className="flex flex-wrap gap-2 mt-1">
-                            {user.profile_languages.map((lang, i) => (
-                                <span key={i} className="px-2 py-1 bg-gray-800 text-indigo-200 rounded-full text-xs">
+                            {user.profile_languages.map((lang) => (
+                                <span key={lang} className="px-2 py-1 bg-gray-800 text-indigo-200 rounded-full text-xs">
                                     {lang}
                                 </span>
                             ))}
@@ -158,8 +172,8 @@ const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
                         <h4 className="font-medium text-gray-400 text-sm">Passions</h4>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        {user.profilepassions.map((passion, i) => (
-                            <span key={i} className="px-3 py-1 bg-indigo-900/50 text-indigo-200 rounded-full text-xs border border-indigo-800">
+                        {user.profilepassions.map((passion) => (
+                            <span key={passion} className="px-3 py-1 bg-indigo-900/50 text-indigo-200 rounded-full text-xs border border-indigo-800">
                                 {passion}
                             </span>
                         ))}
@@ -195,17 +209,22 @@ const Search: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const [session, setSession] = useState<Session | null>(null);
+    const resultsRef = useRef<SearchResult[]>([]);
+
+    useEffect(() => {
+        resultsRef.current = results;
+    }, [results]);
 
     useEffect(() => {
         const loadInitialData = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setSession(session);
+            const { data: { session } } = await appClient.auth.getSession();
+            setSession(session as Session);
 
-            const { data: passions } = await supabase.from('passions').select('id, name');
+            const { data: passions } = await appClient.from('passions').select('id, name');
             setAvailablePassions(passions || []);
 
             if (session) {
-                const { data: saved } = await supabase.from('saved_searches').select('*').eq('user_id', session.user.id);
+                const { data: saved } = await appClient.from('saved_searches').select('*').eq('user_id', session.user.id);
                 setSavedSearches(saved || []);
             }
         };
@@ -215,7 +234,7 @@ const Search: React.FC = () => {
     const performSearch = useCallback(async (pageNumber = 1) => {
         setLoading(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await appClient.auth.getSession();
             const currentUserId = session?.user?.id;
 
             // Convert selected passion names to IDs
@@ -223,7 +242,7 @@ const Search: React.FC = () => {
                 availablePassions.find(p => p.name === name)?.id
             ).filter(Boolean) as number[];
 
-            const { data, error } = await supabase.rpc('search_profiles', {
+            const { data, error } = await appClient.rpc('search_profiles', {
                 p_query: query || null,
                 p_location: location || null,
                 p_min_age: minAge ? parseInt(minAge) : null,
@@ -249,8 +268,9 @@ const Search: React.FC = () => {
                 setResults(newResults);
                 setTotalResults(newResults.length);
             } else {
-                setResults(prev => [...prev, ...newResults]);
-                setTotalResults(prev => prev + newResults.length);
+                const mergedResults = mergeUniqueResults(resultsRef.current, newResults);
+                setResults(mergedResults);
+                setTotalResults(mergedResults.length);
             }
             setHasMore(newResults.length === PAGE_SIZE);
         } catch (err) {
@@ -287,7 +307,7 @@ const Search: React.FC = () => {
             availablePassions.find(p => p.name === name)?.id
         ).filter(Boolean) as number[];
 
-        const { data, error } = await supabase.from('saved_searches').insert({
+        const { data, error } = await appClient.from('saved_searches').insert({
             user_id: session.user.id,
             name: saveSearchName,
             query: query || null,
@@ -330,7 +350,7 @@ const Search: React.FC = () => {
     };
 
     const deleteSavedSearch = async (id: number) => {
-        const { error } = await supabase.from('saved_searches').delete().eq('id', id);
+        const { error } = await appClient.from('saved_searches').delete().eq('id', id);
         if (!error) {
             setSavedSearches(savedSearches.filter(s => s.id !== id));
         }

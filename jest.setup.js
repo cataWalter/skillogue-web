@@ -1,38 +1,14 @@
-import '@testing-library/jest-dom'
+// Basic setup for testing without Drizzle/Postgres
+import '@testing-library/jest-dom';
 
-// Add TextEncoder/TextDecoder polyfills for Node.js environment
-if (typeof global.TextEncoder === 'undefined') {
-  const { TextEncoder, TextDecoder } = require('util');
-  global.TextEncoder = TextEncoder;
-  global.TextDecoder = TextDecoder;
-}
+process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
+process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID = 'test-project';
+process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID = 'test-db';
+process.env.APPWRITE_API_KEY = 'test-key';
 
-// Add Request polyfill
-if (typeof global.Request === 'undefined') {
-  global.Request = class Request {};
-}
-
-// Add Response polyfill
-if (typeof global.Response === 'undefined') {
-  global.Response = class Response {};
-}
-
-// Add Headers polyfill
-if (typeof global.Headers === 'undefined') {
-  global.Headers = class Headers {};
-}
-
-// Add AbortController polyfill
-if (typeof global.AbortController === 'undefined') {
-  global.AbortController = class AbortController {
-    constructor() {
-      this.signal = {};
-      this.abort = () => {};
-    }
-  };
-}
-
-// Add fetch polyfill
-if (typeof global.fetch === 'undefined') {
-  global.fetch = () => Promise.resolve(new Response());
-}
+// Mock Next.js cache APIs for server actions tests
+jest.mock('next/cache', () => ({
+  revalidatePath: jest.fn(),
+  revalidateTag: jest.fn(),
+  cacheTag: jest.fn(),
+}));

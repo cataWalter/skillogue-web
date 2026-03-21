@@ -7,31 +7,20 @@ import Avatar from '../../components/Avatar';
 import { Bell, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-// Re-defining the type here for clarity within the component
-interface Notification {
-    id: number;
-    read: boolean;
-    type: string;
-    created_at: string;
-    actor: {
-        id: string;
-        first_name: string | null;
-    } | null;
-}
-
 const NotificationsPage: React.FC = () => {
     const { notifications, unreadCount, markAsRead } = useNotifications();
 
-    const getNotificationLink = (notification: Notification): string => {
-        if (notification.type === 'new_message' && notification.actor) {
-            return `/messages?with=${notification.actor.id}`;
+    const getNotificationLink = (notification: typeof notifications[number]): string => {
+        if (notification.type === 'new_message' && notification.actorId) {
+            return `/messages?with=${notification.actorId}`;
         }
-        // Fallback for other notification types or if actor is null
+        // Fallback for other notification types or if actorId is null
         return '#';
     };
 
-    const getNotificationText = (notification: Notification): React.ReactNode => {
-        const actorName = notification.actor?.first_name || 'An unknown user';
+    const getNotificationText = (notification: typeof notifications[number]): React.ReactNode => {
+        // For now, we'll use a generic message since we don't have actor info
+        const actorName = notification.actorId || 'A user';
 
         switch (notification.type) {
             case 'new_message':
@@ -83,15 +72,15 @@ const NotificationsPage: React.FC = () => {
                                     className={`flex items-start gap-4 p-4 transition-colors duration-200 ${n.read ? 'hover:bg-gray-800/50' : 'bg-indigo-900/20 hover:bg-indigo-900/40'
                                         }`}
                                 >
-                                    {n.actor ? (
-                                        <Avatar seed={n.actor.id} className="w-12 h-12 rounded-full flex-shrink-0 mt-1" />
+                                    {n.actorId ? (
+                                        <Avatar seed={n.actorId} className="w-12 h-12 rounded-full flex-shrink-0 mt-1" />
                                     ) : (
                                         <div className="w-12 h-12 rounded-full bg-gray-700 flex-shrink-0 mt-1" />
                                     )}
                                     <div className="flex-1">
                                         <p className="text-gray-200">{getNotificationText(n)}</p>
                                         <p className="text-sm text-gray-400 mt-1">
-                                            {formatDistanceToNow(new Date(n.created_at))} ago
+                                            {formatDistanceToNow(new Date(n.createdAt))} ago
                                         </p>
                                     </div>
                                     {!n.read && (

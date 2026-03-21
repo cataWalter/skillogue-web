@@ -5,7 +5,7 @@
 /**
  * Represents the detailed profile of a user, including location.
  * Used in ProfileCard, UserProfile, and EditProfile pages.
- [cite_start]* [cite: 1340, 1504, 1512, 1813]
+ * [cite_start]* [cite: 1340, 1504, 1512, 1813]
  */
 export interface FullProfile {
     id: string;
@@ -135,7 +135,7 @@ export interface Conversation {
 // --- Notification Types ---
 
 /**
- * The raw notification shape from Supabase before transformation.
+ * The raw notification shape from Appwrite before transformation.
  * Sourced from `NotificationContext.tsx`.
  [cite_start]* [cite: 1517]
  */

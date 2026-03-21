@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../supabaseClient';
+import { appClient } from '../../lib/appClient';
 import Link from 'next/link';
 import {
     User,
@@ -32,6 +32,157 @@ interface SearchResult {
     show_age?: boolean;
     show_location?: boolean;
 }
+
+interface FavoriteRpcError {
+    code?: string;
+    message?: string;
+}
+
+type NamedRelation = { name: string } | Array<{ name: string }> | null | undefined;
+
+const shouldFallbackFromSavedProfilesRpc = (error: FavoriteRpcError | null): boolean => {
+    if (!error) {
+        return false;
+    }
+
+    return error.code === '42883' || error.message?.includes('uuid = name') === true;
+};
+
+const getRelationName = (relation: NamedRelation): string | undefined => {
+    if (Array.isArray(relation)) {
+        return relation[0]?.name;
+    }
+
+    return relation?.name;
+};
+
+const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
+    if (!appClient.auth?.getUser) {
+        return [];
+    }
+
+    const { data: authData, error: authError } = await appClient.auth.getUser();
+
+    if (authError || !authData.user) {
+        return [];
+    }
+
+    const { data: favoriteRows, error: favoritesError } = await appClient
+        .from('favorites')
+        .select('favorite_id')
+        .eq('user_id', authData.user.id);
+
+    if (favoritesError || !favoriteRows?.length) {
+        if (favoritesError) {
+            throw favoritesError;
+        }
+
+        return [];
+    }
+
+    const favoriteIds = favoriteRows.map((row) => row.favorite_id);
+    const [profilesResponse, passionsResponse, languagesResponse] = await Promise.all([
+        appClient
+            .from('profiles')
+            .select('id, first_name, last_name, about_me, age, gender, location_id, created_at, is_private, show_age, show_location')
+            .in('id', favoriteIds),
+        appClient
+            .from('profile_passions')
+            .select('profile_id, passions(name)')
+            .in('profile_id', favoriteIds),
+        appClient
+            .from('profile_languages')
+            .select('profile_id, languages(name)')
+            .in('profile_id', favoriteIds),
+    ]);
+
+    if (profilesResponse.error) {
+        throw profilesResponse.error;
+    }
+
+    if (passionsResponse.error) {
+        throw passionsResponse.error;
+    }
+
+    if (languagesResponse.error) {
+        throw languagesResponse.error;
+    }
+
+    const locationIds = Array.from(new Set(
+        (profilesResponse.data || [])
+            .map((profile) => profile.location_id)
+            .filter((locationId): locationId is number => typeof locationId === 'number')
+    ));
+
+    const locationsResponse = locationIds.length > 0
+        ? await appClient.from('locations').select('id, city').in('id', locationIds)
+        : { data: [], error: null };
+
+    if (locationsResponse.error) {
+        throw locationsResponse.error;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cityByLocationId = new Map<number, any>(
+        (locationsResponse.data || []).map((location: any) => [location.id, location.city])
+    );
+    const passionsByProfileId = new Map<string, string[]>();
+    const languagesByProfileId = new Map<string, string[]>();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (passionsResponse.data as any[] || [])) {
+        const names = passionsByProfileId.get(row.profile_id) || [];
+        const passionName = getRelationName(row.passions as NamedRelation);
+
+        if (passionName) {
+            names.push(passionName);
+            passionsByProfileId.set(row.profile_id, names);
+        }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (languagesResponse.data as any[] || [])) {
+        const names = languagesByProfileId.get(row.profile_id) || [];
+        const languageName = getRelationName(row.languages as NamedRelation);
+
+        if (languageName) {
+            names.push(languageName);
+            languagesByProfileId.set(row.profile_id, names);
+        }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profilesById = new Map<string, any>(
+        (profilesResponse.data || []).map((profile: any) => [profile.id, profile])
+    );
+    const favorites: SearchResult[] = [];
+
+    for (const favoriteId of favoriteIds) {
+        const profile = profilesById.get(favoriteId);
+
+        if (!profile) {
+            continue;
+        }
+
+        favorites.push({
+            id: profile.id,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            about_me: profile.about_me,
+            location: profile.location_id ? cityByLocationId.get(profile.location_id) || null : null,
+            age: profile.age,
+            gender: profile.gender,
+            profile_languages: languagesByProfileId.get(profile.id) || [],
+            created_at: profile.created_at,
+            profilepassions: passionsByProfileId.get(profile.id) || [],
+            is_private: profile.is_private,
+            show_age: profile.show_age,
+            show_location: profile.show_location,
+        });
+    }
+
+    return favorites;
+};
 
 const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value?: string | number | null; children?: React.ReactNode }> = ({ icon, label, value, children }) => {
     if (!value && !children) return null;
@@ -133,8 +284,8 @@ const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => voi
                         {user.profile_languages && user.profile_languages.length > 0 && (
                             <DetailItem icon={<Languages size={16} />} label="Languages">
                                 <div className="flex flex-wrap gap-1 mt-1">
-                                    {user.profile_languages.slice(0, 3).map((lang, i) => (
-                                        <span key={i} className="px-2 py-0.5 bg-gray-800 text-indigo-300 rounded text-xs">
+                                    {user.profile_languages.slice(0, 3).map((lang) => (
+                                        <span key={lang} className="px-2 py-0.5 bg-gray-800 text-indigo-300 rounded text-xs">
                                             {lang}
                                         </span>
                                     ))}
@@ -148,8 +299,8 @@ const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => voi
 
                     {user.profilepassions && user.profilepassions.length > 0 && (
                         <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                            {user.profilepassions.slice(0, 5).map((passion, i) => (
-                                <span key={i} className="px-3 py-1 bg-indigo-900/40 text-indigo-300 rounded-full text-xs border border-indigo-800/50">
+                            {user.profilepassions.slice(0, 5).map((passion) => (
+                                <span key={passion} className="px-3 py-1 bg-indigo-900/40 text-indigo-300 rounded-full text-xs border border-indigo-800/50">
                                     {passion}
                                 </span>
                             ))}
@@ -170,10 +321,20 @@ const FavoritesPage = () => {
 
     useEffect(() => {
         const loadFavorites = async () => {
-            const { data, error } = await supabase.rpc('get_saved_profiles');
+            const { data, error } = await appClient.rpc('get_saved_profiles');
             if (error) {
-                console.error(error);
-                toast.error('Failed to load favorites');
+                if (shouldFallbackFromSavedProfilesRpc(error)) {
+                    try {
+                        const fallbackFavorites = await loadFavoritesFromTables();
+                        setFavorites(fallbackFavorites);
+                    } catch (fallbackError) {
+                        console.error(fallbackError);
+                        toast.error('Failed to load favorites');
+                    }
+                } else {
+                    console.error(error);
+                    toast.error('Failed to load favorites');
+                }
             } else {
                 setFavorites(data || []);
             }
@@ -184,7 +345,7 @@ const FavoritesPage = () => {
 
     const handleRemove = async (id: string) => {
         if (!confirm('Remove from favorites?')) return;
-        const { error } = await supabase.rpc('unsave_profile', { target_id: id });
+        const { error } = await appClient.rpc('unsave_profile', { target_id: id });
         if (!error) {
             setFavorites(prev => prev.filter(f => f.id !== id));
             toast.success('Removed from favorites');
@@ -204,7 +365,7 @@ const FavoritesPage = () => {
             ) : favorites.length === 0 ? (
                 <div className="text-center py-10">
                     <Heart className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                    <p className="text-xl text-gray-400">You haven't saved any profiles yet.</p>
+                    <p className="text-xl text-gray-400">You haven&apos;t saved any profiles yet.</p>
                     <Link href="/search" className="mt-4 inline-block px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition">
                         Find People
                     </Link>

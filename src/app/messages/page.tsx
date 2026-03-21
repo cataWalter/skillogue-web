@@ -1,15 +1,19 @@
 'use client';
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, Send, Flag, ShieldAlert, MessageSquare, Ban } from 'lucide-react';
-import { User as AuthUser } from '@supabase/supabase-js';
+import { appClient } from '../../lib/appClient';
 import Avatar from '../../components/Avatar';
 import ReportModal from '../../components/ReportModal';
 import ConversationItem from '../../components/ConversationItem';
 import MessageItem from '../../components/MessageItem';
+
+type AuthUser = {
+    id: string;
+    email: string;
+};
 
 // --- Type Definitions ---
 interface Profile {
@@ -36,6 +40,22 @@ interface Conversation {
 }
 
 const PAGE_SIZE = 25;
+
+const mergeUniqueMessages = (existing: Message[], incoming: Message[]) => {
+    const byId = new Map<number, Message>();
+
+    for (const message of existing) {
+        byId.set(message.id, message);
+    }
+
+    for (const message of incoming) {
+        byId.set(message.id, message);
+    }
+
+    return Array.from(byId.values()).sort(
+        (left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime()
+    );
+};
 
 const Messages: React.FC = () => {
     const searchParams = useSearchParams();
@@ -64,8 +84,8 @@ const Messages: React.FC = () => {
 
     useEffect(() => {
         const getUser = async () => {
-            const { data } = await supabase.auth.getUser();
-            if (data?.user) setUser(data.user);
+            const { data } = await appClient.auth.getUser();
+            if (data?.user) setUser(data.user as AuthUser);
             else router.push('/login');
         };
         getUser();
@@ -80,14 +100,42 @@ const Messages: React.FC = () => {
 
     const loadConversations = useCallback(async () => {
         if (!user) return;
-        const { data, error } = await supabase.rpc('get_conversations', { current_user_id: user.id });
+        const { data, error } = await appClient.rpc('get_conversations', { current_user_id: user.id });
         if (error) console.error('Error loading conversations:', error);
         else setConversations(data || []);
     }, [user]);
 
+    const refreshActiveConversation = useCallback(async () => {
+        if (!selectedChat || !user) return;
+
+        const desiredCount = Math.max(messages.length, PAGE_SIZE);
+        const { data, error } = await appClient
+            .from('messages')
+            .select(`
+                id,
+                created_at,
+                sender_id,
+                receiver_id,
+                content,
+                sender:profiles!sender_id(id, first_name, last_name),
+                receiver:profiles!receiver_id(id, first_name, last_name)
+            `)
+            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${selectedChat}),and(sender_id.eq.${selectedChat},receiver_id.eq.${user.id})`)
+            .order('created_at', { ascending: false })
+            .range(0, desiredCount - 1);
+
+        if (error) {
+            console.error('Error refreshing conversation:', error);
+            return;
+        }
+
+        const latestMessages = ((data as Message[]) || []).reverse();
+        setMessages(prev => mergeUniqueMessages(prev, latestMessages));
+    }, [messages.length, selectedChat, user]);
+
     const markMessagesAsRead = useCallback(async () => {
         if (!selectedChat || !user) return;
-        const { error } = await supabase.rpc('mark_messages_as_read', {
+        const { error } = await appClient.rpc('mark_messages_as_read', {
             sender_id_param: selectedChat,
             receiver_id_param: user.id
         });
@@ -98,9 +146,12 @@ const Messages: React.FC = () => {
     useEffect(() => {
         if (user) {
             loadConversations();
+            const intervalId = window.setInterval(() => {
+                loadConversations();
+            }, 10000);
 
             // Subscribe to new messages to update conversation list
-            const channel = supabase
+            const channel = appClient
                 .channel('conversations_update')
                 .on('postgres_changes', {
                     event: 'INSERT',
@@ -121,7 +172,8 @@ const Messages: React.FC = () => {
                 .subscribe();
 
             return () => {
-                supabase.removeChannel(channel);
+                window.clearInterval(intervalId);
+                appClient.removeChannel(channel);
             };
         }
     }, [user, loadConversations]);
@@ -143,7 +195,7 @@ const Messages: React.FC = () => {
             const from = (page - 1) * PAGE_SIZE;
             const to = from + PAGE_SIZE - 1;
 
-            const { data, error } = await supabase
+            const { data, error } = await appClient
                 .from('messages')
                 .select(`
                     id,
@@ -178,11 +230,26 @@ const Messages: React.FC = () => {
         loadMessages();
     }, [selectedChat, user, page]);
 
+    useEffect(() => {
+        if (!selectedChat || !user) {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            refreshActiveConversation();
+            loadConversations();
+        }, 5000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [loadConversations, refreshActiveConversation, selectedChat, user]);
+
     // Presence
     useEffect(() => {
         if (!user) return;
 
-        const presenceChannel = supabase.channel('online-users')
+        const presenceChannel = appClient.channel('online-users')
             .on('presence', { event: 'sync' }, () => {
                 const newState = presenceChannel.presenceState();
                 const onlineIds = new Set<string>();
@@ -200,7 +267,7 @@ const Messages: React.FC = () => {
             });
 
         return () => {
-            supabase.removeChannel(presenceChannel);
+            appClient.removeChannel(presenceChannel);
         };
     }, [user]);
 
@@ -208,7 +275,7 @@ const Messages: React.FC = () => {
     useEffect(() => {
         if (!selectedChat || !user) return;
 
-        const channel = supabase
+        const channel = appClient
             .channel(`chat:${selectedChat}`)
             .on('postgres_changes', {
                 event: 'INSERT',
@@ -218,7 +285,7 @@ const Messages: React.FC = () => {
             }, (payload) => {
                 if (payload.new.sender_id === selectedChat) {
                     // Fetch the full message with relations
-                    supabase
+                    appClient
                         .from('messages')
                         .select(`
                             id,
@@ -242,7 +309,7 @@ const Messages: React.FC = () => {
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            appClient.removeChannel(channel);
         };
     }, [selectedChat, user, markMessagesAsRead]);
 
@@ -271,8 +338,13 @@ const Messages: React.FC = () => {
 
     const checkBlockedStatus = useCallback(async () => {
         if (!selectedChat || !user) return;
-        const { data } = await supabase.rpc('is_blocked', { target_id: selectedChat });
-        setIsBlocking(!!data);
+        const [{ data: blockingData }, { data: blockedByData }] = await Promise.all([
+            appClient.rpc('is_blocked', { target_id: selectedChat }),
+            appClient.rpc('is_blocked_by', { target_id: selectedChat }),
+        ]);
+
+        setIsBlocking(!!blockingData);
+        setIsBlocked(!!blockedByData);
     }, [selectedChat, user]);
 
     useEffect(() => {
@@ -283,7 +355,7 @@ const Messages: React.FC = () => {
         if (!selectedChat || !user) return;
         if (!confirm('Are you sure you want to block this user? They will not be able to message you.')) return;
 
-        const { error } = await supabase.rpc('block_user', { target_id: selectedChat });
+        const { error } = await appClient.rpc('block_user', { target_id: selectedChat });
         if (error) {
             console.error('Error blocking user:', error);
             alert('Failed to block user');
@@ -316,7 +388,7 @@ const Messages: React.FC = () => {
         };
         setMessages(prev => [...prev, optimisticMessage]);
 
-        const { error } = await supabase.from('messages').insert({
+        const { error } = await appClient.from('messages').insert({
             sender_id: user.id,
             receiver_id: selectedChat,
             content
@@ -331,7 +403,7 @@ const Messages: React.FC = () => {
             loadConversations();
             
             // Send Push Notification
-            supabase.functions.invoke('send-push', {
+            appClient.functions.invoke('send-push', {
                 body: {
                     receiver_id: selectedChat,
                     title: 'New Message',
@@ -498,9 +570,7 @@ const Messages: React.FC = () => {
                             <ReportModal
                                 isOpen={isReportModalOpen}
                                 onClose={() => setReportModalOpen(false)}
-                                reporterId={user.id}
                                 reportedUserId={selectedChat}
-                                reportedUserName={currentChatUser?.full_name || 'User'}
                             />
                         )}
                     </>

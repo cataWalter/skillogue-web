@@ -1,82 +1,61 @@
-// src/components/PassionSpotlight.tsx
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
-import Link from 'next/link';
-import Avatar from './Avatar';
-import { Zap, Sparkles } from 'lucide-react';
-// ✅ Import shared types
-import { UserPassion, SuggestedProfile as SpotlightProfile } from '../types';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useMasterData } from '../hooks/useMasterData';
 
 interface PassionSpotlightProps {
-    userPassions: UserPassion[];
-    userId: string;
+  userPassions?: Array<{ passion_id: number }>;
+  userId?: string;
 }
 
-const PassionSpotlight: React.FC<PassionSpotlightProps> = ({ userPassions, userId }) => {
-    const [spotlightPassion, setSpotlightPassion] = useState<UserPassion | null>(null);
-    const [profiles, setProfiles] = useState<SpotlightProfile[]>([]);
-    const [loading, setLoading] = useState(true);
+const PassionSpotlight = ({ userPassions, userId }: PassionSpotlightProps) => {
+  const { passions, loading } = useMasterData();
+  const [featuredPassion, setFeaturedPassion] = useState(passions[0]);
 
-    useEffect(() => {
-        if (userPassions.length > 0) {
-            const randomPassion = userPassions[Math.floor(Math.random() * userPassions.length)];
-            setSpotlightPassion(randomPassion);
-
-            const fetchProfiles = async () => {
-                setLoading(true);
-                const { data, error } = await supabase.rpc('get_profiles_for_passion', {
-                    p_passion_id: randomPassion.passion_id,
-                    p_exclude_user_id: userId,
-                    p_limit: 5,
-                });
-
-                if (error) console.error('Error fetching passion profiles:', error);
-                else setProfiles(data || []);
-                setLoading(false);
-            };
-
-            fetchProfiles();
+  useEffect(() => {
+    if (passions.length > 0) {
+      // If user has passions, pick randomly from their passions
+      if (userPassions && userPassions.length > 0) {
+        const userPassionIds = userPassions.map(p => p.passion_id);
+        const randomUserPassionId = userPassionIds[Math.floor(Math.random() * userPassionIds.length)];
+        const userPassion = passions.find(p => p.id === randomUserPassionId);
+        if (userPassion) {
+          setFeaturedPassion(userPassion);
+          return;
         }
-    }, [userPassions, userId]);
-
-    const passionName = spotlightPassion?.passions[0]?.name;
-
-    if (!passionName || (loading && profiles.length === 0)) {
-        return null;
+      }
+      // Otherwise pick a random passion
+      const random = passions[Math.floor(Math.random() * passions.length)];
+      setFeaturedPassion(random);
     }
+  }, [passions, userPassions]);
 
+  if (loading || !featuredPassion) {
     return (
-        <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl border border-gray-700 relative overflow-hidden">
-            {/* Background decoration */}
-            <div className="absolute -top-4 -right-4 w-24 h-24 bg-purple-600/20 rounded-full blur-2xl" />
-            
-            <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={18} className="text-purple-400" />
-                    <h3 className="text-xl font-bold">Explore: {passionName}</h3>
-                </div>
-                <p className="text-gray-400 text-sm mb-4">
-                    Others who share your passion for {passionName}.
-                </p>
-                {profiles.length > 0 ? (
-                    <>
-                        <div className="flex flex-wrap gap-3 mb-4">
-                            {profiles.map(p => (
-                                <Link href={`/user/${p.id}`} key={p.id} title={p.first_name || 'User'}>
-                                    <Avatar seed={p.id} className="w-10 h-10 rounded-full border-2 border-transparent hover:border-indigo-500 transition-all hover:scale-110" />
-                                </Link>
-                            ))}
-                        </div>
-                        <Link href={`/search?passion=${passionName}`} className="inline-flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
-                            <Zap size={14} /> See more like-minded people
-                        </Link>
-                    </>
-                ) : (
-                    <p className="text-gray-500 text-sm">No other users with this passion yet.</p>
-                )}
-            </div>
-        </div>
+      <div className="bg-gray-800/50 rounded-xl p-6 animate-pulse">
+        <div className="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
+        <div className="h-3 bg-gray-700 rounded w-full mb-2"></div>
+        <div className="h-3 bg-gray-700 rounded w-2/3"></div>
+      </div>
     );
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-xl p-6 border border-indigo-800/30">
+      <h3 className="text-lg font-bold text-white mb-2">
+        Passion Spotlight
+      </h3>
+      <p className="text-indigo-200 mb-4">
+        {userPassions && userPassions.length > 0 && userId
+          ? 'Your passion for '
+          : 'Connect with others who share your love for '}
+        <span className="font-semibold text-white">{featuredPassion.name}</span>
+      </p>
+      <button className="text-sm text-indigo-300 hover:text-indigo-200 transition underline">
+        Find people with this passion →
+      </button>
+    </div>
+  );
 };
 
 export default PassionSpotlight;

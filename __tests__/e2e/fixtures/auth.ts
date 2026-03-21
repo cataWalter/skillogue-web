@@ -1,5 +1,5 @@
 import { test as base, Page } from '@playwright/test';
-import { supabase } from '../../../src/supabaseClient';
+import { appClient } from '../../../src/lib/appClient';
 
 /**
  * Custom test fixture that provides authenticated user functionality
@@ -8,13 +8,13 @@ export const test = base.extend<{
   authenticatedPage: Page;
   createTestUser: () => Promise<{ email: string; password: string; id: string }>;
 }>({
-  authenticatedPage: async ({ page }, use) => {
+  authenticatedPage: async ({ page }, providePage) => {
     // Sign in with test user credentials
     const testEmail = 'testuser@example.com';
     const testPassword = 'TestPassword123!';
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await appClient.auth.signInWithPassword({
         email: testEmail,
         password: testPassword,
       });
@@ -33,16 +33,16 @@ export const test = base.extend<{
       console.log('Could not authenticate:', e);
     }
 
-    await use(page);
+    await providePage(page);
   },
 
   createTestUser: async () => {
-    // Create a test user in Supabase
+    // Create a test user in Appwrite
     const testEmail = `test_${Date.now()}@example.com`;
     const testPassword = 'TestPassword123!';
     
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await appClient.auth.signUp({
         email: testEmail,
         password: testPassword,
       });

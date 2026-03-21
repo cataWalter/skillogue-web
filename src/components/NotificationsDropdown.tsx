@@ -5,30 +5,18 @@ import { useNotifications } from '../context/NotificationContext';
 import Avatar from './Avatar';
 import { formatDistanceToNow } from 'date-fns';
 
-// Define the Notification type again to help TypeScript in this file
-interface Notification {
-    id: number;
-    read: boolean;
-    type: string;
-    created_at: string;
-    actor: {
-        id: string;
-        first_name: string | null;
-    } | null;
-}
-
 const NotificationsDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { notifications, markAsRead } = useNotifications();
 
-    const getNotificationLink = (notification: Notification): string => {
-        if (notification.type === 'new_message' && notification.actor) {
-            return `/messages?with=${notification.actor.id}`;
+    const getNotificationLink = (notification: typeof notifications[number]): string => {
+        if (notification.type === 'new_message' && notification.actorId) {
+            return `/messages?with=${notification.actorId}`;
         }
         return '/notifications'; // Fallback link
     };
 
-    const getNotificationText = (notification: Notification): React.ReactNode => {
-        const actorName = notification.actor?.first_name || 'Someone';
+    const getNotificationText = (notification: typeof notifications[number]): React.ReactNode => {
+        const actorName = notification.actorId || 'Someone';
 
         if (notification.type === 'new_message') {
             return <><strong>{actorName}</strong> sent you a message.</>;
@@ -49,10 +37,7 @@ const NotificationsDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     <p className="text-gray-400 p-4 text-center">No new notifications.</p>
                 ) : (
                     notifications.map(n => {
-                        // ✅ ADDED LOG: Inspect each notification as we render it.
-                        console.log(`[Dropdown] Processing notification ID ${n.id}. Actor object is:`, n.actor);
-
-                        if (!n.actor) {
+                        if (!n.actorId) {
                             return (
                                 <div key={n.id} className="flex items-start gap-3 p-3 text-gray-500">
                                     <div className="w-10 h-10 rounded-full bg-gray-700 flex-shrink-0 mt-1" />
@@ -73,10 +58,10 @@ const NotificationsDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =
                                 }}
                                 className={`flex items-start gap-3 p-3 hover:bg-gray-700/50 ${!n.read ? 'bg-indigo-900/20' : ''}`}
                             >
-                                <Avatar seed={n.actor.id} className="w-10 h-10 rounded-full flex-shrink-0 mt-1" />
+                                <Avatar seed={n.actorId} className="w-10 h-10 rounded-full flex-shrink-0 mt-1" />
                                 <div className="flex-1">
                                     <p className="text-sm text-gray-200">{getNotificationText(n)}</p>
-                                    <p className="text-xs text-gray-400">{formatDistanceToNow(new Date(n.created_at))} ago</p>
+                                    <p className="text-xs text-gray-400">{formatDistanceToNow(new Date(n.createdAt))} ago</p>
                                 </div>
                                 {!n.read && <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full mt-2 flex-shrink-0"></div>}
                             </Link>

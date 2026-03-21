@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import ProfileCard from '../../../components/ProfileCard';
@@ -9,9 +8,23 @@ import ProfileSkeleton from '../../../components/ProfileSkeleton';
 import Avatar from '../../../components/Avatar';
 import { FullProfile } from '../../../types';
 import { MessageSquare, ShieldAlert, UserX, Flag, Ghost, Lock, Heart } from 'lucide-react';
-import { Session } from '@supabase/supabase-js';
+import { appClient } from '../../../lib/appClient';
 import ReportModal from '../../../components/ReportModal';
 import toast from 'react-hot-toast';
+
+type Session = {
+    user: {
+        id: string;
+    };
+} | null;
+
+type NamedRelation = {
+    passions: { name: string } | null;
+};
+
+type LanguageRelation = {
+    languages: { name: string } | null;
+};
 
 const UserProfile: React.FC = () => {
     const params = useParams();
@@ -28,8 +41,8 @@ const UserProfile: React.FC = () => {
     const [isReportModalOpen, setReportModalOpen] = useState(false);
     const router = useRouter();
 
-    const checkBlockStatus = useCallback(async (currentUserId: string, profileId: string) => {
-        const { data } = await supabase.rpc('is_blocked', { target_id: profileId });
+    const checkBlockStatus = useCallback(async (profileId: string) => {
+        const { data } = await appClient.rpc('is_blocked', { target_id: profileId });
         setIsBlocked(!!data);
     }, []);
 
@@ -38,7 +51,7 @@ const UserProfile: React.FC = () => {
             setLoading(true);
             setError('');
 
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            const { data: { session: currentSession } } = await appClient.auth.getSession();
             setSession(currentSession);
 
             if (!id || !currentSession?.user) {
@@ -54,16 +67,16 @@ const UserProfile: React.FC = () => {
             }
 
             // Check if I am blocked by this user
-            const { data: blockedByData } = await supabase.rpc('is_blocked_by', { target_id: id });
+            const { data: blockedByData } = await appClient.rpc('is_blocked_by', { target_id: id });
             if (blockedByData) {
                 setIsBlockedByProfileUser(true);
                 setLoading(false);
                 return;
             }
             
-            checkBlockStatus(currentSession.user.id, id);
+            checkBlockStatus(id);
 
-            const { data: profileData, error: profileError } = await supabase
+            const { data: profileData, error: profileError } = await appClient
                 .from('profiles')
                 .select(`*, locations(*)`)
                 .eq('id', id)
@@ -78,19 +91,18 @@ const UserProfile: React.FC = () => {
             setProfile(profileData as FullProfile);
 
             const [passionRes, languageRes] = await Promise.all([
-                supabase.from('profile_passions').select('passions(name)').eq('profile_id', id),
-                supabase.from('profile_languages').select('languages(name)').eq('profile_id', id)
+                appClient.from('profile_passions').select('passions(name)').eq('profile_id', id),
+                appClient.from('profile_languages').select('languages(name)').eq('profile_id', id)
             ]);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setPassions(passionRes.data?.map((p: any) => p.passions.name) || []);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setLanguages(languageRes.data?.map((l: any) => l.languages.name) || []);
-const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
+            setPassions((passionRes.data as NamedRelation[] | null)?.flatMap((passion) => passion.passions?.name ? [passion.passions.name] : []) || []);
+            setLanguages((languageRes.data as LanguageRelation[] | null)?.flatMap((language) => language.languages?.name ? [language.languages.name] : []) || []);
+
+            const { data: savedData } = await appClient.rpc('is_saved', { target_id: id });
             setIsSaved(!!savedData);
 
             
-            await checkBlockStatus(currentSession.user.id, id);
+            await checkBlockStatus(id);
 
             setLoading(false);
         };
@@ -103,7 +115,7 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
         if (!confirm(`Are you sure you want to block ${profile.first_name}? You won't see them in search or messages.`)) return;
 
         try {
-            const { error } = await supabase.rpc('block_user', { target_id: profile.id });
+            const { error } = await appClient.rpc('block_user', { target_id: profile.id });
 
             if (error) throw error;
             setIsBlocked(true);
@@ -120,7 +132,7 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
         if (!confirm(`Unblock ${profile.first_name}?`)) return;
 
         try {
-            const { error } = await supabase.rpc('unblock_user', { target_id: profile.id });
+            const { error } = await appClient.rpc('unblock_user', { target_id: profile.id });
 
             if (error) throw error;
             setIsBlocked(false);
@@ -135,7 +147,7 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
         if (!session?.user || !profile) return;
         
         if (isSaved) {
-            const { error } = await supabase.rpc('unsave_profile', { target_id: profile.id });
+            const { error } = await appClient.rpc('unsave_profile', { target_id: profile.id });
             if (!error) {
                 setIsSaved(false);
                 toast.success('Removed from favorites');
@@ -143,7 +155,7 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
                 toast.error('Failed to remove favorite');
             }
         } else {
-            const { error } = await supabase.rpc('save_profile', { target_id: profile.id });
+            const { error } = await appClient.rpc('save_profile', { target_id: profile.id });
             if (!error) {
                 setIsSaved(true);
                 toast.success('Saved to favorites');
@@ -162,17 +174,6 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
             </main>
         );
     }
-
-    // Calculate profile completion based on available data
-    const profileCompletion = () => {
-        let score = 0;
-        if (profile?.first_name) score += 20;
-        if (profile?.about_me) score += 20;
-        if (profile?.locations) score += 20;
-        if (passions.length > 0) score += 20;
-        if (languages.length > 0) score += 20;
-        return score;
-    };
 
     if (isBlockedByProfileUser) {
         return (
@@ -232,7 +233,9 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
             ) : (
                 <button
                     onClick={handleUnblock}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"                    title="Unblock User"                >
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
+                    title="Unblock User"
+                >
                     <UserX size={18} />
                     <span>Unblock</span>
                 </button>
@@ -264,9 +267,7 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
                     <ReportModal
                         isOpen={isReportModalOpen}
                         onClose={() => setReportModalOpen(false)}
-                        reporterId={session.user.id}
                         reportedUserId={profile.id}
-                        reportedUserName={profile.first_name || 'User'}
                     />
                 )}
             </div>
@@ -288,9 +289,7 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
                 <ReportModal
                     isOpen={isReportModalOpen}
                     onClose={() => setReportModalOpen(false)}
-                    reporterId={session.user.id}
                     reportedUserId={profile.id}
-                    reportedUserName={profile.first_name || 'User'}
                 />
             )}
         </main>

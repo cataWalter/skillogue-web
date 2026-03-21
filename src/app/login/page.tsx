@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../hooks/useAuth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn } from 'lucide-react';
@@ -10,6 +10,7 @@ const Login: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
+    const { signIn } = useAuth();
     const router = useRouter();
 
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -20,8 +21,7 @@ const Login: React.FC = () => {
         }
         try {
             setLoading(true);
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) throw error;
+            await signIn(email, password);
             router.push('/dashboard');
         } catch (error: unknown) {
             console.error('Login error:', error);
@@ -115,7 +115,7 @@ const Login: React.FC = () => {
                 {/* Footer */}
                 <div className="bg-gray-800/50 p-6 text-center border-t border-gray-800">
                     <p className="text-gray-400 text-sm mb-4">
-                        Don&apos;t have an account?{' '}
+                        Don't have an account?{' '}
                         <Link href="/signup" className="text-indigo-400 hover:text-indigo-300 font-medium transition">
                             Sign up
                         </Link>

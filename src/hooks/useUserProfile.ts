@@ -1,54 +1,71 @@
-// src/hooks/useUserProfile.ts
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../supabaseClient';
-import { FullProfile } from '../types';
+import { useState, useEffect } from 'react';
+import { useAuth } from './useAuth';
 
-export const useUserProfile = (userId: string | undefined) => {
+export interface FullProfile {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  aboutMe?: string;
+  age?: number;
+  gender?: string;
+  verified: boolean;
+  isPrivate: boolean;
+  showAge: boolean;
+  showLocation: boolean;
+  locationId?: number;
+  avatarUrl?: string;
+  location?: {
+    city?: string;
+    region?: string;
+    country?: string;
+  };
+  passions?: string[];
+  languages?: string[];
+}
+
+export const useUserProfile = () => {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<FullProfile | null>(null);
-  const [passions, setPassions] = useState<string[]>([]);
-  const [languages, setLanguages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchProfile = useCallback(async () => {
-    if (!userId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select(`*, locations(*)`)
-        .eq('id', userId)
-        .single();
-
-      if (profileError) throw new Error(profileError.message);
-      setProfile(profileData as FullProfile);
-
-      const [passionRes, languageRes] = await Promise.all([
-        supabase.from('profile_passions').select('passions(name)').eq('profile_id', userId),
-        supabase.from('profile_languages').select('languages(name)').eq('profile_id', userId)
-      ]);
-
-      if (passionRes.error) throw new Error(passionRes.error.message);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setPassions(passionRes.data?.map((p: any) => p.passions.name) || []);
-
-      if (languageRes.error) throw new Error(languageRes.error.message);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setLanguages(languageRes.data?.map((l: any) => l.languages.name) || []);
-
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
 
   useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    const fetchProfile = async () => {
+      if (!user) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
 
-  return { profile, passions, languages, loading, error, refresh: fetchProfile };
+      try {
+        const response = await fetch(`/api/profile/${user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setProfile(data);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  const updateProfile = async (updates: Partial<FullProfile>) => {
+    if (!user) return;
+
+    const response = await fetch(`/api/profile/${user.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+
+    if (response.ok) {
+      const updatedProfile = await response.json();
+      setProfile(updatedProfile);
+    }
+  };
+
+  return { profile, loading, updateProfile };
 };

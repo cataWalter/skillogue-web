@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../hooks/useAuth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
@@ -12,6 +12,7 @@ const SignUp: React.FC = () => {
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [agreed, setAgreed] = useState<boolean>(false);
+    const { signUp } = useAuth();
     const router = useRouter();
 
     const isPasswordValid = (): boolean => {
@@ -44,16 +45,14 @@ const SignUp: React.FC = () => {
 
         try {
             setLoading(true);
-            const { error } = await supabase.auth.signUp({ email, password });
-            if (error) throw error;
+            await signUp(email, password);
 
             alert('🎉 Check your email for the confirmation link!');
             router.push('/login');
         } catch (error: unknown) {
             console.error('Signup error:', error);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const err = error as any;
-            alert(err.error_description || err.message || 'An error occurred');
+            const message = error instanceof Error ? error.message : 'An error occurred';
+            alert(message);
         } finally {
             setLoading(false);
         }

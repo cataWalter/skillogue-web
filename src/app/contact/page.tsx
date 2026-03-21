@@ -4,13 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { supabase } from '../../supabaseClient';
 import Input from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Mail, Send, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../hooks/useAuth';
 
 const contactSchema = z.object({
     name: z.string().min(2, 'Name is required'),
@@ -24,51 +24,39 @@ type ContactFormData = z.infer<typeof contactSchema>;
 
 export default function ContactPage() {
     const router = useRouter();
+    const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { register, handleSubmit, formState: { errors }, setValue } = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
     });
 
     useEffect(() => {
-        const loadUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                // Try to get profile data
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('first_name, last_name')
-                    .eq('id', user.id)
-                    .single();
-                
-                if (profile?.first_name) {
-                    setValue('name', `${profile.first_name} ${profile.last_name || ''}`.trim());
-                }
-                if (user.email) {
-                    setValue('email', user.email);
-                }
+        if (user) {
+            // Pre-fill form with user data
+            if (user.name) {
+                setValue('name', user.name);
             }
-        };
-        loadUser();
-    }, [setValue]);
+            if (user.email) {
+                setValue('email', user.email);
+            }
+        }
+    }, [user, setValue]);
 
     const onSubmit = async (data: ContactFormData) => {
         setIsSubmitting(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            const { error } = await supabase.from('contact_messages').insert({
-                name: data.name,
-                email: data.email,
-                category: data.category,
-                subject: data.subject,
-                message: data.message,
-                user_id: user?.id || null,
+            const response = await fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
             });
 
-            if (error) throw error;
-
-            toast.success('Message sent successfully! We will get back to you soon.');
-            router.push('/');
+            if (response.ok) {
+                toast.success('Message sent successfully! We will get back to you soon.');
+                router.push('/');
+            } else {
+                throw new Error('Failed to send message');
+            }
         } catch (error) {
             console.error('Error sending message:', error);
             toast.error('Failed to send message. Please try again.');

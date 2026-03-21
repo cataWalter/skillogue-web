@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../../supabaseClient';
 import { AlertTriangle } from 'lucide-react';
 
 interface Report {
     id: number;
     created_at: string;
     reason: string;
-    reporter: { first_name: string; last_name: string };
-    reported: { first_name: string; last_name: string };
+    status: string;
+    reporter?: { first_name: string; last_name: string };
+    reported?: { first_name: string; last_name: string };
 }
 
 export default function AdminReports() {
@@ -21,27 +21,35 @@ export default function AdminReports() {
     }, []);
 
     const fetchReports = async () => {
-        const { data, error } = await supabase
-            .from('reports')
-            .select(`
-                *,
-                reporter:reporter_id(first_name, last_name),
-                reported:reported_user_id(first_name, last_name)
-            `)
-            .order('created_at', { ascending: false });
-
-        if (error) {
+        try {
+            const response = await fetch('/api/admin/reports');
+            if (response.ok) {
+                const data = await response.json();
+                setReports(data);
+            }
+        } catch (error) {
             console.error('Error fetching reports:', error);
-        } else {
-            setReports(data || []);
         }
         setLoading(false);
     };
 
-    if (loading) return <div>Loading...</div>;
+    const updateReportStatus = async (reportId: number, status: string) => {
+        try {
+            await fetch(`/api/admin/reports/${reportId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            fetchReports();
+        } catch (error) {
+            console.error('Error updating report:', error);
+        }
+    };
+
+    if (loading) return <div className="text-white">Loading...</div>;
 
     return (
-        <div>
+        <div className="text-white">
             <h1 className="text-3xl font-bold mb-6">User Reports</h1>
             <div className="space-y-4">
                 {reports.length === 0 ? (
@@ -60,12 +68,23 @@ export default function AdminReports() {
                             </div>
                             
                             <div className="bg-black/50 p-4 rounded-lg mb-4 text-gray-300">
-                                &quot;{report.reason}&quot;
+                                "{report.reason}"
                             </div>
 
                             <div className="flex justify-between items-center text-sm text-gray-500">
                                 <div>
                                     Reported by: {report.reporter?.first_name} {report.reporter?.last_name}
+                                </div>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={report.status}
+                                        onChange={(e) => updateReportStatus(report.id, e.target.value)}
+                                        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+                                    >
+                                        <option value="pending">Pending</option>
+                                        <option value="reviewed">Reviewed</option>
+                                        <option value="resolved">Resolved</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>

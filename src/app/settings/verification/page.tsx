@@ -1,7 +1,8 @@
 'use client';
 
+import { appClient } from '../../../lib/appClient';
+
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../../supabaseClient';
 import { ArrowLeft, ShieldCheck, Clock, XCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
@@ -17,11 +18,11 @@ export default function VerificationPage() {
 
     const fetchVerificationStatus = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await appClient.auth.getUser();
             if (!user) return;
 
             // Check if user is already verified in profile
-            const { data: profile } = await supabase
+            const { data: profile } = await appClient
                 .from('profiles')
                 .select('verified')
                 .eq('id', user.id)
@@ -34,7 +35,7 @@ export default function VerificationPage() {
             }
 
             // Check for pending request
-            const { data: request } = await supabase
+            const { data: request } = await appClient
                 .from('verification_requests')
                 .select('status')
                 .eq('user_id', user.id)
@@ -57,10 +58,10 @@ export default function VerificationPage() {
     const handleRequestVerification = async () => {
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await appClient.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            const { error } = await supabase
+            const { error } = await appClient
                 .from('verification_requests')
                 .insert({ user_id: user.id });
 

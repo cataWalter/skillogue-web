@@ -1,108 +1,99 @@
 'use client';
 
 import React, { useState } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../hooks/useAuth';
 import Link from 'next/link';
-import { AlertCircle, Mail, Loader2 } from 'lucide-react';
+import { ArrowLeft, Mail } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const ForgotPassword: React.FC = () => {
-    const [email, setEmail] = useState<string>('');
-    const [loading, setLoading] = useState<boolean>(false);
-    const [message, setMessage] = useState<string>('');
-    const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const { resetPassword } = useAuth();
+  const router = useRouter();
 
-    const handleReset = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        setMessage('');
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!email) return;
 
-        if (!email) {
-            setError('Email is required');
-            setLoading(false);
-            return;
-        }
+    try {
+      setLoading(true);
+      await resetPassword(email);
+      setSubmitted(true);
+    } catch (error) {
+      console.error('Password reset error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to send reset email');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/reset-password`,
-            });
-
-            if (error) throw error;
-
-            setMessage('✅ Password reset link sent! Check your email.');
-            setEmail('');
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Unknown error';
-            setError(`Failed to send reset link: ${message}`);
-            console.error('Reset password error:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+  if (submitted) {
     return (
-        <div className="flex-grow flex items-center justify-center px-6 py-12">
-            <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl p-8">
-                <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-                    Reset Your Password
-                </h2>
-                <p className="text-gray-400 text-center mt-2">
-                    Enter your email to receive a password reset link
-                </p>
-
-                <form onSubmit={handleReset} className="space-y-6 mt-8">
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                            Email Address
-                        </label>
-                        <input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                            placeholder="you@example.com"
-                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-500"
-                            disabled={loading}
-                        />
-                    </div>
-
-                    {error && (
-                        <div className="bg-red-900/30 text-red-300 p-3 rounded-lg text-sm flex items-start">
-                            <AlertCircle className="w-5 h-5 mr-2 mt-0.5" />
-                            {error}
-                        </div>
-                    )}
-
-                    {message && <p className="text-green-400 text-sm text-center">{message}</p>}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
-                                Sending Reset Email...
-                            </>
-                        ) : (
-                            <>
-                                <Mail className="mr-2" size={20} />
-                                Send Reset Link
-                            </>
-                        )}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center">
-                    <Link href="/login" className="text-sm text-indigo-400 hover:text-indigo-300 transition">
-                        Back to Login
-                    </Link>
-                </div>
-            </div>
+      <div className="flex-grow flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden p-8 text-center">
+          <Mail className="mx-auto h-12 w-12 text-indigo-400 mb-4" />
+          <h1 className="text-2xl font-bold text-white mb-2">Check Your Email</h1>
+          <p className="text-gray-400 mb-6">
+            We've sent a password reset link to <strong>{email}</strong>
+          </p>
+          <button
+            onClick={() => router.push('/login')}
+            className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+          >
+            Back to Login
+          </button>
         </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="flex-grow flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="text-center p-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
+            Reset Password
+          </h1>
+          <p className="text-gray-400 mt-2">Enter your email to receive a reset link</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-8 pt-0 space-y-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400"
+              placeholder="you@example.com"
+              required
+              disabled={loading}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition disabled:opacity-70"
+          >
+            {loading ? 'Sending...' : 'Send Reset Link'}
+          </button>
+        </form>
+
+        <div className="bg-gray-800/50 p-6 text-center border-t border-gray-800">
+          <Link href="/login" className="flex items-center justify-center gap-2 text-gray-400 hover:text-white transition">
+            <ArrowLeft size={16} />
+            Back to Login
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ForgotPassword;

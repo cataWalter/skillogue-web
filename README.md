@@ -36,15 +36,14 @@ Skillogue is built with a rich set of features focused on fostering community, s
 
 ## Technology Stack
 
-This project is built on a modern, full-stack JavaScript blueprint centered around React for the frontend and Supabase
-as the all-in-one backend.
+This project is built on a modern, full-stack JavaScript stack centered around React for the frontend, Appwrite for authentication, and PostgreSQL for application data.
 
-| Category                 | Technology                                     | Role & Justification                                                                                                                            |
-|--------------------------|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Core Framework**       | **React**                                      | The foundation for our Frontend (UI). It's the industry standard for building modern, high-performance React applications.                      |
-| **Backend & Database**   | **Supabase**                                   | Our all-in-one backend, providing the PostgreSQL Database, Authentication, and Real-time APIs for both development and production.              |
-| **Styling & UI**         | **Tailwind CSS** & **shadcn/ui**               | **Tailwind** allows for rapid, utility-first styling. **shadcn/ui** provides a library of beautifully designed, accessible components.          |
-| **Real-time Chat**       | **Supabase Realtime**                          | Powers our one-on-one private messaging. It's built into Supabase, allowing us to subscribe to database changes for a simple, integrated setup. |
-| **Authentication**       | **Supabase Auth**                              | Handles all user sign-up, login, and session management. It's a complete, secure system that's part of the Supabase platform.                   |
-| **Forms & Validation**   | **React Hook Form** & **Zod**                  | **React Hook Form** manages form state efficiently. **Zod** provides strict, type-safe validation for both frontend forms and backend data.     |
-| Deployment & Hosting | **Vercel** (Frontend) & **Supabase** (Backend) | **Vercel** offers the best deployment experience for React. **Supabase** hosts our database and backend services, creating a clean separation.  |
+| Category              | Technology                        | Role & Justification                                                                                 |
+|-----------------------|-----------------------------------|------------------------------------------------------------------------------------------------------|
+| **Core Framework**    | **React + Next.js**               | Powers the UI, routing, server components, and API routes.                                           |
+| **Database**          | **PostgreSQL + Drizzle ORM**      | Stores application data with typed queries and CLI-friendly schema management.                       |
+| **Authentication**    | **Appwrite**                      | Handles sign-up, login, sessions, email verification, and password recovery.                         |
+| **Styling & UI**      | **Tailwind CSS**                  | Supports fast, consistent styling across the app.                                                    |
+| **Forms & Validation**| **React Hook Form + Zod**         | Manages form state and validates payloads on the client and server.                                  |
+| **Messaging Updates** | **API Routes + Client Polling**   | Keeps conversation lists and active chats refreshed without relying on external realtime providers.  |
+| **Deployment**        | **Vercel + PostgreSQL + Appwrite**| Vercel serves the app, PostgreSQL stores relational data, and Appwrite manages authentication.       |

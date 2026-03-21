@@ -12,15 +12,15 @@ interface ProfileCompletionProps {
 }
 
 const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
-    const suggestions = [];
+    const suggestions: Array<{ id: string; text: string }> = [];
     if (!profile.about_me) {
-        suggestions.push({ text: 'Add a bio to tell people about yourself.' });
+        suggestions.push({ id: 'about-me', text: 'Add a bio to tell people about yourself.' });
     }
     if (profile.passions_count < 3) {
-        suggestions.push({ text: 'Add more passions to find better connections.' });
+        suggestions.push({ id: 'passions', text: 'Add more passions to find better connections.' });
     }
     if (profile.languages_count === 0) {
-        suggestions.push({ text: 'Add the languages you speak.' });
+        suggestions.push({ id: 'languages', text: 'Add the languages you speak.' });
     }
 
     if (suggestions.length === 0) {
@@ -36,8 +36,8 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
                 <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
             </div>
             <ul className="space-y-3">
-                {suggestions.map((suggestion, index) => (
-                    <li key={index}>
+                {suggestions.map((suggestion) => (
+                    <li key={suggestion.id}>
                         <Link href="/edit-profile" className="flex items-center justify-between text-sm text-gray-300 hover:text-white group transition-colors">
                             <span>{suggestion.text}</span>
                             <Edit className="h-4 w-4 text-indigo-400 opacity-70 group-hover:opacity-100" />

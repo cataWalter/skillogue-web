@@ -1,26 +1,36 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import Messages from '../src/app/messages/page';
-import { supabase } from '../src/supabaseClient';
+import { appClient } from '../src/lib/appClient';
 import '@testing-library/jest-dom';
 
-// Mock Supabase client
-jest.mock('../src/supabaseClient', () => ({
-  supabase: {
+type ChannelStatusCallback = (status: string) => void;
+type PresenceSyncCallback = () => void;
+
+// Mock App Client client
+jest.mock('../src/lib/appClient', () => ({
+  appClient: {
     auth: {
       getUser: jest.fn(),
     },
     from: jest.fn(),
     rpc: jest.fn(),
     channel: jest.fn(() => {
-      const channelMock: any = {
+      const channelMock: {
+        on: jest.Mock;
+        track: jest.Mock;
+        untake: jest.Mock;
+        presenceState: jest.Mock;
+        unsubscribe: jest.Mock;
+        subscribe?: jest.Mock;
+      } = {
         on: jest.fn().mockReturnThis(),
         track: jest.fn(),
         untake: jest.fn(),
         presenceState: jest.fn(() => ({})),
         unsubscribe: jest.fn(),
       };
-      channelMock.subscribe = jest.fn().mockImplementation((callback: any) => {
+      channelMock.subscribe = jest.fn().mockImplementation((callback?: ChannelStatusCallback) => {
         if (callback) {
           setTimeout(() => callback('SUBSCRIBED'), 0);
         }
@@ -64,10 +74,10 @@ describe('Messages Page', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
     
     // Mock RPCs
-    (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
       if (fn === 'get_conversations') return Promise.resolve({ data: mockConversations, error: null });
       if (fn === 'mark_messages_as_read') return Promise.resolve({ error: null });
       if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
@@ -75,7 +85,7 @@ describe('Messages Page', () => {
     });
 
     // Mock DB queries
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'messages') {
         return {
           select: jest.fn(() => ({
@@ -132,7 +142,7 @@ describe('Messages Page', () => {
     fireEvent.submit(form!);
 
     await waitFor(() => {
-      expect(supabase.from).toHaveBeenCalledWith('messages');
+      expect(appClient.from).toHaveBeenCalledWith('messages');
     });
     
     expect(screen.getByText('New message')).toBeInTheDocument(); // Optimistic update
@@ -151,13 +161,13 @@ describe('Messages Page', () => {
     fireEvent.click(blockButton);
 
     await waitFor(() => {
-      expect(supabase.rpc).toHaveBeenCalledWith('block_user', { target_id: 'user-1' });
+      expect(appClient.rpc).toHaveBeenCalledWith('block_user', { target_id: 'user-1' });
       expect(window.alert).toHaveBeenCalledWith('User blocked');
     });
   });
 
   it('handles send message error', async () => {
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
         if (table === 'messages') {
             return {
                 select: jest.fn(() => ({
@@ -202,7 +212,7 @@ describe('Messages Page', () => {
         content: `Message ${i}`
     }));
 
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
         if (table === 'messages') {
             return {
                 select: jest.fn(() => ({
@@ -231,7 +241,7 @@ describe('Messages Page', () => {
 
     fireEvent.scroll(messagesContainer);
 
-    // Should trigger load more (which calls supabase.from('messages')...range(...))
+    // Should trigger load more (which calls appClient.from('messages')...range(...))
     // We can check if range was called with different parameters, but checking the call count is easier
     await waitFor(() => {
         // Initial load + load more
@@ -242,9 +252,9 @@ describe('Messages Page', () => {
   });
 
   it('updates online status from presence channel', async () => {
-    let presenceCallback: any;
+    let presenceCallback: PresenceSyncCallback | undefined;
     const channelMock = {
-        on: jest.fn().mockImplementation((event, type, cb) => {
+      on: jest.fn().mockImplementation((event: string, type: { event?: string }, cb: PresenceSyncCallback) => {
             if (event === 'presence' && type.event === 'sync') {
                 presenceCallback = cb;
             }
@@ -255,7 +265,7 @@ describe('Messages Page', () => {
         presenceState: jest.fn(() => ({
             'user-1': [{ user_id: 'user-1', online_at: new Date().toISOString() }]
         })),
-        subscribe: jest.fn().mockImplementation((cb) => {
+        subscribe: jest.fn().mockImplementation((cb?: ChannelStatusCallback) => {
             if (cb) {
                 setTimeout(() => cb('SUBSCRIBED'), 0);
             }
@@ -264,12 +274,12 @@ describe('Messages Page', () => {
         unsubscribe: jest.fn(),
     };
 
-    (supabase.channel as jest.Mock).mockReturnValue(channelMock);
+    (appClient.channel as jest.Mock).mockReturnValue(channelMock);
 
     render(<Messages />);
     
     await waitFor(() => {
-        expect(supabase.channel).toHaveBeenCalledWith('online-users');
+        expect(appClient.channel).toHaveBeenCalledWith('online-users');
     });
 
     // Trigger presence sync

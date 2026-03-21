@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { supabase } from '../../../supabaseClient';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '../../../components/Button';
@@ -19,8 +18,8 @@ const DeleteAccount: React.FC = () => {
 
     /**
      * Handles the account deletion process.
-     * It validates the user's confirmation, calls a secure Supabase RPC function
-     * to perform the deletion on the backend, signs the user out, and redirects them.
+     * It validates the user's confirmation, deletes the local profile graph,
+     * removes the Appwrite account on the backend, and redirects them.
      */
     const handleDeleteAccount = async () => {
         if (confirmationText !== 'DELETE') {
@@ -32,18 +31,14 @@ const DeleteAccount: React.FC = () => {
         setErrorMessage('');
 
         try {
-            // This RPC function must be created in your Supabase SQL editor.
-            // It needs to be a SECURITY DEFINER function to have the necessary permissions
-            // to delete user data across different tables and the auth schema.
-            const { error: rpcError } = await supabase.rpc('delete_user_account');
+            const response = await fetch('/api/auth/account', {
+                method: 'DELETE',
+            });
 
-            if (rpcError) {
-                // If the RPC call fails, throw an error to be caught by the catch block.
-                throw rpcError;
+            if (!response.ok) {
+                const payload = await response.json().catch(() => null);
+                throw new Error(payload?.message || 'Failed to delete account');
             }
-
-            // On successful deletion from the backend, sign the user out from the client session.
-            await supabase.auth.signOut();
 
             // Redirect to the home page.
             // Note: Next.js router.push doesn't support state like react-router-dom.

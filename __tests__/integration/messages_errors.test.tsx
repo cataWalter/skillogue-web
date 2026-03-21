@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import MessagesPage from '../../src/app/messages/page';
-import { supabase } from '../../src/supabaseClient';
+import { appClient } from '../../src/lib/appClient';
 import '@testing-library/jest-dom';
 
-// Mock Supabase client
-jest.mock('../../src/supabaseClient', () => ({
-  supabase: {
+// Mock App Client client
+jest.mock('../../src/lib/appClient', () => ({
+  appClient: {
     auth: {
       getUser: jest.fn(),
       getSession: jest.fn(),
@@ -47,17 +47,18 @@ describe('Messages Page Error Handling', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
-    (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
+    (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
 
     // Default mocks
-    (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
         if (fn === 'get_conversations') return Promise.resolve({ data: mockConversations, error: null });
         if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+        if (fn === 'is_blocked_by') return Promise.resolve({ data: false, error: null });
         return Promise.resolve({ data: [], error: null });
     });
 
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation(() => {
         return {
             select: jest.fn(() => ({
                 or: jest.fn(() => ({
@@ -78,7 +79,7 @@ describe('Messages Page Error Handling', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       
       // Mock conversations success but messages failure
-      (supabase.from as jest.Mock).mockImplementation((table) => {
+      (appClient.from as jest.Mock).mockImplementation((table) => {
           if (table === 'messages') {
               return {
                   select: jest.fn(() => ({
@@ -118,7 +119,7 @@ describe('Messages Page Error Handling', () => {
       const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
 
       // Mock message load success
-      (supabase.from as jest.Mock).mockImplementation((table) => {
+      (appClient.from as jest.Mock).mockImplementation((table) => {
           if (table === 'messages') {
               return {
                   select: jest.fn(() => ({
@@ -165,9 +166,10 @@ describe('Messages Page Error Handling', () => {
       const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
       const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
 
-      (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+      (appClient.rpc as jest.Mock).mockImplementation((fn) => {
           if (fn === 'get_conversations') return Promise.resolve({ data: mockConversations, error: null });
           if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+          if (fn === 'is_blocked_by') return Promise.resolve({ data: false, error: null });
           if (fn === 'block_user') return Promise.resolve({ error: { message: 'Block failed' } });
           return Promise.resolve({ data: [], error: null });
       });
