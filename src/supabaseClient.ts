@@ -1,35 +1,63 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let supabaseInstance: SupabaseClient | null = null;
+let initializationAttempted = false;
 
-const getSupabaseClient = (): SupabaseClient => {
+const isValidSupabaseUrl = (url: string | undefined): boolean => {
+  if (!url || !url.trim()) return false;
+  try {
+    new URL(url);
+    return url.startsWith('https://');
+  } catch {
+    return false;
+  }
+};
+
+const createSupabaseClient = (): SupabaseClient | null => {
+  if (initializationAttempted) {
+    return supabaseInstance;
+  }
+  
+  initializationAttempted = true;
+  
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // If env vars are missing or empty, use a valid placeholder URL for build time
-  // At runtime, the real Supabase client will be used when env vars are available
-  const url = (supabaseUrl && supabaseUrl.trim()) ? supabaseUrl : 'https://placeholder.supabase.co';
-  const key = (supabaseAnonKey && supabaseAnonKey.trim()) ? supabaseAnonKey : 'placeholder-key';
+  // Only create client if both env vars are valid
+  if (!isValidSupabaseUrl(supabaseUrl) || !supabaseAnonKey?.trim()) {
+    console.warn(
+      'Supabase client not initialized: Missing or invalid environment variables. ' +
+      'This is expected during build time.'
+    );
+    return null;
+  }
 
-  return createClient(url, key, {
-    auth: {
-      persistSession: false,
-    },
-  });
+  try {
+    supabaseInstance = createClient(supabaseUrl as string, supabaseAnonKey as string, {
+      auth: {
+        persistSession: false,
+      },
+    });
+    return supabaseInstance;
+  } catch (error) {
+    console.error('Failed to create Supabase client:', error);
+    return null;
+  }
 };
 
 // Lazy initialize the supabase client on first use
-export const getSupabase = (): SupabaseClient => {
-  if (!supabaseInstance) {
-    supabaseInstance = getSupabaseClient();
-  }
-  return supabaseInstance;
+export const getSupabase = (): SupabaseClient | null => {
+  return createSupabaseClient();
 };
 
-// Keep the old export for backward compatibility
+// Keep the old export for backward compatibility with a safe proxy
 export const supabase = new Proxy({} as SupabaseClient, {
   get: (target, prop) => {
     const client = getSupabase();
+    if (!client) {
+      // Return undefined for properties if client couldn't be initialized
+      return undefined;
+    }
     return (client as any)[prop];
   },
 });
