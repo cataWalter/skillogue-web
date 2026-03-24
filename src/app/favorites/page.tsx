@@ -133,8 +133,8 @@ const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => voi
                         {user.profile_languages && user.profile_languages.length > 0 && (
                             <DetailItem icon={<Languages size={16} />} label="Languages">
                                 <div className="flex flex-wrap gap-1 mt-1">
-                                    {user.profile_languages.slice(0, 3).map((lang, i) => (
-                                        <span key={i} className="px-2 py-0.5 bg-gray-800 text-indigo-300 rounded text-xs">
+                                    {user.profile_languages.slice(0, 3).map((lang) => (
+                                        <span key={lang} className="px-2 py-0.5 bg-gray-800 text-indigo-300 rounded text-xs">
                                             {lang}
                                         </span>
                                     ))}
@@ -148,8 +148,8 @@ const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => voi
 
                     {user.profilepassions && user.profilepassions.length > 0 && (
                         <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                            {user.profilepassions.slice(0, 5).map((passion, i) => (
-                                <span key={i} className="px-3 py-1 bg-indigo-900/40 text-indigo-300 rounded-full text-xs border border-indigo-800/50">
+                            {user.profilepassions.slice(0, 5).map((passion) => (
+                                <span key={passion} className="px-3 py-1 bg-indigo-900/40 text-indigo-300 rounded-full text-xs border border-indigo-800/50">
                                     {passion}
                                 </span>
                             ))}
@@ -204,7 +204,7 @@ const FavoritesPage = () => {
             ) : favorites.length === 0 ? (
                 <div className="text-center py-10">
                     <Heart className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                    <p className="text-xl text-gray-400">You haven't saved any profiles yet.</p>
+                    <p className="text-xl text-gray-400">You haven&apos;t saved any profiles yet.</p>
                     <Link href="/search" className="mt-4 inline-block px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition">
                         Find People
                     </Link>

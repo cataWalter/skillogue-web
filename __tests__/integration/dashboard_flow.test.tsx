@@ -176,6 +176,7 @@ describe('Dashboard Integration Flow', () => {
   });
 
   it('redirects to onboarding if profile is incomplete', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     // Mock incomplete profile
     (supabase.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
@@ -199,6 +200,8 @@ describe('Dashboard Integration Flow', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/onboarding');
     });
+
+    consoleSpy.mockRestore();
   });
 
   it('redirects to login if not authenticated', async () => {

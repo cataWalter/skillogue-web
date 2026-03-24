@@ -4,17 +4,18 @@
 - [x] **Database Synchronization**:
   - Apply `supabase/production_setup.sql` to production (Contains Blocking, Favorites, and Contact Us).
   - Apply `supabase/enhancements.sql` to production (Contains Push Notifications and Analytics).
-- [ ] **Edge Functions**:
-  - Deploy `send-message-broadcast` function: `supabase functions deploy send-message-broadcast`.
-  - Deploy `send-push` function: `supabase functions deploy send-push`.
-  - Set environment secrets for the function (e.g., SMTP keys if using a mailer).
-  - Set VAPID secrets: `supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=...`
+- [x] **Edge Functions**:
+  - Deploy `send-message-broadcast` function: ✅ DEPLOYED (ID: b9898b07-e5fb-4ea7-8d99-c0ae57b47620)
+  - Deploy `send-push` function: ✅ DEPLOYED (ID: 399b1ac9-a6e2-4864-9241-e7f8294551e5)
+  - Set environment secrets for the function (VAPID keys): ✅ SET
+  - Set VAPID secrets: ✅ SET (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT)
 - [x] **Security Audit**:
   - Review RLS policies for `blocked_users`, `saved_profiles`, and `messages` tables. (Verified and fixed `saved_profiles` to exclude blocked users)
   - Ensure no sensitive data is exposed in public views.
 - [x] **SEO & Metadata**:
   - Update `src/app/layout.tsx` with production `metadata` (Title, Description, OpenGraph images).
   - Verify `robots.txt` and `sitemap.xml` (Created `sitemap.ts`).
+- [x] **npm audit**: All 7 vulnerabilities fixed (dicebear, ajv, flatted, minimatch, next)
 - [ ] **Domain & SSL**:
   - Configure custom domain in Vercel/Netlify.
   - Verify SSL certificate provisioning.

@@ -8,13 +8,13 @@ export const test = base.extend<{
   authenticatedPage: Page;
   createTestUser: () => Promise<{ email: string; password: string; id: string }>;
 }>({
-  authenticatedPage: async ({ page }, use) => {
+  authenticatedPage: async ({ page }, providePage) => {
     // Sign in with test user credentials
     const testEmail = 'testuser@example.com';
     const testPassword = 'TestPassword123!';
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: testEmail,
         password: testPassword,
       });
@@ -33,7 +33,7 @@ export const test = base.extend<{
       console.log('Could not authenticate:', e);
     }
 
-    await use(page);
+    await providePage(page);
   },
 
   createTestUser: async () => {

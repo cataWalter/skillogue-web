@@ -58,6 +58,6 @@ export const supabase = new Proxy({} as SupabaseClient, {
       // Return undefined for properties if client couldn't be initialized
       return undefined;
     }
-    return (client as any)[prop];
+    return Reflect.get(client, prop, target);
   },
 });

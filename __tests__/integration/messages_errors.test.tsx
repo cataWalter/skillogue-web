@@ -54,10 +54,11 @@ describe('Messages Page Error Handling', () => {
     (supabase.rpc as jest.Mock).mockImplementation((fn) => {
         if (fn === 'get_conversations') return Promise.resolve({ data: mockConversations, error: null });
         if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+        if (fn === 'is_blocked_by') return Promise.resolve({ data: false, error: null });
         return Promise.resolve({ data: [], error: null });
     });
 
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (supabase.from as jest.Mock).mockImplementation(() => {
         return {
             select: jest.fn(() => ({
                 or: jest.fn(() => ({
@@ -168,6 +169,7 @@ describe('Messages Page Error Handling', () => {
       (supabase.rpc as jest.Mock).mockImplementation((fn) => {
           if (fn === 'get_conversations') return Promise.resolve({ data: mockConversations, error: null });
           if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+          if (fn === 'is_blocked_by') return Promise.resolve({ data: false, error: null });
           if (fn === 'block_user') return Promise.resolve({ error: { message: 'Block failed' } });
           return Promise.resolve({ data: [], error: null });
       });

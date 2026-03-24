@@ -2,10 +2,19 @@ import { useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { usePathname } from 'next/navigation';
 
+type AnalyticsPrimitive = string | number | boolean | null;
+type AnalyticsProperty = AnalyticsPrimitive | AnalyticsPrimitive[] | AnalyticsObject;
+
+interface AnalyticsObject {
+  [key: string]: AnalyticsProperty;
+}
+
+type AnalyticsProperties = AnalyticsObject;
+
 export function useAnalytics() {
   const pathname = usePathname();
 
-  const trackEvent = useCallback(async (eventName: string, properties: Record<string, any> = {}) => {
+  const trackEvent = useCallback(async (eventName: string, properties: AnalyticsProperties = {}) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       

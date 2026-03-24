@@ -18,6 +18,11 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  return btoa(String.fromCharCode(...bytes));
+}
+
 export function usePushNotifications() {
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
@@ -70,8 +75,8 @@ export function usePushNotifications() {
             await supabase.from('push_subscriptions').upsert({
               user_id: user.id,
               endpoint: sub.endpoint,
-              p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(p256dh) as any)),
-              auth: btoa(String.fromCharCode.apply(null, new Uint8Array(auth) as any)),
+              p256dh: arrayBufferToBase64(p256dh),
+              auth: arrayBufferToBase64(auth),
             }, { onConflict: 'user_id, endpoint' });
         }
       }

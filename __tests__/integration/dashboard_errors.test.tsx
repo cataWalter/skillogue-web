@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, waitFor, act } from '@testing-library/react';
 import Dashboard from '../../src/app/dashboard/page';
 import { supabase } from '../../src/supabaseClient';
 
@@ -91,8 +91,6 @@ describe('Dashboard Error Handling', () => {
         await act(async () => {
             render(<Dashboard />);
         });
-
-        screen.debug();
 
         await waitFor(() => {
             expect(supabase.rpc).toHaveBeenCalledWith('get_recent_conversations', expect.any(Object));

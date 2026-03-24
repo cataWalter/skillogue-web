@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import FavoritesPage from '../src/app/favorites/page';
 import { supabase } from '../src/supabaseClient';
+import * as toast from 'react-hot-toast';
 import '@testing-library/jest-dom';
 
 // Mock Supabase client
@@ -22,12 +23,16 @@ describe('FavoritesPage', () => {
     jest.clearAllMocks();
   });
 
-  it('renders loading state initially', () => {
+  it('renders loading state initially', async () => {
     (supabase.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
     render(<FavoritesPage />);
     // Check for loader (assuming Loader2 renders an SVG or similar)
     // Since we can't easily query the icon by text, we can check if the "Favorite Profiles" header is there
     expect(screen.getByText('Favorite Profiles')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("You haven't saved any profiles yet.")).toBeInTheDocument();
+    });
   });
 
   it('renders empty state when no favorites', async () => {
@@ -144,7 +149,7 @@ describe('FavoritesPage', () => {
     fireEvent.click(removeButton);
 
     await waitFor(() => {
-      expect(require('react-hot-toast').error).toHaveBeenCalledWith('Failed to remove');
+      expect(toast.error).toHaveBeenCalledWith('Failed to remove');
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
   });
@@ -156,7 +161,7 @@ describe('FavoritesPage', () => {
     render(<FavoritesPage />);
 
     await waitFor(() => {
-      expect(require('react-hot-toast').error).toHaveBeenCalledWith('Failed to load favorites');
+      expect(toast.error).toHaveBeenCalledWith('Failed to load favorites');
     });
     consoleSpy.mockRestore();
   });

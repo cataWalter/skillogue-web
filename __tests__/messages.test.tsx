@@ -4,6 +4,9 @@ import Messages from '../src/app/messages/page';
 import { supabase } from '../src/supabaseClient';
 import '@testing-library/jest-dom';
 
+type ChannelStatusCallback = (status: string) => void;
+type PresenceSyncCallback = () => void;
+
 // Mock Supabase client
 jest.mock('../src/supabaseClient', () => ({
   supabase: {
@@ -13,14 +16,21 @@ jest.mock('../src/supabaseClient', () => ({
     from: jest.fn(),
     rpc: jest.fn(),
     channel: jest.fn(() => {
-      const channelMock: any = {
+      const channelMock: {
+        on: jest.Mock;
+        track: jest.Mock;
+        untake: jest.Mock;
+        presenceState: jest.Mock;
+        unsubscribe: jest.Mock;
+        subscribe?: jest.Mock;
+      } = {
         on: jest.fn().mockReturnThis(),
         track: jest.fn(),
         untake: jest.fn(),
         presenceState: jest.fn(() => ({})),
         unsubscribe: jest.fn(),
       };
-      channelMock.subscribe = jest.fn().mockImplementation((callback: any) => {
+      channelMock.subscribe = jest.fn().mockImplementation((callback?: ChannelStatusCallback) => {
         if (callback) {
           setTimeout(() => callback('SUBSCRIBED'), 0);
         }
@@ -242,9 +252,9 @@ describe('Messages Page', () => {
   });
 
   it('updates online status from presence channel', async () => {
-    let presenceCallback: any;
+    let presenceCallback: PresenceSyncCallback | undefined;
     const channelMock = {
-        on: jest.fn().mockImplementation((event, type, cb) => {
+      on: jest.fn().mockImplementation((event: string, type: { event?: string }, cb: PresenceSyncCallback) => {
             if (event === 'presence' && type.event === 'sync') {
                 presenceCallback = cb;
             }
@@ -255,7 +265,7 @@ describe('Messages Page', () => {
         presenceState: jest.fn(() => ({
             'user-1': [{ user_id: 'user-1', online_at: new Date().toISOString() }]
         })),
-        subscribe: jest.fn().mockImplementation((cb) => {
+        subscribe: jest.fn().mockImplementation((cb?: ChannelStatusCallback) => {
             if (cb) {
                 setTimeout(() => cb('SUBSCRIBED'), 0);
             }

@@ -271,8 +271,13 @@ const Messages: React.FC = () => {
 
     const checkBlockedStatus = useCallback(async () => {
         if (!selectedChat || !user) return;
-        const { data } = await supabase.rpc('is_blocked', { target_id: selectedChat });
-        setIsBlocking(!!data);
+        const [{ data: blockingData }, { data: blockedByData }] = await Promise.all([
+            supabase.rpc('is_blocked', { target_id: selectedChat }),
+            supabase.rpc('is_blocked_by', { target_id: selectedChat }),
+        ]);
+
+        setIsBlocking(!!blockingData);
+        setIsBlocked(!!blockedByData);
     }, [selectedChat, user]);
 
     useEffect(() => {

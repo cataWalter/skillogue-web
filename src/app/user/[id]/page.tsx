@@ -13,6 +13,14 @@ import { Session } from '@supabase/supabase-js';
 import ReportModal from '../../../components/ReportModal';
 import toast from 'react-hot-toast';
 
+type NamedRelation = {
+    passions: { name: string } | null;
+};
+
+type LanguageRelation = {
+    languages: { name: string } | null;
+};
+
 const UserProfile: React.FC = () => {
     const params = useParams();
     const id = params?.id as string;
@@ -28,7 +36,7 @@ const UserProfile: React.FC = () => {
     const [isReportModalOpen, setReportModalOpen] = useState(false);
     const router = useRouter();
 
-    const checkBlockStatus = useCallback(async (currentUserId: string, profileId: string) => {
+    const checkBlockStatus = useCallback(async (profileId: string) => {
         const { data } = await supabase.rpc('is_blocked', { target_id: profileId });
         setIsBlocked(!!data);
     }, []);
@@ -61,7 +69,7 @@ const UserProfile: React.FC = () => {
                 return;
             }
             
-            checkBlockStatus(currentSession.user.id, id);
+            checkBlockStatus(id);
 
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
@@ -82,15 +90,14 @@ const UserProfile: React.FC = () => {
                 supabase.from('profile_languages').select('languages(name)').eq('profile_id', id)
             ]);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setPassions(passionRes.data?.map((p: any) => p.passions.name) || []);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setLanguages(languageRes.data?.map((l: any) => l.languages.name) || []);
-const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
+            setPassions((passionRes.data as NamedRelation[] | null)?.flatMap((passion) => passion.passions?.name ? [passion.passions.name] : []) || []);
+            setLanguages((languageRes.data as LanguageRelation[] | null)?.flatMap((language) => language.languages?.name ? [language.languages.name] : []) || []);
+
+            const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
             setIsSaved(!!savedData);
 
             
-            await checkBlockStatus(currentSession.user.id, id);
+            await checkBlockStatus(id);
 
             setLoading(false);
         };
@@ -163,17 +170,6 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
         );
     }
 
-    // Calculate profile completion based on available data
-    const profileCompletion = () => {
-        let score = 0;
-        if (profile?.first_name) score += 20;
-        if (profile?.about_me) score += 20;
-        if (profile?.locations) score += 20;
-        if (passions.length > 0) score += 20;
-        if (languages.length > 0) score += 20;
-        return score;
-    };
-
     if (isBlockedByProfileUser) {
         return (
             <div className="flex-grow flex flex-col items-center justify-center p-10 text-center">
@@ -232,7 +228,9 @@ const { data: savedData } = await supabase.rpc('is_saved', { target_id: id });
             ) : (
                 <button
                     onClick={handleUnblock}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"                    title="Unblock User"                >
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
+                    title="Unblock User"
+                >
                     <UserX size={18} />
                     <span>Unblock</span>
                 </button>

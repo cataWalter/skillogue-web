@@ -1,3 +1,4 @@
+import { createServerClient } from '@supabase/ssr';
 // Mock next/headers before importing the module under test
 const mockCookies = {
   getAll: jest.fn(),
@@ -25,7 +26,7 @@ jest.mock('@supabase/ssr', () => {
 });
 
 // Access the mock after jest.mock is set up
-const mockCreateServerClient = require('@supabase/ssr').createServerClient;
+const mockCreateServerClient = createServerClient as jest.MockedFunction<typeof createServerClient>;
 
 // Now import after mocks are set up
 import { createClient } from '../../../src/utils/supabase/server';

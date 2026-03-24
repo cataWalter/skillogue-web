@@ -3,12 +3,11 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import FavoritesPage from '../../src/app/favorites/page';
 import NotificationsPage from '../../src/app/notifications/page';
 import SettingsPage from '../../src/app/settings/page';
 import { supabase } from '../../src/supabaseClient';
-import { useRouter } from 'next/navigation';
 
 // Mock next/navigation
 const mockPush = jest.fn();
@@ -52,6 +51,8 @@ jest.mock('react-hot-toast', () => ({
 
 describe('Favorites E2E Tests', () => {
   const mockUser = { id: 'user-123', email: 'test@example.com' };
+  const mockGetUser = supabase.auth.getUser as jest.Mock;
+  const mockRpc = supabase.rpc as jest.Mock;
   
   const mockFavorites = [
     {
@@ -79,8 +80,8 @@ describe('Favorites E2E Tests', () => {
 
   describe('Favorites Page', () => {
     it('should load and display favorites', async () => {
-      (supabase.auth.getUser as any).mockResolvedValue({ data: { user: mockUser } });
-      (supabase.rpc as any).mockResolvedValue({ data: mockFavorites, error: null });
+      mockGetUser.mockResolvedValue({ data: { user: mockUser } });
+      mockRpc.mockResolvedValue({ data: mockFavorites, error: null });
 
       render(<FavoritesPage />);
 
@@ -91,8 +92,8 @@ describe('Favorites E2E Tests', () => {
     });
 
     it('should display empty state when no favorites', async () => {
-      (supabase.auth.getUser as any).mockResolvedValue({ data: { user: mockUser } });
-      (supabase.rpc as any).mockResolvedValue({ data: [], error: null });
+      mockGetUser.mockResolvedValue({ data: { user: mockUser } });
+      mockRpc.mockResolvedValue({ data: [], error: null });
 
       render(<FavoritesPage />);
 
@@ -103,8 +104,8 @@ describe('Favorites E2E Tests', () => {
     });
 
     it('should handle loading error', async () => {
-      (supabase.auth.getUser as any).mockResolvedValue({ data: { user: mockUser } });
-      (supabase.rpc as any).mockResolvedValue({ data: null, error: { message: 'Error loading' } });
+      mockGetUser.mockResolvedValue({ data: { user: mockUser } });
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'Error loading' } });
 
       render(<FavoritesPage />);
 
@@ -114,16 +115,16 @@ describe('Favorites E2E Tests', () => {
     });
 
     it('should remove user from favorites', async () => {
-      (supabase.auth.getUser as any).mockResolvedValue({ data: { user: mockUser } });
-      (supabase.rpc as any).mockResolvedValueOnce({ data: mockFavorites, error: null });
+      mockGetUser.mockResolvedValue({ data: { user: mockUser } });
+      mockRpc.mockResolvedValueOnce({ data: mockFavorites, error: null });
       
-      let unsaveCallback: any;
-      (supabase.rpc as any).mockImplementationOnce((fn: string) => {
+      let unsaveCalled = false;
+      mockRpc.mockImplementationOnce((fn: string) => {
         if (fn === 'get_saved_profiles') {
           return Promise.resolve({ data: mockFavorites, error: null });
         }
         if (fn === 'unsave_profile') {
-          unsaveCallback = true;
+          unsaveCalled = true;
           return Promise.resolve({ data: null, error: null });
         }
         return Promise.resolve({ data: null, error: null });
@@ -142,12 +143,12 @@ describe('Favorites E2E Tests', () => {
       fireEvent.click(removeButton);
 
       await waitFor(() => {
-        expect(unsaveCallback).toBe(true);
+        expect(unsaveCalled).toBe(true);
       });
     });
 
     it('should show private profile badge for private profiles', async () => {
-      (supabase.auth.getUser as any).mockResolvedValue({ data: { user: mockUser } });
+      mockGetUser.mockResolvedValue({ data: { user: mockUser } });
       
       const privateFavorites = [{
         ...mockFavorites[0],
@@ -155,7 +156,7 @@ describe('Favorites E2E Tests', () => {
         about_me: null,
       }];
       
-      (supabase.rpc as any).mockResolvedValue({ data: privateFavorites, error: null });
+      mockRpc.mockResolvedValue({ data: privateFavorites, error: null });
 
       render(<FavoritesPage />);
 
@@ -167,23 +168,6 @@ describe('Favorites E2E Tests', () => {
 });
 
 describe('Notifications E2E Tests', () => {
-  const mockNotifications = [
-    {
-      id: 1,
-      type: 'new_message',
-      read: false,
-      created_at: new Date().toISOString(),
-      actor: { id: 'user-456', first_name: 'Alice' },
-    },
-    {
-      id: 2,
-      type: 'new_message',
-      read: true,
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      actor: { id: 'user-789', first_name: 'Bob' },
-    },
-  ];
-
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();

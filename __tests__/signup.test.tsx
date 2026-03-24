@@ -86,6 +86,7 @@ describe('SignUp Page', () => {
   })
 
   it('handles signup error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (supabase.auth.signUp as jest.Mock).mockResolvedValue({
       data: { user: null, session: null },
       error: { message: 'Signup failed' },
@@ -104,5 +105,7 @@ describe('SignUp Page', () => {
     await waitFor(() => {
       expect(window.alert).toHaveBeenCalledWith('Signup failed');
     });
+
+    consoleSpy.mockRestore()
   });
 })

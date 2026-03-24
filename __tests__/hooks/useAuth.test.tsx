@@ -1,4 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
+import { Session } from '@supabase/supabase-js';
 import { useAuth } from '../../src/hooks/useAuth';
 import { supabase } from '../../src/supabaseClient';
 
@@ -13,10 +14,12 @@ jest.mock('../../src/supabaseClient', () => ({
 }));
 
 describe('useAuth Hook', () => {
-    const mockSession = {
+    const mockSession: Session = {
         user: { id: '123', email: 'test@example.com' },
         access_token: 'token',
-    };
+    } as Session;
+
+    type AuthEvent = 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED';
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -57,11 +60,11 @@ describe('useAuth Hook', () => {
     });
 
     it('should handle auth state changes', async () => {
-        let authCallback: any;
+        let authCallback: ((event: AuthEvent, session: Session | null) => void) | undefined;
         (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null } });
         
         // Mock onAuthStateChange to capture callback
-        (supabase.auth.onAuthStateChange as jest.Mock).mockImplementation((callback) => {
+        (supabase.auth.onAuthStateChange as jest.Mock).mockImplementation((callback: (event: AuthEvent, session: Session | null) => void) => {
             authCallback = callback;
             return { data: { subscription: { unsubscribe: jest.fn() } } };
         });
@@ -75,7 +78,7 @@ describe('useAuth Hook', () => {
 
         // Trigger SIGNED_IN
         await act(async () => {
-            authCallback('SIGNED_IN', mockSession);
+            authCallback?.('SIGNED_IN', mockSession);
         });
 
         expect(result.current.session).toEqual(mockSession);
@@ -84,7 +87,7 @@ describe('useAuth Hook', () => {
 
         // Trigger SIGNED_OUT
         await act(async () => {
-            authCallback('SIGNED_OUT', null);
+            authCallback?.('SIGNED_OUT', null);
         });
 
         expect(result.current.session).toBeNull();
@@ -94,7 +97,7 @@ describe('useAuth Hook', () => {
         // Trigger USER_UPDATED
         const updatedSession = { ...mockSession, user: { ...mockSession.user, email: 'updated@example.com' } };
         await act(async () => {
-            authCallback('USER_UPDATED', updatedSession);
+            authCallback?.('USER_UPDATED', updatedSession);
         });
 
         expect(result.current.user?.email).toBe('updated@example.com');

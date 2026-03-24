@@ -292,6 +292,7 @@ describe('updateProfileAction', () => {
   });
 
   it('should handle location insert error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const mockUser = { id: 'user-123' };
     mockSupabase.auth.getUser.mockResolvedValue({
       data: { user: mockUser },
@@ -328,9 +329,12 @@ describe('updateProfileAction', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Location insert failed');
+
+    consoleSpy.mockRestore();
   });
 
   it('should handle profile update error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const mockUser = { id: 'user-123' };
     mockSupabase.auth.getUser.mockResolvedValue({
       data: { user: mockUser },
@@ -364,5 +368,7 @@ describe('updateProfileAction', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Profile update failed');
+
+    consoleSpy.mockRestore();
   });
 });

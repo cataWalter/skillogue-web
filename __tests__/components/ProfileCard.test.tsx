@@ -3,6 +3,11 @@ import { render, screen } from '@testing-library/react';
 import ProfileCard from '../../src/components/ProfileCard';
 import { FullProfile } from '../../src/types';
 
+jest.mock('../../src/components/Avatar', () => ({
+    __esModule: true,
+    default: ({ seed }: { seed: string }) => <div data-testid="mock-avatar">{seed}</div>,
+}));
+
 // Mock Lucide icons
 jest.mock('lucide-react', () => ({
     MapPin: () => <div data-testid="icon-map-pin" />,
@@ -15,7 +20,6 @@ jest.mock('lucide-react', () => ({
     User: () => <div data-testid="icon-user" />,
     BookOpen: () => <div data-testid="icon-book-open" />,
     Calendar: () => <div data-testid="icon-calendar" />,
-    Award: () => <div data-testid="icon-award" />,
     Clock: () => <div data-testid="icon-clock" />,
 }));
 

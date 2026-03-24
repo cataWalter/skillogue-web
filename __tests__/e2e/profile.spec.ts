@@ -83,10 +83,6 @@ test.describe('Static Pages', () => {
       await page.goto('/contact');
       
       // Check for form elements
-      const nameInput = page.locator('input[name="name"]');
-      const emailInput = page.locator('input[name="email"]');
-      const messageInput = page.locator('textarea[name="message"]');
-      
       // At least one should be visible or page should load
       await page.waitForTimeout(500);
     });

@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import AdminVerification from '../../../src/app/admin/verification/page';
+import { supabase } from '../../../src/supabaseClient';
 import { toast } from 'react-hot-toast';
 
 // Mock supabase - define mock inline in jest.mock
@@ -23,7 +24,7 @@ jest.mock('../../../src/supabaseClient', () => ({
 }));
 
 // Get the mock after it's set up
-const mockSupabase = require('../../../src/supabaseClient').supabase;
+const mockSupabase = supabase;
 
 // Mock react-hot-toast
 jest.mock('react-hot-toast', () => ({
@@ -63,10 +64,12 @@ describe('AdminVerification', () => {
     jest.clearAllMocks();
   });
 
-  it('should render loading state initially', () => {
+  it('should render loading state initially', async () => {
     render(<AdminVerification />);
 
     expect(screen.getByText('Loading...')).toBeInTheDocument();
+
+    await waitForElementToBeRemoved(() => screen.queryByText('Loading...'));
   });
 
   it('should render verification requests after loading', async () => {

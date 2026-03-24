@@ -215,6 +215,7 @@ describe('UserProfile', () => {
   });
 
   it('shows error state when profile fetch fails', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (supabase.from as jest.Mock).mockImplementation((table) => {
         if (table === 'profiles') {
             return {
@@ -233,5 +234,7 @@ describe('UserProfile', () => {
     await waitFor(() => {
         expect(screen.getByText('Could not find this user.')).toBeInTheDocument();
     });
+
+    consoleSpy.mockRestore();
   });
 });

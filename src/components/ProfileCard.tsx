@@ -1,6 +1,6 @@
 // src/components/ProfileCard.tsx
 import React from 'react';
-import { ShieldCheck, User, MapPin, BookOpen, Heart, Calendar, Languages, Award, Clock } from 'lucide-react';
+import { ShieldCheck, User, MapPin, BookOpen, Heart, Calendar, Languages, Clock } from 'lucide-react';
 import Avatar from './Avatar';
 import { FullProfile } from '../types';
 
@@ -87,8 +87,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, passions, languages,
                 {languages.length > 0 && (
                     <DetailItem icon={<Languages size={20} />} label="Languages">
                         <div className="flex flex-wrap gap-2 mt-1">
-                            {languages.map((lang, i) => (
-                                <span key={i} className="px-2 py-1 sm:px-3 sm:py-1 bg-gray-700/50 text-indigo-200 rounded-full text-xs sm:text-sm">
+                            {languages.map((lang) => (
+                                <span key={lang} className="px-2 py-1 sm:px-3 sm:py-1 bg-gray-700/50 text-indigo-200 rounded-full text-xs sm:text-sm">
                                     {lang}
                                 </span>
                             ))}
@@ -105,8 +105,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, passions, languages,
                         <h2 className="text-lg sm:text-xl font-semibold">Passions</h2>
                     </div>
                     <div className="flex flex-wrap gap-2 sm:gap-3 pl-0 sm:pl-9">
-                        {passions.map((passion, i) => (
-                            <span key={i} className="px-3 py-1 sm:px-4 sm:py-2 bg-indigo-900/70 text-indigo-200 rounded-full text-xs sm:text-sm border border-indigo-700/80 shadow-sm">
+                        {passions.map((passion) => (
+                            <span key={passion} className="px-3 py-1 sm:px-4 sm:py-2 bg-indigo-900/70 text-indigo-200 rounded-full text-xs sm:text-sm border border-indigo-700/80 shadow-sm">
                                 {passion}
                             </span>
                         ))}
