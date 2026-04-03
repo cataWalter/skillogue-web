@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import {
     User,
@@ -32,6 +31,149 @@ interface SearchResult {
     show_age?: boolean;
     show_location?: boolean;
 }
+
+interface FavoriteRpcError {
+    code?: string;
+    message?: string;
+}
+
+type NamedRelation = { name: string } | Array<{ name: string }> | null | undefined;
+
+const shouldFallbackFromSavedProfilesRpc = (error: FavoriteRpcError | null): boolean => {
+    if (!error) {
+        return false;
+    }
+
+    return error.code === '42883' || error.message?.includes('uuid = name') === true;
+};
+
+const getRelationName = (relation: NamedRelation): string | undefined => {
+    if (Array.isArray(relation)) {
+        return relation[0]?.name;
+    }
+
+    return relation?.name;
+};
+
+const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+        return [];
+    }
+
+    const { data: favoriteRows, error: favoritesError } = await supabase
+        .from('favorites')
+        .select('favorite_id')
+        .eq('user_id', authData.user.id);
+
+    if (favoritesError || !favoriteRows?.length) {
+        if (favoritesError) {
+            throw favoritesError;
+        }
+
+        return [];
+    }
+
+    const favoriteIds = favoriteRows.map((row) => row.favorite_id);
+    const [profilesResponse, passionsResponse, languagesResponse] = await Promise.all([
+        supabase
+            .from('profiles')
+            .select('id, first_name, last_name, about_me, age, gender, location_id, created_at, is_private, show_age, show_location')
+            .in('id', favoriteIds),
+        supabase
+            .from('profile_passions')
+            .select('profile_id, passions(name)')
+            .in('profile_id', favoriteIds),
+        supabase
+            .from('profile_languages')
+            .select('profile_id, languages(name)')
+            .in('profile_id', favoriteIds),
+    ]);
+
+    if (profilesResponse.error) {
+        throw profilesResponse.error;
+    }
+
+    if (passionsResponse.error) {
+        throw passionsResponse.error;
+    }
+
+    if (languagesResponse.error) {
+        throw languagesResponse.error;
+    }
+
+    const locationIds = Array.from(new Set(
+        (profilesResponse.data || [])
+            .map((profile) => profile.location_id)
+            .filter((locationId): locationId is number => typeof locationId === 'number')
+    ));
+
+    const locationsResponse = locationIds.length > 0
+        ? await supabase.from('locations').select('id, city').in('id', locationIds)
+        : { data: [], error: null };
+
+    if (locationsResponse.error) {
+        throw locationsResponse.error;
+    }
+
+    const cityByLocationId = new Map(
+        (locationsResponse.data || []).map((location) => [location.id, location.city])
+    );
+    const passionsByProfileId = new Map<string, string[]>();
+    const languagesByProfileId = new Map<string, string[]>();
+
+    for (const row of passionsResponse.data || []) {
+        const names = passionsByProfileId.get(row.profile_id) || [];
+        const passionName = getRelationName(row.passions as NamedRelation);
+
+        if (passionName) {
+            names.push(passionName);
+            passionsByProfileId.set(row.profile_id, names);
+        }
+    }
+
+    for (const row of languagesResponse.data || []) {
+        const names = languagesByProfileId.get(row.profile_id) || [];
+        const languageName = getRelationName(row.languages as NamedRelation);
+
+        if (languageName) {
+            names.push(languageName);
+            languagesByProfileId.set(row.profile_id, names);
+        }
+    }
+
+    const profilesById = new Map(
+        (profilesResponse.data || []).map((profile) => [profile.id, profile])
+    );
+    const favorites: SearchResult[] = [];
+
+    for (const favoriteId of favoriteIds) {
+        const profile = profilesById.get(favoriteId);
+
+        if (!profile) {
+            continue;
+        }
+
+        favorites.push({
+            id: profile.id,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            about_me: profile.about_me,
+            location: profile.location_id ? cityByLocationId.get(profile.location_id) || null : null,
+            age: profile.age,
+            gender: profile.gender,
+            profile_languages: languagesByProfileId.get(profile.id) || [],
+            created_at: profile.created_at,
+            profilepassions: passionsByProfileId.get(profile.id) || [],
+            is_private: profile.is_private,
+            show_age: profile.show_age,
+            show_location: profile.show_location,
+        });
+    }
+
+    return favorites;
+};
 
 const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value?: string | number | null; children?: React.ReactNode }> = ({ icon, label, value, children }) => {
     if (!value && !children) return null;
@@ -172,8 +314,18 @@ const FavoritesPage = () => {
         const loadFavorites = async () => {
             const { data, error } = await supabase.rpc('get_saved_profiles');
             if (error) {
-                console.error(error);
-                toast.error('Failed to load favorites');
+                if (shouldFallbackFromSavedProfilesRpc(error)) {
+                    try {
+                        const fallbackFavorites = await loadFavoritesFromTables();
+                        setFavorites(fallbackFavorites);
+                    } catch (fallbackError) {
+                        console.error(fallbackError);
+                        toast.error('Failed to load favorites');
+                    }
+                } else {
+                    console.error(error);
+                    toast.error('Failed to load favorites');
+                }
             } else {
                 setFavorites(data || []);
             }

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
 import { ArrowLeft, UserX, Loader2, Unlock } from 'lucide-react';
 import Avatar from '../../../components/Avatar';

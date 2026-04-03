@@ -1,88 +1,104 @@
-import React, { useState } from 'react';
-import Modal from './Modal';
-import { Button } from './Button';
-import { supabase } from '../supabaseClient';
-import toast from 'react-hot-toast';
+'use client';
+
+import { useState } from 'react';
+import { X } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 interface ReportModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    reporterId: string;
-    reportedUserId: string;
-    reportedUserName: string;
+  isOpen: boolean;
+  onClose: () => void;
+  reportedUserId: string;
 }
 
 const ReportModal: React.FC<ReportModalProps> = ({
-    isOpen,
-    onClose,
-    reporterId,
-    reportedUserId,
-    reportedUserName
+  isOpen,
+  onClose,
+  reportedUserId,
 }) => {
-    const [reason, setReason] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const handleReport = async () => {
-        if (!reason.trim()) return;
+  if (!isOpen) return null;
 
-        setIsSubmitting(true);
-        try {
-            const { error } = await supabase.from('reports').insert({
-                reporter_id: reporterId,
-                reported_user_id: reportedUserId,
-                reason: reason
-            });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !reason.trim()) return;
 
-            if (error) throw error;
-            toast.success('Report submitted. Thank you for keeping our community safe.');
-            setReason('');
-            onClose();
-        } catch (error: unknown) {
-            console.error('Error submitting report:', error);
-            const message = error instanceof Error ? error.message : 'Failed to submit report';
-            toast.error(message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    try {
+      setLoading(true);
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reporterId: user.id,
+          reportedId: reportedUserId,
+          reason: reason.trim(),
+        }),
+      });
 
-    return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={`Report ${reportedUserName}`}
-        >
-            <div className="space-y-4">
-                <p className="text-gray-300">
-                    Please describe why you are reporting this user. This will be reviewed by our team.
-                </p>
-                <div>
-                    <label htmlFor="report-reason" className="sr-only">Reason for reporting</label>
-                    <textarea
-                        id="report-reason"
-                        className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="Reason for reporting..."
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                    />
-                </div>
-                <div className="flex justify-end gap-3">
-                    <Button variant="secondary" onClick={onClose} className="!w-auto">
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="primary"
-                        onClick={handleReport}
-                        disabled={!reason.trim() || isSubmitting}
-                        isLoading={isSubmitting}
-                        className="!w-auto"
-                    >
-                        Submit Report
-                    </Button>
-                </div>
-            </div>
-        </Modal>
-    );
+      if (response.ok) {
+        onClose();
+        setReason('');
+        alert('Report submitted successfully');
+      }
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      alert('Failed to submit report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 max-w-md w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-white">Report User</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Reason for reporting
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              rows={4}
+              placeholder="Please describe why you want to report this user..."
+              required
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              disabled={loading || !reason.trim()}
+            >
+              {loading ? 'Submitting...' : 'Submit Report'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 };
 
 export default ReportModal;

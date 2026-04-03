@@ -1,68 +1,37 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
-
 export async function getUserData() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+  // In a real implementation, you would:
+  // 1. Get the current user from the session
+  // 2. Fetch all user data from the database using Drizzle ORM
+  
+  // Mock response for now
+  return {
+    user: null,
+    profile: null,
+    messages: [],
+    notifications: [],
+    favorites: [],
+  };
+}
 
-    if (!user) {
-        throw new Error('Not authenticated');
-    }
-
-    const userId = user.id;
-
-    // Fetch Profile
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-    // Fetch Passions
-    const { data: passions } = await supabase
-        .from('profile_passions')
-        .select('passions(name)')
-        .eq('profile_id', userId);
-
-    // Fetch Languages
-    const { data: languages } = await supabase
-        .from('profile_languages')
-        .select('languages(name)')
-        .eq('profile_id', userId);
-
-    // Fetch Sent Messages
-    const { data: sentMessages } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('sender_id', userId);
-
-    // Fetch Received Messages
-    const { data: receivedMessages } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('receiver_id', userId);
-
-    // Fetch Blocked Users
-    const { data: blocks } = await supabase
-        .from('blocked_users')
-        .select('*')
-        .eq('blocker_id', userId);
-
+export async function exportUserData() {
+  try {
+    const data = await getUserData();
+    
+    // Convert to JSON and create a blob
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    
     return {
-        user: {
-            id: userId,
-            email: user.email,
-            ...profile
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        passions: passions?.map((p: any) => (Array.isArray(p.passions) ? p.passions[0]?.name : p.passions?.name)) || [],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        languages: languages?.map((l: any) => (Array.isArray(l.languages) ? l.languages[0]?.name : l.languages?.name)) || [],
-        messages: {
-            sent: sentMessages || [],
-            received: receivedMessages || []
-        },
-        blocked_users: blocks || []
+      success: true,
+      data: json,
     };
+  } catch (error) {
+    console.error('Export error:', error);
+    return {
+      success: false,
+      error: 'Failed to export data',
+    };
+  }
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase } from '../../supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';

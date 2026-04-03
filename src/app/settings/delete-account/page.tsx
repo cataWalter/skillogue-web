@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { supabase } from '../../../supabaseClient';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '../../../components/Button';

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../../supabaseClient';
 import { ArrowLeft, ShieldCheck, Clock, XCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';

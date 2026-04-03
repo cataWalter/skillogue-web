@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, Send, Flag, ShieldAlert, MessageSquare, Ban } from 'lucide-react';

@@ -1,120 +1,68 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../supabaseClient';
+import { useState, useEffect } from 'react';
+import { useAuth } from './useAuth';
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  return btoa(String.fromCharCode(...bytes));
-}
-
-export function usePushNotifications() {
+export const usePushNotifications = () => {
+  const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       setIsSupported(true);
-      registerServiceWorker();
-    } else {
-      setLoading(false);
     }
   }, []);
 
-  const registerServiceWorker = async () => {
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
-      const sub = await registration.pushManager.getSubscription();
-      setSubscription(sub);
-    } catch (error) {
-      console.error('Service Worker registration failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const requestPermission = async () => {
+    if (!isSupported) return;
 
-  const subscribe = useCallback(async () => {
-    if (!isSupported || !VAPID_PUBLIC_KEY) {
-        console.error('Push notifications not supported or VAPID key missing');
-        return;
-    }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
 
     try {
       setLoading(true);
       const registration = await navigator.serviceWorker.ready;
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_KEY,
       });
-
       setSubscription(sub);
 
-      // Save to Supabase
-      const { data: { user } } = await supabase.auth.getUser();
+      // Save subscription to server
       if (user) {
-        const p256dh = sub.getKey('p256dh');
-        const auth = sub.getKey('auth');
-        
-        if (p256dh && auth) {
-            await supabase.from('push_subscriptions').upsert({
-              user_id: user.id,
-              endpoint: sub.endpoint,
-              p256dh: arrayBufferToBase64(p256dh),
-              auth: arrayBufferToBase64(auth),
-            }, { onConflict: 'user_id, endpoint' });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to subscribe:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [isSupported]);
-
-  const unsubscribe = useCallback(async () => {
-    if (!subscription) return;
-
-    try {
-      setLoading(true);
-      await subscription.unsubscribe();
-      setSubscription(null);
-
-      // Remove from Supabase
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('push_subscriptions').delete().match({ 
-            user_id: user.id,
-            endpoint: subscription.endpoint 
+        const json = sub.toJSON();
+        await fetch('/api/push-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(json),
         });
       }
     } catch (error) {
-      console.error('Failed to unsubscribe:', error);
+      console.error('Error subscribing to push notifications:', error);
     } finally {
       setLoading(false);
     }
-  }, [subscription]);
+  };
+
+  const unsubscribe = async () => {
+    if (!subscription) return;
+
+    try {
+      await subscription.unsubscribe();
+      setSubscription(null);
+
+      // Remove from server
+      await fetch('/api/push-subscription', { method: 'DELETE' });
+    } catch (error) {
+      console.error('Error unsubscribing from push notifications:', error);
+    }
+  };
 
   return {
     isSupported,
     subscription,
-    subscribe,
+    loading,
+    requestPermission,
     unsubscribe,
-    loading
   };
-}
+};

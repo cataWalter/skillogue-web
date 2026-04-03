@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../supabaseClient';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import MultiSelect from '../../components/MultiSelect';
 import Link from 'next/link';
-import { updateProfileAction } from '../actions/profile';
+import { updateProfile } from '../actions/profile';
 
 interface ProfileState {
     first_name: string;
@@ -159,7 +158,7 @@ const EditProfile: React.FC = () => {
         setError('');
 
         try {
-            const result = await updateProfileAction({
+            const result = await updateProfile({
                 first_name: profile.first_name,
                 last_name: profile.last_name,
                 about_me: profile.about_me,

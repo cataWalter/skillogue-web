@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';

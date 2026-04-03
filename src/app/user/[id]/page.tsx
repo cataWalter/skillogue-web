@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import ProfileCard from '../../../components/ProfileCard';

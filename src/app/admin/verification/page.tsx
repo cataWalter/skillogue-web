@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../../supabaseClient';
 import { Check, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -10,7 +9,7 @@ interface VerificationRequest {
     user_id: string;
     status: string;
     created_at: string;
-    profiles: { first_name: string; last_name: string; id: string };
+    profiles?: { first_name: string; last_name: string; id: string };
 }
 
 export default function AdminVerification() {
@@ -22,39 +21,33 @@ export default function AdminVerification() {
     }, []);
 
     const fetchRequests = async () => {
-        const { data, error } = await supabase
-            .from('verification_requests')
-            .select('*, profiles(first_name, last_name, id)')
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false });
-
-        if (error) {
+        try {
+            const response = await fetch('/api/admin/verification');
+            if (response.ok) {
+                const data = await response.json();
+                setRequests(data);
+            }
+        } catch (error) {
             console.error('Error fetching requests:', error);
-        } else {
-            setRequests(data || []);
         }
         setLoading(false);
     };
 
     const handleApprove = async (id: number, userId: string) => {
         try {
-            // 1. Update request status
-            const { error: reqError } = await supabase
-                .from('verification_requests')
-                .update({ status: 'approved' })
-                .eq('id', id);
-            if (reqError) throw reqError;
-
-            // 2. Update profile verified status
-            const { error: profError } = await supabase
-                .from('profiles')
-                .update({ verified: true })
-                .eq('id', userId);
-            if (profError) throw profError;
-
-            toast.success('User verified successfully');
-            fetchRequests();
-        } catch (error: unknown) {
+            const response = await fetch(`/api/admin/verification/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'approved', userId }),
+            });
+            
+            if (response.ok) {
+                toast.success('User verified successfully');
+                fetchRequests();
+            } else {
+                toast.error('Failed to approve');
+            }
+        } catch (error) {
             console.error('Error approving:', error);
             toast.error('Failed to approve');
         }
@@ -62,24 +55,28 @@ export default function AdminVerification() {
 
     const handleReject = async (id: number) => {
         try {
-            const { error } = await supabase
-                .from('verification_requests')
-                .update({ status: 'rejected' })
-                .eq('id', id);
-            if (error) throw error;
-
-            toast.success('Request rejected');
-            fetchRequests();
-        } catch (error: unknown) {
+            const response = await fetch(`/api/admin/verification/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'rejected' }),
+            });
+            
+            if (response.ok) {
+                toast.success('Request rejected');
+                fetchRequests();
+            } else {
+                toast.error('Failed to reject');
+            }
+        } catch (error) {
             console.error('Error rejecting:', error);
             toast.error('Failed to reject');
         }
     };
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <div className="text-white">Loading...</div>;
 
     return (
-        <div>
+        <div className="text-white">
             <h1 className="text-3xl font-bold mb-6">Verification Requests</h1>
             <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
                 <table className="w-full text-left">
