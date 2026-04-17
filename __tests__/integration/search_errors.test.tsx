@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import SearchPage from '../../src/app/search/page';
-import { supabase } from '../../src/supabaseClient';
+import { appClient } from '../../src/lib/appClient';
 import '@testing-library/jest-dom';
 
-// Mock Supabase client
-jest.mock('../../src/supabaseClient', () => ({
-  supabase: {
+// Mock App Client client
+jest.mock('../../src/lib/appClient', () => ({
+  appClient: {
     auth: {
       getUser: jest.fn(),
       getSession: jest.fn(),
@@ -33,11 +33,11 @@ describe('Search Page Error Handling and Edge Cases', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
-    (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
+    (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
 
     // Default mock for passions
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'passions') {
         return {
           select: jest.fn().mockResolvedValue({ data: mockPassions, error: null }),
@@ -70,7 +70,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
       profilepassions: [],
     }];
 
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: privateUser, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: privateUser, error: null });
 
     await act(async () => {
         render(<SearchPage />);
@@ -84,7 +84,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
 
   it('handles search error gracefully', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (supabase.rpc as jest.Mock).mockRejectedValue(new Error('Search failed'));
+    (appClient.rpc as jest.Mock).mockRejectedValue(new Error('Search failed'));
 
     await act(async () => {
         render(<SearchPage />);
@@ -101,10 +101,10 @@ describe('Search Page Error Handling and Edge Cases', () => {
     const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     // Mock successful search first to enable save button
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
     
     // Mock save search failure
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
         if (table === 'passions') {
             return { select: jest.fn().mockResolvedValue({ data: mockPassions, error: null }) };
         }
@@ -150,7 +150,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
   });
 
   it('clears all filters', async () => {
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
 
     await act(async () => {
         render(<SearchPage />);
@@ -177,7 +177,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
   it('deletes a saved search', async () => {
       const mockSavedSearch = { id: 1, name: 'To Delete', query: 'test' };
       
-      (supabase.from as jest.Mock).mockImplementation((table) => {
+      (appClient.from as jest.Mock).mockImplementation((table) => {
         if (table === 'passions') return { select: jest.fn().mockResolvedValue({ data: mockPassions, error: null }) };
         if (table === 'saved_searches') {
             return {

@@ -1,5 +1,7 @@
 'use client';
 
+import { appClient } from '../../../lib/appClient';
+
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, UserX, Loader2, Unlock } from 'lucide-react';
@@ -23,10 +25,10 @@ const BlockedUsersPage: React.FC = () => {
 
     const fetchBlockedUsers = async () => {
         setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await appClient.auth.getSession();
         if (!session) return;
 
-        const { data, error } = await supabase
+        const { data, error } = await appClient
             .from('blocked_users')
             .select(`
                 blocked_id,
@@ -42,7 +44,7 @@ const BlockedUsersPage: React.FC = () => {
             console.error('Error fetching blocked users:', error);
             toast.error('Failed to load blocked users');
         } else {
-            // Transform data to match interface - Supabase returns nested objects from join
+            // Transform data to match interface - Appwrite returns nested objects from join
             const transformed = data?.map((item) => ({
                 blocked_id: item.blocked_id,
                 profile: Array.isArray(item.profile) ? item.profile[0] : item.profile
@@ -57,13 +59,13 @@ const BlockedUsersPage: React.FC = () => {
     }, []);
 
     const handleUnblock = async (userId: string, userName: string) => {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await appClient.auth.getSession();
         if (!session) return;
 
         if (!confirm(`Are you sure you want to unblock ${userName}?`)) return;
 
         try {
-            const { error } = await supabase
+            const { error } = await appClient
                 .from('blocked_users')
                 .delete()
                 .eq('blocker_id', session.user.id)

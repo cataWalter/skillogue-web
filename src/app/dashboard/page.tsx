@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MessageSquare, User, Search } from 'lucide-react';
+import { appClient } from '../../lib/appClient';
 import Avatar from '../../components/Avatar';
 import ProfileCompletion from '../../components/ProfileCompletion';
 import PassionSpotlight from '../../components/PassionSpotlight';
@@ -20,26 +21,29 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => {
         const fetchDashboardData = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await appClient.auth.getUser();
 
             if (user) {
-                const [
-                    profileRes,
-                    convosRes,
-                    suggestionsRes,
-                    passionsRes,
-                ] = await Promise.all([
-                    supabase.from('profiles').select(`
-                        id,
-                        first_name,
-                        about_me,
-                        passions_count: profile_passions(count),
-                        languages_count: profile_languages(count)
-                    `).eq('id', user.id).single(),
-                    supabase.rpc('get_recent_conversations', { current_user_id: user.id }),
-                    supabase.rpc('get_suggested_profiles', { current_user_id: user.id, p_limit: 5 }),
-                    supabase.from('profile_passions').select('passion_id, passions(name)').eq('profile_id', user.id)
-                ]);
+                // Fetch profile data
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const profileRes = await appClient.from('profiles').select(`
+                    id,
+                    first_name,
+                    about_me,
+                    passions_count: profile_passions(count),
+                    languages_count: profile_languages(count)
+                `).eq('id', user.id).single() as any;
+
+                // Fetch conversations
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const convosRes = await (appClient as any).rpc('get_recent_conversations', { current_user_id: user.id });
+
+                // Fetch suggestions
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const suggestionsRes = await (appClient as any).rpc('get_suggested_profiles', { current_user_id: user.id, p_limit: 5 });
+
+                // Fetch user passions
+                const passionsRes = await appClient.from('profile_passions').select('passion_id, passions(name)').eq('profile_id', user.id);
 
                 if (profileRes.error || !profileRes.data?.first_name) {
                     console.error("Profile incomplete or error fetching:", profileRes.error);

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { locations } from '@/lib/db/schema';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function GET() {
   try {
-    const data = await db.select().from(locations);
-    return NextResponse.json(data);
+    const service = new AppDataService();
+    const result = await service.listDocuments('locations');
+    return NextResponse.json(result.documents);
   } catch (error) {
     console.error('Error fetching locations:', error);
     return NextResponse.json({ error: 'Failed to fetch locations' }, { status: 500 });

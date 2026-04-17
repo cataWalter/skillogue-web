@@ -7,7 +7,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import FavoritesPage from '../../src/app/favorites/page';
 import NotificationsPage from '../../src/app/notifications/page';
 import SettingsPage from '../../src/app/settings/page';
-import { supabase } from '../../src/supabaseClient';
+import { appClient } from '../../src/lib/appClient';
 
 // Mock next/navigation
 const mockPush = jest.fn();
@@ -18,9 +18,9 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
-// Mock supabase client
-jest.mock('../../src/supabaseClient', () => ({
-  supabase: {
+// Mock appClient client
+jest.mock('../../src/lib/appClient', () => ({
+  appClient: {
     auth: {
       getUser: jest.fn(),
     },
@@ -51,8 +51,8 @@ jest.mock('react-hot-toast', () => ({
 
 describe('Favorites E2E Tests', () => {
   const mockUser = { id: 'user-123', email: 'test@example.com' };
-  const mockGetUser = supabase.auth.getUser as jest.Mock;
-  const mockRpc = supabase.rpc as jest.Mock;
+  const mockGetUser = appClient.auth.getUser as jest.Mock;
+  const mockRpc = appClient.rpc as jest.Mock;
   
   const mockFavorites = [
     {

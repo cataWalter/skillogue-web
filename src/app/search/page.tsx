@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Session } from '@supabase/supabase-js';
+type Session = { user: { id: string } } | null;
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { appClient } from '../../lib/appClient';
 import MultiSelect from '../../components/MultiSelect';
 import {
     Save,
@@ -216,14 +217,14 @@ const Search: React.FC = () => {
 
     useEffect(() => {
         const loadInitialData = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setSession(session);
+            const { data: { session } } = await appClient.auth.getSession();
+            setSession(session as Session);
 
-            const { data: passions } = await supabase.from('passions').select('id, name');
+            const { data: passions } = await appClient.from('passions').select('id, name');
             setAvailablePassions(passions || []);
 
             if (session) {
-                const { data: saved } = await supabase.from('saved_searches').select('*').eq('user_id', session.user.id);
+                const { data: saved } = await appClient.from('saved_searches').select('*').eq('user_id', session.user.id);
                 setSavedSearches(saved || []);
             }
         };
@@ -233,7 +234,7 @@ const Search: React.FC = () => {
     const performSearch = useCallback(async (pageNumber = 1) => {
         setLoading(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await appClient.auth.getSession();
             const currentUserId = session?.user?.id;
 
             // Convert selected passion names to IDs
@@ -241,7 +242,7 @@ const Search: React.FC = () => {
                 availablePassions.find(p => p.name === name)?.id
             ).filter(Boolean) as number[];
 
-            const { data, error } = await supabase.rpc('search_profiles', {
+            const { data, error } = await appClient.rpc('search_profiles', {
                 p_query: query || null,
                 p_location: location || null,
                 p_min_age: minAge ? parseInt(minAge) : null,
@@ -306,7 +307,7 @@ const Search: React.FC = () => {
             availablePassions.find(p => p.name === name)?.id
         ).filter(Boolean) as number[];
 
-        const { data, error } = await supabase.from('saved_searches').insert({
+        const { data, error } = await appClient.from('saved_searches').insert({
             user_id: session.user.id,
             name: saveSearchName,
             query: query || null,
@@ -349,7 +350,7 @@ const Search: React.FC = () => {
     };
 
     const deleteSavedSearch = async (id: number) => {
-        const { error } = await supabase.from('saved_searches').delete().eq('id', id);
+        const { error } = await appClient.from('saved_searches').delete().eq('id', id);
         if (!error) {
             setSavedSearches(savedSearches.filter(s => s.id !== id));
         }

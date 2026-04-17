@@ -2,7 +2,7 @@
  * Edge Functions Tests
  * 
  * These tests verify the logic of the edge functions without needing
- * a deployed function. In production, you would use Supabase's Realtime
+ * a deployed function. In production, you would use Appwrite's Realtime
  * and Web Push APIs directly from the client.
  */
 

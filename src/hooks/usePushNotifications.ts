@@ -58,10 +58,14 @@ export const usePushNotifications = () => {
     }
   };
 
+  // Alias requestPermission as subscribe for easier use in components
+  const subscribe = requestPermission;
+
   return {
     isSupported,
     subscription,
     loading,
+    subscribe,
     requestPermission,
     unsubscribe,
   };

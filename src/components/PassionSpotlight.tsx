@@ -3,16 +3,32 @@
 import { useState, useEffect } from 'react';
 import { useMasterData } from '../hooks/useMasterData';
 
-const PassionSpotlight = () => {
+interface PassionSpotlightProps {
+  userPassions?: Array<{ passion_id: number }>;
+  userId?: string;
+}
+
+const PassionSpotlight = ({ userPassions, userId }: PassionSpotlightProps) => {
   const { passions, loading } = useMasterData();
   const [featuredPassion, setFeaturedPassion] = useState(passions[0]);
 
   useEffect(() => {
     if (passions.length > 0) {
+      // If user has passions, pick randomly from their passions
+      if (userPassions && userPassions.length > 0) {
+        const userPassionIds = userPassions.map(p => p.passion_id);
+        const randomUserPassionId = userPassionIds[Math.floor(Math.random() * userPassionIds.length)];
+        const userPassion = passions.find(p => p.id === randomUserPassionId);
+        if (userPassion) {
+          setFeaturedPassion(userPassion);
+          return;
+        }
+      }
+      // Otherwise pick a random passion
       const random = passions[Math.floor(Math.random() * passions.length)];
       setFeaturedPassion(random);
     }
-  }, [passions]);
+  }, [passions, userPassions]);
 
   if (loading || !featuredPassion) {
     return (
@@ -30,7 +46,10 @@ const PassionSpotlight = () => {
         Passion Spotlight
       </h3>
       <p className="text-indigo-200 mb-4">
-        Connect with others who share your love for <span className="font-semibold text-white">{featuredPassion.name}</span>
+        {userPassions && userPassions.length > 0 && userId
+          ? 'Your passion for '
+          : 'Connect with others who share your love for '}
+        <span className="font-semibold text-white">{featuredPassion.name}</span>
       </p>
       <button className="text-sm text-indigo-300 hover:text-indigo-200 transition underline">
         Find people with this passion →

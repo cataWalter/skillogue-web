@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import Dashboard from '../../src/app/dashboard/page';
-import { supabase } from '../../src/supabaseClient';
+import { appClient } from '../../src/lib/appClient';
 import '@testing-library/jest-dom';
 
-// Mock Supabase client
-jest.mock('../../src/supabaseClient', () => ({
-  supabase: {
+// Mock App Client client
+jest.mock('../../src/lib/appClient', () => ({
+  appClient: {
     auth: {
       getUser: jest.fn(),
     },
@@ -56,17 +56,17 @@ describe('Dashboard Integration Flow', () => {
     jest.clearAllMocks();
     
     // Default successful auth
-    (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
 
     // Mock RPCs
-    (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
       if (fn === 'get_recent_conversations') return Promise.resolve({ data: mockConversations, error: null });
       if (fn === 'get_suggested_profiles') return Promise.resolve({ data: mockSuggestions, error: null });
       return Promise.resolve({ data: [], error: null });
     });
 
     // Mock DB queries
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
         return {
           select: jest.fn(() => ({
@@ -113,13 +113,13 @@ describe('Dashboard Integration Flow', () => {
 
   it('handles partial data fetch errors gracefully', async () => {
     // Mock errors for secondary data
-    (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
       if (fn === 'get_recent_conversations') return Promise.resolve({ data: null, error: { message: 'Convo Error' } });
       if (fn === 'get_suggested_profiles') return Promise.resolve({ data: null, error: { message: 'Suggest Error' } });
       return Promise.resolve({ data: [], error: null });
     });
 
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
         return {
           select: jest.fn(() => ({
@@ -163,7 +163,7 @@ describe('Dashboard Integration Flow', () => {
 
   it('handles conversation with no timestamp', async () => {
     const convoNoTime = { ...mockConversations[0], last_message_time: null };
-    (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
       if (fn === 'get_recent_conversations') return Promise.resolve({ data: [convoNoTime], error: null });
       return Promise.resolve({ data: [], error: null });
     });
@@ -178,7 +178,7 @@ describe('Dashboard Integration Flow', () => {
   it('redirects to onboarding if profile is incomplete', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     // Mock incomplete profile
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
         return {
           select: jest.fn(() => ({
@@ -205,7 +205,7 @@ describe('Dashboard Integration Flow', () => {
   });
 
   it('redirects to login if not authenticated', async () => {
-    (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null }, error: null });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null }, error: null });
 
     render(<Dashboard />);
 

@@ -15,7 +15,7 @@ interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
   loading: boolean;
-  markAsRead: (id: number) => Promise<void>;
+  markAsRead: (id: number | null) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -46,15 +46,26 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   };
 
-  const markAsRead = async (id: number) => {
+  const markAsRead = async (id: number | null) => {
     try {
-      const response = await fetch(`/api/notifications/${id}`, {
-        method: 'PATCH',
-      });
-      if (response.ok) {
-        setNotifications(prev =>
-          prev.map(n => (n.id === id ? { ...n, read: true } : n))
-        );
+      if (id === null) {
+        // Mark all as read
+        const response = await fetch(`/api/notifications/mark-all-read`, {
+          method: 'PATCH',
+        });
+        if (response.ok) {
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        }
+      } else {
+        // Mark specific notification as read
+        const response = await fetch(`/api/notifications/${id}`, {
+          method: 'PATCH',
+        });
+        if (response.ok) {
+          setNotifications(prev =>
+            prev.map(n => (n.id === id ? { ...n, read: true } : n))
+          );
+        }
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);

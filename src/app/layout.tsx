@@ -9,6 +9,10 @@ import { Toaster } from 'react-hot-toast';
 import AnalyticsTracker from "../components/AnalyticsTracker";
 import { Suspense } from "react";
 
+// Force all pages to be dynamically rendered (SSR)
+// This is needed because the app uses real-time features and authentication
+export const dynamic = 'force-dynamic';
+
 const spaceGrotesk = Space_Grotesk({ 
   subsets: ["latin"],
   variable: '--font-space-grotesk',

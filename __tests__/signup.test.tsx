@@ -1,7 +1,6 @@
 import '@testing-library/jest-dom'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import SignUp from '../src/app/signup/page'
-import { supabase } from '../src/supabaseClient'
 import { useRouter } from 'next/navigation'
 
 // Mock useRouter
@@ -9,13 +8,12 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }))
 
-// Mock supabaseClient
-jest.mock('../src/supabaseClient', () => ({
-  supabase: {
-    auth: {
-      signUp: jest.fn(),
-    },
-  },
+// Mock useAuth hook
+const mockSignUp = jest.fn();
+jest.mock('../src/hooks/useAuth', () => ({
+  useAuth: () => ({
+    signUp: mockSignUp,
+  }),
 }))
 
 describe('SignUp Page', () => {
@@ -26,6 +24,7 @@ describe('SignUp Page', () => {
       push: mockPush,
     })
     jest.clearAllMocks()
+    mockSignUp.mockReset();
     // Mock alert
     window.alert = jest.fn()
   })
@@ -56,15 +55,12 @@ describe('SignUp Page', () => {
     render(<SignUp />)
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } })
-    // Assuming there is a checkbox for terms
-    // Wait, I need to check if there is a checkbox in the component.
-    // Let's assume there is based on `agreed` state.
     fireEvent.click(screen.getByRole('button'))
     expect(window.alert).toHaveBeenCalledWith('You must agree to the Terms of Service and Privacy Policy to create an account.')
   })
 
   it('submits form successfully', async () => {
-    (supabase.auth.signUp as jest.Mock).mockResolvedValue({ error: null })
+    mockSignUp.mockResolvedValue({})
     
     render(<SignUp />)
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
@@ -77,20 +73,14 @@ describe('SignUp Page', () => {
     fireEvent.click(screen.getByRole('button'))
 
     await waitFor(() => {
-      expect(supabase.auth.signUp).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        password: 'StrongP@ssw0rd!',
-      })
+      expect(mockSignUp).toHaveBeenCalledWith('test@example.com', 'StrongP@ssw0rd!')
       expect(mockPush).toHaveBeenCalledWith('/login')
     })
   })
 
   it('handles signup error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (supabase.auth.signUp as jest.Mock).mockResolvedValue({
-      data: { user: null, session: null },
-      error: { message: 'Signup failed' },
-    });
+    mockSignUp.mockRejectedValue(new Error('Signup failed'));
 
     render(<SignUp />);
 

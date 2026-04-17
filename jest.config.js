@@ -12,11 +12,16 @@ const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   coverageProvider: 'v8',
   moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
     '^@dicebear/collection$': '<rootDir>/__mocks__/@dicebear/collection.js',
     '^@dicebear/core$': '<rootDir>/__mocks__/@dicebear/core.js',
+    '^next/cache$': '<rootDir>/__mocks__/next.js',
   },
   setupFiles: ['<rootDir>/jest.env.js'],
   testPathIgnorePatterns: ['/node_modules/', '/__tests__/e2e/'],
+  transformIgnorePatterns: [
+    '/node_modules/(?!(node-appwrite|node-fetch-native-with-agent|appwrite)/)',
+  ],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

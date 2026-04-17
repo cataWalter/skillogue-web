@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { appClient } from '../../lib/appClient';
 import MultiSelect from '../../components/MultiSelect';
 
 interface ProfileState {
@@ -56,19 +57,19 @@ const Onboarding: React.FC = () => {
 
     useEffect(() => {
         const loadInitialData = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await appClient.auth.getUser();
             if (!user) {
                 router.push('/login');
                 return;
             }
 
-            const { data: allLanguages } = await supabase.from('languages').select('id, name');
+            const { data: allLanguages } = await appClient.from('languages').select('id, name');
             setAvailableLanguages(allLanguages || []);
 
-            const { data: allPassions } = await supabase.from('passions').select('id, name');
+            const { data: allPassions } = await appClient.from('passions').select('id, name');
             setAvailablePassions(allPassions || []);
 
-            const { data: countryData } = await supabase.rpc('get_distinct_countries');
+            const { data: countryData } = await appClient.rpc('get_distinct_countries');
             setCountries(countryData?.map((c: { country: string }) => c.country) || []);
 
             setLoading(false);
@@ -80,7 +81,7 @@ const Onboarding: React.FC = () => {
     useEffect(() => {
         if (location.country) {
             const fetchRegions = async () => {
-                const { data, error } = await supabase.rpc('get_distinct_regions', { p_country: location.country });
+                const { data, error } = await appClient.rpc('get_distinct_regions', { p_country: location.country });
                 if (error) console.error("Error fetching regions:", error);
                 else setRegions(data.map((r: { region: string }) => r.region).filter(Boolean));
             };
@@ -93,7 +94,7 @@ const Onboarding: React.FC = () => {
     useEffect(() => {
         if (location.country) {
             const fetchCities = async () => {
-                const { data, error } = await supabase.rpc('get_distinct_cities', {
+                const { data, error } = await appClient.rpc('get_distinct_cities', {
                     p_country: location.country,
                     p_region: location.region || null
                 });
@@ -169,13 +170,13 @@ const Onboarding: React.FC = () => {
 
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await appClient.auth.getUser();
             if (!user) throw new Error('No user found');
 
             // 1. Upsert Location
             let locationId: number | null = null;
             if (location.city && location.country) {
-                const { data: locData, error: locError } = await supabase
+                const { data: locData, error: locError } = await appClient
                     .from('locations')
                     .select('id')
                     .eq('city', location.city)
@@ -188,7 +189,7 @@ const Onboarding: React.FC = () => {
                 if (locData) {
                     locationId = locData.id;
                 } else {
-                    const { data: newLoc, error: newLocError } = await supabase
+                    const { data: newLoc, error: newLocError } = await appClient
                         .from('locations')
                         .insert({
                             city: location.city,
@@ -203,7 +204,7 @@ const Onboarding: React.FC = () => {
             }
 
             // 2. Upsert Profile
-            const { error: updateError } = await supabase
+            const { error: updateError } = await appClient
                 .from('profiles')
                 .upsert({
                     id: user.id,
@@ -221,7 +222,7 @@ const Onboarding: React.FC = () => {
                     const lang = availableLanguages.find(l => l.name === name);
                     return lang ? { profile_id: user.id, language_id: lang.id } : null;
                 }).filter(Boolean);
-                await supabase.from('profile_languages').insert(languageInserts);
+                await appClient.from('profile_languages').insert(languageInserts);
             }
 
             // 4. Update Passions
@@ -230,7 +231,7 @@ const Onboarding: React.FC = () => {
                     const passion = availablePassions.find(p => p.name === name);
                     return passion ? { profile_id: user.id, passion_id: passion.id } : null;
                 }).filter(Boolean);
-                await supabase.from('profile_passions').insert(passionInserts);
+                await appClient.from('profile_passions').insert(passionInserts);
             }
 
             router.push('/dashboard');

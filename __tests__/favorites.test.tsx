@@ -1,13 +1,13 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import FavoritesPage from '../src/app/favorites/page';
-import { supabase } from '../src/supabaseClient';
+import { appClient } from '../src/lib/appClient';
 import * as toast from 'react-hot-toast';
 import '@testing-library/jest-dom';
 
-// Mock Supabase client
-jest.mock('../src/supabaseClient', () => ({
-  supabase: {
+// Mock App Client client
+jest.mock('../src/lib/appClient', () => ({
+  appClient: {
     rpc: jest.fn(),
   },
 }));
@@ -24,7 +24,7 @@ describe('FavoritesPage', () => {
   });
 
   it('renders loading state initially', async () => {
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
     render(<FavoritesPage />);
     // Check for loader (assuming Loader2 renders an SVG or similar)
     // Since we can't easily query the icon by text, we can check if the "Favorite Profiles" header is there
@@ -36,7 +36,7 @@ describe('FavoritesPage', () => {
   });
 
   it('renders empty state when no favorites', async () => {
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
     render(<FavoritesPage />);
 
     await waitFor(() => {
@@ -61,7 +61,7 @@ describe('FavoritesPage', () => {
         is_private: false,
       },
     ];
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: mockFavorites, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: mockFavorites, error: null });
 
     render(<FavoritesPage />);
 
@@ -72,7 +72,7 @@ describe('FavoritesPage', () => {
   });
 
   it('handles null data from get_saved_profiles gracefully', async () => {
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
 
     await act(async () => {
         render(<FavoritesPage />);
@@ -98,8 +98,8 @@ describe('FavoritesPage', () => {
         is_private: false,
       },
     ];
-    (supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: mockFavorites, error: null });
-    (supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: null, error: null }); // For unsave_profile
+    (appClient.rpc as jest.Mock).mockResolvedValueOnce({ data: mockFavorites, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValueOnce({ data: null, error: null }); // For unsave_profile
 
     // Mock window.confirm
     window.confirm = jest.fn(() => true);
@@ -116,14 +116,14 @@ describe('FavoritesPage', () => {
     expect(window.confirm).toHaveBeenCalled();
     
     await waitFor(() => {
-      expect(supabase.rpc).toHaveBeenCalledWith('unsave_profile', { target_id: '1' });
+      expect(appClient.rpc).toHaveBeenCalledWith('unsave_profile', { target_id: '1' });
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
     });
   });
 
   it('cancels removal when confirm is rejected', async () => {
     const mockFavorites = [{ id: '1', first_name: 'John', last_name: 'Doe', created_at: '2023-01-01', profilepassions: [], profile_languages: [] }];
-    (supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: mockFavorites, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValueOnce({ data: mockFavorites, error: null });
     window.confirm = jest.fn(() => false);
 
     render(<FavoritesPage />);
@@ -132,14 +132,14 @@ describe('FavoritesPage', () => {
     const removeButton = screen.getByTitle('Remove from Favorites');
     fireEvent.click(removeButton);
 
-    expect(supabase.rpc).not.toHaveBeenCalledWith('unsave_profile', expect.anything());
+    expect(appClient.rpc).not.toHaveBeenCalledWith('unsave_profile', expect.anything());
     expect(screen.getByText('John Doe')).toBeInTheDocument();
   });
 
   it('handles remove error', async () => {
     const mockFavorites = [{ id: '1', first_name: 'John', last_name: 'Doe', created_at: '2023-01-01', profilepassions: [], profile_languages: [] }];
-    (supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: mockFavorites, error: null });
-    (supabase.rpc as jest.Mock).mockResolvedValueOnce({ error: { message: 'Error' } });
+    (appClient.rpc as jest.Mock).mockResolvedValueOnce({ data: mockFavorites, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValueOnce({ error: { message: 'Error' } });
     window.confirm = jest.fn(() => true);
 
     render(<FavoritesPage />);
@@ -155,7 +155,7 @@ describe('FavoritesPage', () => {
   });
 
   it('handles load error', async () => {
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Error' } });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Error' } });
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     render(<FavoritesPage />);
@@ -168,12 +168,98 @@ describe('FavoritesPage', () => {
 
   it('renders private profile correctly', async () => {
     const mockFavorites = [{ id: '1', first_name: 'John', last_name: 'Doe', is_private: true, created_at: '2023-01-01', profilepassions: [], profile_languages: [] }];
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: mockFavorites, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: mockFavorites, error: null });
 
     render(<FavoritesPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Private Profile')).toBeInTheDocument();
+    });
+  });
+
+  it('handles RPC error with fallback', async () => {
+    // Simulate a 42883 error code which triggers fallback
+    (appClient.rpc as jest.Mock).mockResolvedValue({ 
+      data: null, 
+      error: { code: '42883', message: 'function does not exist' } 
+    });
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      // Should show empty state after fallback
+      expect(screen.getByText("You haven't saved any profiles yet.")).toBeInTheDocument();
+    });
+  });
+
+  it('handles unsave error gracefully', async () => {
+    const mockFavorites = [{ id: '1', first_name: 'John', last_name: 'Doe', created_at: '2023-01-01', profilepassions: [], profile_languages: [] }];
+    (appClient.rpc as jest.Mock).mockResolvedValueOnce({ data: mockFavorites, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValueOnce({ error: { message: 'Network error' } });
+    window.confirm = jest.fn(() => true);
+
+    render(<FavoritesPage />);
+    await waitFor(() => expect(screen.getByText('John Doe')).toBeInTheDocument());
+
+    const removeButton = screen.getByTitle('Remove from Favorites');
+    fireEvent.click(removeButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to remove');
+    });
+  });
+
+  it('renders profile with all details', async () => {
+    const mockFavorites = [
+      {
+        id: '1',
+        first_name: 'Jane',
+        last_name: 'Smith',
+        about_me: 'Software developer',
+        location: 'San Francisco, CA',
+        age: 28,
+        gender: 'Female',
+        profile_languages: ['English', 'Spanish'],
+        created_at: '2023-06-15',
+        profilepassions: ['Music', 'Travel'],
+        is_private: false,
+      },
+    ];
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: mockFavorites, error: null });
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+      expect(screen.getByText('Software developer')).toBeInTheDocument();
+      expect(screen.getByText('San Francisco, CA')).toBeInTheDocument();
+      expect(screen.getByText('28')).toBeInTheDocument();
+    });
+  });
+
+  it('handles empty profile data', async () => {
+    const mockFavorites = [
+      {
+        id: '1',
+        first_name: null,
+        last_name: null,
+        about_me: null,
+        location: null,
+        age: null,
+        gender: null,
+        profile_languages: null,
+        created_at: '2023-01-01',
+        profilepassions: [],
+        is_private: false,
+      },
+    ];
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: mockFavorites, error: null });
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      // Should still render something even with null data
+      expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
     });
   });
 });

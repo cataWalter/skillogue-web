@@ -3,24 +3,31 @@
 import { profileSchema } from '../../lib/schemas';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { getCurrentUserFromCookies } from '@/lib/server/current-user';
+import { saveProfileData } from '@/lib/server/app-data';
 
 export async function updateProfile(data: z.infer<typeof profileSchema>) {
   try {
-    // Validate the data
     const validatedData = profileSchema.parse(data);
-    
-    // In a real implementation, you would:
-    // 1. Get the current user from the session
-    // 2. Update the profile in the database using Drizzle ORM
-    
-    // Mock response for now
-    console.log('Updating profile with:', validatedData);
+
+    const currentUser = await getCurrentUserFromCookies();
+    if (!currentUser) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    await saveProfileData(currentUser.id, validatedData);
     
     revalidatePath('/profile');
     revalidatePath('/dashboard');
+    revalidatePath('/settings/privacy');
     
     return { success: true };
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      const details = error.flatten().fieldErrors;
+      console.error('Profile validation error:', details);
+      return { success: false, error: 'Validation failed', details };
+    }
     console.error('Profile update error:', error);
     return { success: false, error: 'Failed to update profile' };
   }
@@ -28,24 +35,16 @@ export async function updateProfile(data: z.infer<typeof profileSchema>) {
 
 export async function getProfile(userId: string) {
   try {
-    // In a real implementation, you would fetch the profile from the database
-    console.log('Fetching profile for:', userId);
-    
-    // Mock response for now
-    return {
-      id: userId,
-      firstName: '',
-      lastName: '',
-      aboutMe: '',
-      age: null,
-      gender: '',
-      verified: false,
-      isPrivate: false,
-      showAge: true,
-      showLocation: true,
-      locationId: null,
-      avatarUrl: '',
-    };
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/profile/${userId}`, {
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return response.json();
   } catch (error) {
     console.error('Profile fetch error:', error);
     return null;

@@ -1,42 +1,43 @@
-# Database Migration: Supabase → Neon PostgreSQL + Better Auth
+# Database Setup: Appwrite Cloud
 
-This document explains the migration from Supabase to Neon PostgreSQL with Better Auth authentication.
+This project uses Appwrite Cloud for both authentication and database.
 
 ## What Changed
 
 ### Database
-- **From**: Supabase PostgreSQL (with Supabase-specific auth tables)
-- **To**: Neon PostgreSQL (serverless, with excellent CLI support)
+- **Provider**: Appwrite Databases
 
 ### Authentication
-- **From**: Supabase Auth (built-in authentication service)
-- **To**: Better Auth (modern, database-first authentication library)
+- **Provider**: Appwrite Auth (managed authentication with email verification and recovery)
 
 ### ORM
-- **From**: Supabase JS client (direct API calls)
-- **To**: Drizzle ORM (type-safe SQL ORM)
+- **Provider**: Handled via `node-appwrite` SDK on the server and `appwrite` SDK on the client.
 
 ## Prerequisites
 
-1. **Neon Account**: Sign up at [neon.tech](https://neon.tech) (free tier available)
-2. **Node.js**: v18+ required
+1. **Appwrite Cloud Account**: Create a project on [Appwrite Cloud](https://cloud.appwrite.io)
+2. **Environment Variables**: Set up the following in your `.env.local`:
+   - `NEXT_PUBLIC_APPWRITE_ENDPOINT`
+   - `NEXT_PUBLIC_APPWRITE_PROJECT_ID`
+   - `NEXT_PUBLIC_APPWRITE_DATABASE_ID`
+   - `APPWRITE_API_KEY`
+3. **Node.js**: v18+ required
+
 
 ## Setup Instructions
 
-### 1. Create Neon Database
+### 1. Create/Prepare PostgreSQL Database
+
+Create a database `skillogue` (or your preferred name) and obtain a connection string. Example using local Postgres:
 
 ```bash
-# Install Neon CLI (if not already installed)
-npm install -g neonctl
+createdb skillogue
+```
 
-# Login to Neon
-neon auth login
+Your `DATABASE_URL` should look like:
 
-# Create a new project
-neon projects create --name skillogue
-
-# Create a database
-neon databases create --project-id <your-project-id> --name skillogue
+```
+postgresql://username:password@localhost:5432/skillogue
 ```
 
 ### 2. Configure Environment Variables
@@ -48,22 +49,30 @@ cp .env.example .env
 ```
 
 Required environment variables:
-- `DATABASE_URL`: Your Neon database connection string (from Neon dashboard)
-- `DATABASE_DIRECT_URL`: Direct connection string (same as DATABASE_URL for Neon)
-- `NEON_API_KEY`: Your Neon API key (from Neon dashboard → Settings → API)
-- `BETTER_AUTH_SECRET`: Generate with `openssl rand -base64 32`
+- `DATABASE_URL`: Your Postgres connection string
 - `NEXT_PUBLIC_APP_URL`: Your app URL (e.g., `http://localhost:3000`)
+- `NEXT_PUBLIC_APPWRITE_ENDPOINT`: Your Appwrite Cloud endpoint
+- `NEXT_PUBLIC_APPWRITE_PROJECT_ID`: Your Appwrite project ID
+- `APPWRITE_API_KEY`: Appwrite server API key with at least `users.write` and `sessions.write`
 
 ### 3. Run Database Migrations
 
 ```bash
 # Apply migrations to create tables
-npx drizzle-kit migrate
+npm run db:migrate
+
+# Verify the migration
+npm run db:verify
 ```
 
-Or manually run the SQL migration:
+Alternatively, you can use Drizzle Kit:
+
 ```bash
-neon sql < drizzle/migrations/00001_initial_schema.sql --project-id <your-project-id>
+# Generate migration files from schema changes
+npm run db:generate
+
+# Push schema directly to database
+npm run db:push
 ```
 
 ### 4. Install Dependencies
@@ -78,112 +87,34 @@ npm install
 npm run dev
 ```
 
-## Neon CLI Commands
-
-The Neon CLI provides full database management:
-
-```bash
-# View all projects
-neon projects list
-
-# View database branches
-neon branches list --project-id <project-id>
-
-# Create a new branch (for development/testing)
-neon branches create --project-id <project-id> --name feature-branch
-
-# Run SQL on a branch
-neon sql "SELECT * FROM users;" --project-id <project-id> --branch main
-
-# Get connection string
-neon connection-string --project-id <project-id> --branch main
-```
-
 ## Database Schema
 
-The new schema includes:
+Auth is provided by Appwrite; application tables use Postgres and Drizzle ORM. Key tables include:
 
-### Auth Tables (Better Auth)
-- `user` - User accounts
-- `session` - User sessions
-- `account` - OAuth accounts (for future social login)
-- `verification` - Email verification tokens
-
-### Application Tables
 - `profiles` - User profiles (extends auth users)
-- `locations` - Geographic locations
-- `passions` - User interests/hobbies
-- `languages` - Supported languages
-- `user_passions` - User's passions (junction)
-- `profile_languages` - User's languages (junction)
-- `messages` - Private messages
-- `message_reads` - Message read receipts
-- `notifications` - User notifications
-- `favorites` - Saved/favorite profiles
-- `blocked_users` - Blocked user relationships
-- `reports` - User reports
-- `verification_requests` - Profile verification requests
-- `push_subscriptions` - Push notification subscriptions
-- `analytics_events` - Analytics tracking
-- `saved_searches` - Saved search filters
-- `contact_requests` - Contact form submissions
+- `locations`, `passions`, `languages` - Reference tables
+- `user_passions`, `profile_languages` - Junction tables
+- `messages`, `message_reads`, `notifications`, `favorites` - Application data
 
-## API Routes
+## Migrating Legacy Data
 
-Better Auth provides the following endpoints:
+If you have existing data in another PostgreSQL provider, export/import using `pg_dump`/`psql`:
 
-- `POST /api/auth/sign-in/email` - Email/password login
-- `POST /api/auth/sign-up/email` - Email/password registration
-- `POST /api/auth/sign-out` - Logout
-- `GET /api/auth/session` - Get current session
-- `POST /api/auth/reset-password` - Request password reset
-- `POST /api/auth/verify-email` - Verify email address
-
-## Migration from Supabase
-
-### Data Migration
-
-If you have existing data in Supabase, you can export and import it:
-
-1. Export from Supabase:
 ```bash
-# Using pg_dump
-pg_dump -h <supabase-host> -U postgres -d postgres > backup.sql
+# Export
+pg_dump -h <legacy-host> -U <username> -d <db> > backup.sql
+
+# Import
+psql -h <new-host> -U <username> -d <db> < backup.sql
 ```
-
-2. Import to Neon:
-```bash
-# Using psql
-psql -h <neon-host> -U <username> -d skillogue < backup.sql
-```
-
-### Code Changes
-
-The main code changes:
-
-1. **Auth**: Replace `supabase.auth.*` with Better Auth API calls
-2. **Database**: Replace Supabase client queries with Drizzle ORM
-3. **Middleware**: Update to use Better Auth session cookies
 
 ## Troubleshooting
 
-### Connection Issues
-- Verify your `DATABASE_URL` is correct
-- Check that your IP is allowed in Neon dashboard (if using IP allowlist)
-- Ensure SSL mode is set to `require`
-
-### Auth Issues
-- Clear browser cookies and try again
-- Verify `BETTER_AUTH_SECRET` is set correctly
-- Check that `NEXT_PUBLIC_APP_URL` matches your current URL
-
-### Migration Issues
-- Ensure all tables are created: `neon sql "SELECT tablename FROM pg_tables;" --project-id <id>`
-- Check for constraint errors in the logs
+- Verify your `DATABASE_URL` is correct and reachable
+- Ensure SSL configuration is appropriate for your Postgres provider
+- For auth issues, verify Appwrite endpoint, project ID, and API key
 
 ## Resources
 
-- [Neon Documentation](https://neon.tech/docs)
-- [Better Auth Documentation](https://better-auth.com)
+- [Appwrite Documentation](https://appwrite.io/docs)
 - [Drizzle ORM Documentation](https://orm.drizzle.team)
-- [Neon CLI Reference](https://neon.tech/docs/reference/cli-install)

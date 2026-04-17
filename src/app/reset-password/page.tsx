@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
 
@@ -12,16 +12,16 @@ const ResetPassword = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [showSuccess, setShowSuccess] = useState<boolean>(false);
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const appwriteUserId = searchParams.get('userId');
+    const appwriteSecret = searchParams.get('secret');
 
     useEffect(() => {
-        const checkSession = async () => {
-            const { data } = await supabase.auth.getSession();
-            if (!data.session) {
-                setError('Invalid or expired link. Please request a new password reset.');
-            }
-        };
-        checkSession();
-    }, []);
+        if (!appwriteUserId || !appwriteSecret) {
+            setError('Invalid or expired link. Please request a new password reset.');
+        }
+    }, [appwriteSecret, appwriteUserId]);
 
     const isPasswordValid = (): boolean => {
         const checks = {
@@ -57,13 +57,29 @@ const ResetPassword = () => {
         }
 
         try {
-            const { error } = await supabase.auth.updateUser({ password });
-            if (error) throw error;
+            if (!appwriteUserId || !appwriteSecret) {
+                throw new Error('Invalid or expired link. Please request a new password reset.');
+            }
+
+            const response = await fetch('/api/auth/reset-password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: appwriteUserId,
+                    secret: appwriteSecret,
+                    password,
+                }),
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => null);
+                throw new Error(payload?.message || 'Failed to reset password');
+            }
 
             setShowSuccess(true);
 
             setTimeout(() => {
-                router.push('/dashboard');
+                router.push('/login');
             }, 2000);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Failed to reset password';
@@ -82,7 +98,9 @@ const ResetPassword = () => {
                         <CheckCircle className="w-8 h-8 text-green-400" />
                     </div>
                     <h2 className="text-xl font-semibold text-white">Password Updated!</h2>
-                    <p className="text-gray-400 mt-2">Redirecting to your dashboard...</p>
+                    <p className="text-gray-400 mt-2">
+                        Redirecting to login...
+                    </p>
                 </div>
             </main>
         );

@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SearchPage from '../../src/app/search/page';
-import { supabase } from '../../src/supabaseClient';
+import { appClient } from '../../src/lib/appClient';
 import '@testing-library/jest-dom';
 
-// Mock Supabase client
-jest.mock('../../src/supabaseClient', () => ({
-  supabase: {
+// Mock App Client client
+jest.mock('../../src/lib/appClient', () => ({
+  appClient: {
     auth: {
       getUser: jest.fn(),
       getSession: jest.fn(),
@@ -53,17 +53,17 @@ describe('Search Integration Flow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
-    (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
+    (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
 
     // Mock RPCs
-    (supabase.rpc as jest.Mock).mockImplementation((fn) => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
       if (fn === 'search_profiles') return Promise.resolve({ data: mockResults, error: null });
       return Promise.resolve({ data: [], error: null });
     });
 
     // Mock DB queries
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'passions') {
         return {
           select: jest.fn().mockResolvedValue({ data: mockPassions, error: null }),
@@ -106,7 +106,7 @@ describe('Search Integration Flow', () => {
 
     // Wait for debounce and effect
     await waitFor(() => {
-      expect(supabase.rpc).toHaveBeenCalledWith(
+      expect(appClient.rpc).toHaveBeenCalledWith(
         'search_profiles',
         expect.objectContaining({ p_query: 'Bob' })
       );
@@ -129,7 +129,7 @@ describe('Search Integration Flow', () => {
         first_name: `User ${i}`
     }));
 
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: manyResults, error: null });
+    (appClient.rpc as jest.Mock).mockResolvedValue({ data: manyResults, error: null });
 
     render(<SearchPage />);
     
@@ -140,7 +140,7 @@ describe('Search Integration Flow', () => {
     fireEvent.submit(form!);
 
     await waitFor(() => {
-        expect(supabase.rpc).toHaveBeenCalledWith('search_profiles', expect.objectContaining({ p_query: 'Alice', p_offset: 0 }));
+        expect(appClient.rpc).toHaveBeenCalledWith('search_profiles', expect.objectContaining({ p_query: 'Alice', p_offset: 0 }));
     });
 
     // Test Load More
@@ -148,7 +148,7 @@ describe('Search Integration Flow', () => {
     fireEvent.click(loadMoreButton);
 
     await waitFor(() => {
-        expect(supabase.rpc).toHaveBeenCalledWith('search_profiles', expect.objectContaining({ p_query: 'Alice', p_offset: 10 }));
+        expect(appClient.rpc).toHaveBeenCalledWith('search_profiles', expect.objectContaining({ p_query: 'Alice', p_offset: 10 }));
     });
   });
 
@@ -166,7 +166,7 @@ describe('Search Integration Flow', () => {
         passion_ids: null
     };
 
-    (supabase.from as jest.Mock).mockImplementation((table) => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
         if (table === 'saved_searches') {
             return {
                 // Start with empty list

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { profiles, locations, userPassions, passions, profileLanguages, languages } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function GET(
   request: Request,
@@ -9,33 +7,15 @@ export async function GET(
 ) {
   try {
     const { userId } = await params;
+    const service = new AppDataService();
     
-    const [profile] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
+    const profile = await service.getProfile(userId);
     
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
     
-    let location = null;
-    if (profile.locationId) {
-      const [loc] = await db.select().from(locations).where(eq(locations.id, profile.locationId)).limit(1);
-      location = loc;
-    }
-    
-    const userPassionsList = await db.select().from(userPassions)
-      .leftJoin(passions, eq(userPassions.passionId, passions.id))
-      .where(eq(userPassions.userId, userId));
-    
-    const profileLangs = await db.select().from(profileLanguages)
-      .leftJoin(languages, eq(profileLanguages.languageId, languages.id))
-      .where(eq(profileLanguages.profileId, userId));
-    
-    return NextResponse.json({
-      ...profile,
-      location,
-      passions: userPassionsList.map(p => p.passions?.name).filter(Boolean),
-      languages: profileLangs.map(p => p.languages?.name).filter(Boolean),
-    });
+    return NextResponse.json(profile);
   } catch (error) {
     console.error('Error fetching profile:', error);
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
@@ -49,10 +29,9 @@ export async function PUT(
   try {
     const { userId } = await params;
     const data = await request.json();
+    const service = new AppDataService();
     
-    await db.update(profiles).set(data).where(eq(profiles.id, userId));
-    
-    const [updatedProfile] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
+    const updatedProfile = await service.saveProfile(userId, data);
     
     return NextResponse.json(updatedProfile);
   } catch (error) {

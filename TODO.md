@@ -2,8 +2,8 @@
 - [x] **Mobile Optimization**:
   - Improve mobile view for all pages (Landing, Dashboard, Messages, Profile, Search, Settings, Auth).
 - [x] **Database Synchronization**:
-  - Apply `supabase/production_setup.sql` to production (Contains Blocking, Favorites, and Contact Us).
-  - Apply `supabase/enhancements.sql` to production (Contains Push Notifications and Analytics).
+  - Apply the latest `drizzle/migrations` bundle to production.
+  - Verify production schema includes push subscriptions, analytics, favorites, and contact requests.
 - [x] **Edge Functions**:
   - Deploy `send-message-broadcast` function: ✅ DEPLOYED (ID: b9898b07-e5fb-4ea7-8d99-c0ae57b47620)
   - Deploy `send-push` function: ✅ DEPLOYED (ID: 399b1ac9-a6e2-4864-9241-e7f8294551e5)
@@ -25,19 +25,19 @@
 - [x] **Advanced Analytics**: User behavior tracking. (Implemented: `analytics_events` table, `useAnalytics` hook, and automatic page view tracking).
 
 ## 7. Database Setup (Completed)
-- [x] Create `supabase/migrations/00002_missing_tables_and_functions.sql`:
+- [x] Create follow-up SQL migrations for messaging, blocking, push subscriptions, and analytics:
   - Added `blocked_users` table with RLS policies
   - Added `push_subscriptions` table with RLS policies
   - Added `analytics_events` table with RLS policies
   - Added `message_reads` table for read receipts
   - Added all required RPC functions (24+ functions)
   - Added performance indexes
-- [x] Create `supabase/production_setup.sql`:
+- [x] Create production SQL setup tasks:
   - Added `contact_requests` table
   - Enhanced blocking functionality
   - Additional RLS policies for admin
   - Additional seed locations
-- [x] Create `supabase/enhancements.sql`:
+- [x] Create follow-up enhancement migrations:
   - Analytics materialized views
   - Real-time enhancements
   - Audit logging system
@@ -46,5 +46,5 @@
 ## 8. Environment Variables Required
 - [ ] Add VAPID keys for push notifications:
   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (add to .env.local)
-  - `VAPID_PRIVATE_KEY` (add to Supabase secrets)
-  - `VAPID_SUBJECT` (add to Supabase secrets)
+  - `VAPID_PRIVATE_KEY` (add to server environment)
+  - `VAPID_SUBJECT` (add to server environment)

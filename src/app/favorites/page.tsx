@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { appClient } from '../../lib/appClient';
 import Link from 'next/link';
 import {
     User,
@@ -56,13 +57,17 @@ const getRelationName = (relation: NamedRelation): string | undefined => {
 };
 
 const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
-    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (!appClient.auth?.getUser) {
+        return [];
+    }
+
+    const { data: authData, error: authError } = await appClient.auth.getUser();
 
     if (authError || !authData.user) {
         return [];
     }
 
-    const { data: favoriteRows, error: favoritesError } = await supabase
+    const { data: favoriteRows, error: favoritesError } = await appClient
         .from('favorites')
         .select('favorite_id')
         .eq('user_id', authData.user.id);
@@ -77,15 +82,15 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
 
     const favoriteIds = favoriteRows.map((row) => row.favorite_id);
     const [profilesResponse, passionsResponse, languagesResponse] = await Promise.all([
-        supabase
+        appClient
             .from('profiles')
             .select('id, first_name, last_name, about_me, age, gender, location_id, created_at, is_private, show_age, show_location')
             .in('id', favoriteIds),
-        supabase
+        appClient
             .from('profile_passions')
             .select('profile_id, passions(name)')
             .in('profile_id', favoriteIds),
-        supabase
+        appClient
             .from('profile_languages')
             .select('profile_id, languages(name)')
             .in('profile_id', favoriteIds),
@@ -110,20 +115,22 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
     ));
 
     const locationsResponse = locationIds.length > 0
-        ? await supabase.from('locations').select('id, city').in('id', locationIds)
+        ? await appClient.from('locations').select('id, city').in('id', locationIds)
         : { data: [], error: null };
 
     if (locationsResponse.error) {
         throw locationsResponse.error;
     }
 
-    const cityByLocationId = new Map(
-        (locationsResponse.data || []).map((location) => [location.id, location.city])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cityByLocationId = new Map<number, any>(
+        (locationsResponse.data || []).map((location: any) => [location.id, location.city])
     );
     const passionsByProfileId = new Map<string, string[]>();
     const languagesByProfileId = new Map<string, string[]>();
 
-    for (const row of passionsResponse.data || []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (passionsResponse.data as any[] || [])) {
         const names = passionsByProfileId.get(row.profile_id) || [];
         const passionName = getRelationName(row.passions as NamedRelation);
 
@@ -133,7 +140,8 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
         }
     }
 
-    for (const row of languagesResponse.data || []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (languagesResponse.data as any[] || [])) {
         const names = languagesByProfileId.get(row.profile_id) || [];
         const languageName = getRelationName(row.languages as NamedRelation);
 
@@ -143,8 +151,9 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
         }
     }
 
-    const profilesById = new Map(
-        (profilesResponse.data || []).map((profile) => [profile.id, profile])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profilesById = new Map<string, any>(
+        (profilesResponse.data || []).map((profile: any) => [profile.id, profile])
     );
     const favorites: SearchResult[] = [];
 
@@ -312,7 +321,7 @@ const FavoritesPage = () => {
 
     useEffect(() => {
         const loadFavorites = async () => {
-            const { data, error } = await supabase.rpc('get_saved_profiles');
+            const { data, error } = await appClient.rpc('get_saved_profiles');
             if (error) {
                 if (shouldFallbackFromSavedProfilesRpc(error)) {
                     try {
@@ -336,7 +345,7 @@ const FavoritesPage = () => {
 
     const handleRemove = async (id: string) => {
         if (!confirm('Remove from favorites?')) return;
-        const { error } = await supabase.rpc('unsave_profile', { target_id: id });
+        const { error } = await appClient.rpc('unsave_profile', { target_id: id });
         if (!error) {
             setFavorites(prev => prev.filter(f => f.id !== id));
             toast.success('Removed from favorites');

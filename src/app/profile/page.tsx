@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { appClient } from '../../lib/appClient';
 import ProfileCard from '../../components/ProfileCard';
 import ProfileSkeleton from '../../components/ProfileSkeleton';
 import { FullProfile } from '../../types';
@@ -18,13 +19,13 @@ const Profile: React.FC = () => {
     useEffect(() => {
         const loadProfile = async () => {
             setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await appClient.auth.getUser();
             if (!user) {
                 router.push('/login');
                 return;
             }
 
-            const { data: profileData, error: profileError } = await supabase
+            const { data: profileData, error: profileError } = await appClient
                 .from('profiles')
                 .select(`*, locations(*)`)
                 .eq('id', user.id)
@@ -41,8 +42,8 @@ const Profile: React.FC = () => {
             setProfile(profileData as FullProfile);
 
             const [passionRes, languageRes] = await Promise.all([
-                supabase.from('profile_passions').select('passions(name)').eq('profile_id', user.id),
-                supabase.from('profile_languages').select('languages(name)').eq('profile_id', user.id)
+                appClient.from('profile_passions').select('passions(name)').eq('profile_id', user.id),
+                appClient.from('profile_languages').select('languages(name)').eq('profile_id', user.id)
             ]);
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,10 +1,10 @@
 import { render, waitFor, act } from '@testing-library/react';
 import Dashboard from '../../src/app/dashboard/page';
-import { supabase } from '../../src/supabaseClient';
+import { appClient } from '../../src/lib/appClient';
 
-// Mock supabase client
-jest.mock('../../src/supabaseClient', () => ({
-    supabase: {
+// Mock appClient client
+jest.mock('../../src/lib/appClient', () => ({
+    appClient: {
         auth: {
             getSession: jest.fn(),
             getUser: jest.fn(),
@@ -34,8 +34,8 @@ describe('Dashboard Error Handling', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
-        (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
+        (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
+        (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
     });
 
     it('handles errors in parallel data fetching', async () => {
@@ -50,7 +50,7 @@ describe('Dashboard Error Handling', () => {
         };
 
         // Mock rpc calls with errors for conversations and suggestions
-        (supabase.rpc as jest.Mock).mockImplementation((rpcName) => {
+        (appClient.rpc as jest.Mock).mockImplementation((rpcName) => {
             if (rpcName === 'get_user_profile_with_counts') {
                 return Promise.resolve({ data: mockProfile, error: null });
             }
@@ -64,7 +64,7 @@ describe('Dashboard Error Handling', () => {
         });
 
         // Mock passions fetch with error
-        (supabase.from as jest.Mock).mockImplementation((table) => {
+        (appClient.from as jest.Mock).mockImplementation((table) => {
             if (table === 'profiles') {
                 return {
                     select: jest.fn().mockReturnValue({
@@ -93,7 +93,7 @@ describe('Dashboard Error Handling', () => {
         });
 
         await waitFor(() => {
-            expect(supabase.rpc).toHaveBeenCalledWith('get_recent_conversations', expect.any(Object));
+            expect(appClient.rpc).toHaveBeenCalledWith('get_recent_conversations', expect.any(Object));
             expect(consoleSpy).toHaveBeenCalledWith('Error fetching conversations:', { message: 'Convos Error' });
             expect(consoleSpy).toHaveBeenCalledWith('Error fetching suggestions:', { message: 'Suggestions Error' });
             expect(consoleSpy).toHaveBeenCalledWith('Error fetching passions:', { message: 'Passions Error' });

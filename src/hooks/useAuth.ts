@@ -1,16 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import {
+  fetchAuthSession,
+  type AuthSession as Session,
+  type AuthUser as User,
+} from '@/lib/appwrite/client-auth';
 
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  image?: string;
-}
-
-export interface Session {
-  user: User;
-  expires: string;
-}
+export type { Session, User };
 
 export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -19,12 +14,9 @@ export const useAuth = () => {
 
   const fetchSession = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/session');
-      if (response.ok) {
-        const data = await response.json();
-        setSession(data.session);
-        setUser(data.session?.user || null);
-      }
+      const currentSession = await fetchAuthSession();
+      setSession(currentSession);
+      setUser(currentSession?.user || null);
     } catch (error) {
       console.error('Error fetching session:', error);
     } finally {

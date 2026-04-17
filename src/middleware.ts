@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { getAppwriteSessionCookieName } from '@/lib/appwrite/config';
 
 export async function middleware(request: NextRequest) {
-  // Get session token from cookies
-  const sessionToken = request.cookies.get('better-auth.session_token')?.value;
+  const sessionCookieName = getAppwriteSessionCookieName();
+  const sessionToken = request.cookies.get(sessionCookieName)?.value;
   
   // Protected routes that require authentication
   const protectedRoutes = ['/dashboard', '/messages', '/settings', '/profile', '/edit-profile', '/onboarding', '/search', '/user'];
