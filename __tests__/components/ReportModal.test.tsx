@@ -1,6 +1,6 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ReportModal from '../../src/components/ReportModal';
+import toast from 'react-hot-toast';
 
 // Mock useAuth hook
 const mockUseAuth = jest.fn();
@@ -11,6 +11,11 @@ jest.mock('../../src/hooks/useAuth', () => ({
 // Mock fetch
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+
+jest.mock('react-hot-toast', () => ({
+  success: jest.fn(),
+  error: jest.fn(),
+}));
 
 describe('ReportModal Component', () => {
   const mockOnClose = jest.fn();
@@ -76,12 +81,12 @@ describe('ReportModal Component', () => {
         }),
       });
       expect(mockOnClose).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith('Report submitted successfully');
     });
   });
 
   it('handles submission error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
     mockFetch.mockRejectedValue(new Error('Network error'));
 
     render(<ReportModal {...defaultProps} />);
@@ -93,11 +98,23 @@ describe('ReportModal Component', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('Failed to submit report');
+      expect(toast.error).toHaveBeenCalledWith('Failed to submit report');
       expect(mockOnClose).not.toHaveBeenCalled();
     });
 
     consoleSpy.mockRestore();
-    alertSpy.mockRestore();
+  });
+
+  it('does not submit when user is not authenticated', async () => {
+    mockUseAuth.mockReturnValue({ user: null });
+
+    render(<ReportModal {...defaultProps} />);
+
+    const textarea = screen.getByPlaceholderText('Please describe why you want to report this user...');
+    fireEvent.change(textarea, { target: { value: 'Spam content' } });
+
+    fireEvent.click(screen.getByText('Submit Report'));
+
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

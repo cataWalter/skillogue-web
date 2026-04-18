@@ -1,15 +1,24 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/auth';
+import { expectLoginRedirect, expectOnboardingRedirect } from './utils/navigation';
 
 test.describe('Dashboard', () => {
   test.describe('Unauthenticated Access', () => {
     test('should handle unauthenticated dashboard access', async ({ page }) => {
-      await page.goto('/dashboard');
-      await page.waitForTimeout(2000);
+      await expectLoginRedirect(page, '/dashboard');
     });
 
     test('should handle unauthenticated search access', async ({ page }) => {
-      await page.goto('/search');
-      await page.waitForTimeout(2000);
+      await expectLoginRedirect(page, '/search');
+    });
+  });
+
+  test.describe('Incomplete Profile Access', () => {
+    test('should redirect incomplete profiles from dashboard to onboarding', async ({ incompleteProfilePage }) => {
+      await expectOnboardingRedirect(incompleteProfilePage, '/dashboard');
+    });
+
+    test('should redirect incomplete profiles from search to onboarding', async ({ incompleteProfilePage }) => {
+      await expectOnboardingRedirect(incompleteProfilePage, '/search');
     });
   });
 
@@ -18,7 +27,6 @@ test.describe('Dashboard', () => {
       '/dashboard',
       '/search',
       '/messages',
-      '/favorites',
       '/profile',
       '/edit-profile',
       '/settings',
@@ -27,8 +35,7 @@ test.describe('Dashboard', () => {
 
     for (const route of protectedRoutes) {
       test(`should handle ${route} access`, async ({ page }) => {
-        await page.goto(route);
-        await page.waitForTimeout(2000);
+        await expectLoginRedirect(page, route);
       });
     }
   });
@@ -36,8 +43,11 @@ test.describe('Dashboard', () => {
 
 test.describe('Search Functionality', () => {
   test('should handle unauthenticated search access', async ({ page }) => {
-    await page.goto('/search');
-    await page.waitForTimeout(2000);
+    await expectLoginRedirect(page, '/search');
+  });
+
+  test('should funnel incomplete profiles from search into onboarding', async ({ incompleteProfilePage }) => {
+    await expectOnboardingRedirect(incompleteProfilePage, '/search');
   });
 });
 

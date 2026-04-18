@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeCompatRpc } from '@/lib/server/app-data';
-import { getCurrentUserFromRequest } from '@/lib/server/current-user';
-
-export const runtime = 'nodejs';
+import { getAppwriteSessionSecret } from '@/lib/appwrite/server';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function POST(request: NextRequest) {
-  const payload = (await request.json()) as { name?: string; args?: Record<string, unknown> };
-  const currentUser = await getCurrentUserFromRequest(request);
-  const result = await executeCompatRpc(payload.name ?? '', payload.args ?? {}, currentUser);
-
-  return NextResponse.json(result);
+  try {
+    const payload = await request.json();
+    const service = new AppDataService(
+      getAppwriteSessionSecret(request),
+      request.headers.get('user-agent') ?? undefined
+    );
+    const result = await service.executeCompatRpc(payload.name ?? '', payload.args ?? {});
+    
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
+  }
 }

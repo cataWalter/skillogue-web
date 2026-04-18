@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { adminCopy } from '../../../lib/app-copy';
 
 interface VerificationRequest {
     id: number;
@@ -42,14 +43,14 @@ export default function AdminVerification() {
             });
             
             if (response.ok) {
-                toast.success('User verified successfully');
+                toast.success(adminCopy.verification.userVerified);
                 fetchRequests();
             } else {
-                toast.error('Failed to approve');
+                toast.error(adminCopy.verification.failedToApprove);
             }
         } catch (error) {
             console.error('Error approving:', error);
-            toast.error('Failed to approve');
+            toast.error(adminCopy.verification.failedToApprove);
         }
     };
 
@@ -62,59 +63,64 @@ export default function AdminVerification() {
             });
             
             if (response.ok) {
-                toast.success('Request rejected');
+                toast.success(adminCopy.verification.rejected);
                 fetchRequests();
             } else {
-                toast.error('Failed to reject');
+                toast.error(adminCopy.verification.failedToReject);
             }
         } catch (error) {
             console.error('Error rejecting:', error);
-            toast.error('Failed to reject');
+            toast.error(adminCopy.verification.failedToReject);
         }
     };
 
-    if (loading) return <div className="text-white">Loading...</div>;
+    if (loading) return <div className="text-foreground">{adminCopy.verification.loading}</div>;
 
     return (
-        <div className="text-white">
-            <h1 className="text-3xl font-bold mb-6">Verification Requests</h1>
-            <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="text-foreground">
+            <div className="glass-panel mb-6 rounded-[2rem] p-6 sm:p-8">
+                <p className="editorial-kicker mb-4 w-fit border-approval/20 bg-approval/10 text-approval-soft">
+                    Verification desk
+                </p>
+                <h1 className="text-3xl font-bold">{adminCopy.verification.title}</h1>
+            </div>
+            <div className="glass-panel overflow-hidden rounded-[1.75rem]">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-800 text-gray-400">
+                    <thead className="bg-surface-secondary/80 text-faint">
                         <tr>
-                            <th className="p-4">User</th>
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Actions</th>
+                            <th className="p-4">{adminCopy.verification.user}</th>
+                            <th className="p-4">{adminCopy.verification.date}</th>
+                            <th className="p-4">{adminCopy.verification.actions}</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-800">
+                    <tbody className="divide-y divide-line/30">
                         {requests.length === 0 ? (
                             <tr>
-                                <td colSpan={3} className="p-8 text-center text-gray-500">No pending requests</td>
+                                <td colSpan={3} className="p-8 text-center text-faint">{adminCopy.verification.empty}</td>
                             </tr>
                         ) : (
                             requests.map((req) => (
-                                <tr key={req.id} className="hover:bg-gray-800/50">
+                                <tr key={req.id} className="transition-colors hover:bg-surface-secondary/40">
                                     <td className="p-4">
-                                        <div className="font-medium">{req.profiles?.first_name} {req.profiles?.last_name}</div>
-                                        <div className="text-xs text-gray-500">{req.user_id}</div>
+                                        <div className="font-medium text-foreground">{req.profiles?.first_name} {req.profiles?.last_name}</div>
+                                        <div className="text-xs text-faint">{req.user_id}</div>
                                     </td>
-                                    <td className="p-4 text-gray-400">
+                                    <td className="p-4 text-faint">
                                         {new Date(req.created_at).toLocaleDateString()}
                                     </td>
                                     <td className="p-4">
                                         <div className="flex gap-2">
                                             <button 
                                                 onClick={() => handleApprove(req.id, req.user_id)}
-                                                className="p-2 bg-green-900/30 text-green-500 rounded hover:bg-green-900/50 transition"
-                                                title="Approve"
+                                                className="rounded-xl bg-approval/10 p-2 text-approval transition hover:bg-approval/15"
+                                                title={adminCopy.verification.approveTitle}
                                             >
                                                 <Check size={18} />
                                             </button>
                                             <button 
                                                 onClick={() => handleReject(req.id)}
-                                                className="p-2 bg-red-900/30 text-red-500 rounded hover:bg-red-900/50 transition"
-                                                title="Reject"
+                                                className="rounded-xl bg-danger/10 p-2 text-danger transition hover:bg-danger/15"
+                                                title={adminCopy.verification.rejectTitle}
                                             >
                                                 <X size={18} />
                                             </button>

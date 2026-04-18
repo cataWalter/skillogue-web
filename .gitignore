@@ -24,3 +24,23 @@ yarn-error.log*
 next-env.d.ts
 .vercel
 .env*.local
+
+# Cloudflare / OpenNext
+.open-next
+.dev.vars
+cloudflare-env.d.ts
+
+# Local verification artifacts
+.agent-api-tests.log
+.jest-full.json
+.lint-agent.log
+.playwright-mcp/
+playwright-report/
+test-results/
+.swc/
+.neon
+.jest-migration-results.json
+test_results.json
+brevo-login-snapshot.md
+lighthouse-live-desktop.json
+lighthouse-live-mobile.json

@@ -7,12 +7,16 @@ import { appClient } from '../../lib/appClient';
 import MultiSelect from '../../components/MultiSelect';
 import Link from 'next/link';
 import { updateProfile } from '../actions/profile';
+import { GENDER_OPTIONS, normalizeGender } from '@/lib/gender';
+import { getBirthDateRange, isBirthDateWithinAgeRange, normalizeBirthDate } from '@/lib/profile-age';
+import { commonLabels, profilePageCopy } from '../../lib/app-copy';
+import { Button } from '../../components/Button';
 
 interface ProfileState {
     first_name: string;
     last_name: string;
     about_me: string;
-    age: string;
+    birth_date: string;
     gender: string;
 }
 interface LocationState {
@@ -24,10 +28,15 @@ interface Passion {
     id: number;
     name: string;
 }
+
 interface Language {
     id: number;
     name: string;
 }
+
+const fieldClass = 'w-full rounded-xl border border-line/30 bg-surface-secondary/70 p-3 text-foreground shadow-glass-sm focus:outline-none focus:ring-2 focus:ring-brand';
+const labelClass = 'mb-2 block text-sm font-medium text-faint';
+const sectionClass = 'border-t border-line/20 pt-6';
 
 const EditProfile: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
@@ -35,7 +44,7 @@ const EditProfile: React.FC = () => {
         first_name: '',
         last_name: '',
         about_me: '',
-        age: '',
+        birth_date: '',
         gender: '',
     });
     const [location, setLocation] = useState<LocationState>({
@@ -52,6 +61,7 @@ const EditProfile: React.FC = () => {
     const [cities, setCities] = useState<string[]>([]);
     const [error, setError] = useState<string>('');
     const router = useRouter();
+    const birthDateRange = getBirthDateRange();
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -70,7 +80,11 @@ const EditProfile: React.FC = () => {
                 allPassionsRes,
                 countriesRes
             ] = await Promise.all([
-                appClient.from('profiles').select(`*, locations(*)`).eq('id', user.id).single(),
+                appClient
+                    .from('profiles')
+                    .select('id, first_name, last_name, about_me, birth_date, gender, locations(*)')
+                    .eq('id', user.id)
+                    .single(),
                 appClient.from('profile_languages').select('languages(name)').eq('profile_id', user.id),
                 appClient.from('profile_passions').select('passions(name)').eq('profile_id', user.id),
                 appClient.from('languages').select('id, name'),
@@ -81,7 +95,7 @@ const EditProfile: React.FC = () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data: profileData, error: profileError } = profileRes as any;
             if (profileError && profileError.code !== 'PGRST116') {
-                setError('Failed to load profile.');
+                setError(profilePageCopy.edit.failedToLoad);
                 console.error(profileError);
                 setLoading(false);
                 return;
@@ -102,8 +116,8 @@ const EditProfile: React.FC = () => {
                     first_name: profileData.first_name || '',
                     last_name: profileData.last_name || '',
                     about_me: profileData.about_me || '',
-                    age: profileData.age?.toString() || '',
-                    gender: profileData.gender || '',
+                    birth_date: normalizeBirthDate(profileData.birth_date) || '',
+                    gender: normalizeGender(profileData.gender) || '',
                 });
                 if (profileData.locations) {
                     setLocation({
@@ -167,12 +181,22 @@ const EditProfile: React.FC = () => {
         setError('');
 
         try {
+            const normalizedGender = normalizeGender(profile.gender);
+
+            if (!normalizedGender) {
+                throw new Error(profilePageCopy.edit.invalidGender);
+            }
+
+            if (!isBirthDateWithinAgeRange(profile.birth_date)) {
+                throw new Error(profilePageCopy.edit.invalidBirthDate);
+            }
+
             const result = await updateProfile({
                 first_name: profile.first_name,
                 last_name: profile.last_name,
                 about_me: profile.about_me,
-                age: profile.age ? parseInt(profile.age) : null,
-                gender: profile.gender,
+                birth_date: profile.birth_date,
+                gender: normalizedGender,
                 location: {
                     city: location.city || null,
                     region: location.region || null,
@@ -193,141 +217,157 @@ const EditProfile: React.FC = () => {
             router.push('/profile');
         } catch (err: unknown) {
             console.error('Error updating profile:', err);
-            setError(err instanceof Error ? err.message : 'Failed to update profile');
+            setError(err instanceof Error ? err.message : profilePageCopy.edit.failedToUpdate);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
+    if (loading) return <div className="min-h-screen bg-background text-foreground flex items-center justify-center">{profilePageCopy.edit.loading}</div>;
 
     return (
-        <div className="flex-grow p-4 sm:p-6 w-full">
+        <div className="editorial-shell flex-grow py-8 sm:py-12 lg:py-16">
             <div className="max-w-4xl mx-auto">
-                <div className="flex items-center gap-4 mb-8">
-                    <Link href="/profile" className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition">
+                <div className="mb-8 flex items-center gap-4">
+                    <Link href="/profile" className="glass-surface rounded-full p-2 text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-surface-secondary/80">
                         <ArrowLeft size={24} />
                     </Link>
-                    <h1 className="text-2xl sm:text-3xl font-bold">Edit Profile</h1>
+                    <div>
+                        <p className="editorial-kicker mb-3 w-fit border-brand/20 bg-brand/10 text-brand-soft">Profile atelier</p>
+                        <h1 className="text-2xl font-bold sm:text-3xl">{profilePageCopy.edit.editProfile}</h1>
+                    </div>
                 </div>
 
                 {error && (
-                    <div className="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6 flex items-center gap-3">
+                    <div className="mb-6 flex items-center gap-3 rounded-xl border border-danger/30 bg-danger/10 p-4 text-danger-soft">
                         <AlertCircle size={20} />
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-8 bg-gray-900 p-6 sm:p-8 rounded-2xl border border-gray-800">
+                <form onSubmit={handleSubmit} className="glass-panel space-y-8 rounded-[2rem] p-6 sm:p-8">
                     {/* Basic Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">First Name</label>
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                            <label htmlFor="edit-first-name" className={labelClass}>{profilePageCopy.edit.firstName}</label>
                             <input
+                                id="edit-first-name"
                                 type="text"
                                 name="first_name"
                                 value={profile.first_name}
                                 onChange={handleProfileChange}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className={fieldClass}
+                                autoComplete="given-name"
                                 required
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Last Name</label>
+                        <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                            <label htmlFor="edit-last-name" className={labelClass}>{profilePageCopy.edit.lastName}</label>
                             <input
+                                id="edit-last-name"
                                 type="text"
                                 name="last_name"
                                 value={profile.last_name}
                                 onChange={handleProfileChange}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className={fieldClass}
+                                autoComplete="family-name"
                                 required
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">About Me</label>
+                    <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                        <label htmlFor="edit-about-me" className={labelClass}>{profilePageCopy.edit.aboutMe}</label>
                         <textarea
+                            id="edit-about-me"
                             name="about_me"
                             value={profile.about_me}
                             onChange={handleProfileChange}
                             rows={4}
-                            className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                            placeholder="Tell us about yourself..."
+                            className={`${fieldClass} placeholder-faint`}
+                            placeholder={profilePageCopy.edit.aboutPlaceholder}
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Age</label>
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                            <label htmlFor="edit-birth-date" className={labelClass}>{profilePageCopy.edit.birthDate}</label>
                             <input
-                                type="number"
-                                name="age"
-                                value={profile.age}
+                                id="edit-birth-date"
+                                type="date"
+                                name="birth_date"
+                                value={profile.birth_date}
                                 onChange={handleProfileChange}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className={`date-input-light-icon ${fieldClass}`}
                                 required
-                                min="18"
+                                min={birthDateRange.min}
+                                max={birthDateRange.max}
+                                autoComplete="bday"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Gender</label>
+                        <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                            <label htmlFor="edit-gender" className={labelClass}>{profilePageCopy.edit.gender}</label>
                             <select
+                                id="edit-gender"
                                 name="gender"
                                 value={profile.gender}
                                 onChange={handleProfileChange}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className={fieldClass}
                                 required
                             >
-                                <option value="">Select Gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Non-binary">Non-binary</option>
-                                <option value="Other">Other</option>
-                                <option value="Prefer not to say">Prefer not to say</option>
+                                <option value="">{profilePageCopy.edit.selectGender}</option>
+                                {GENDER_OPTIONS.map((genderOption) => (
+                                    <option key={genderOption} value={genderOption}>{genderOption}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
 
                     {/* Location */}
-                    <div className="border-t border-gray-800 pt-6">
-                        <h3 className="text-xl font-semibold mb-4">Location</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Country</label>
+                    <div className={sectionClass}>
+                        <h3 className="text-xl font-semibold mb-4">{profilePageCopy.edit.location}</h3>
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="edit-country" className={labelClass}>{profilePageCopy.edit.country}</label>
                                 <select
+                                    id="edit-country"
                                     name="country"
                                     value={location.country}
                                     onChange={handleLocationChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className={fieldClass}
+                                    autoComplete="country-name"
                                 >
-                                    <option value="">Select Country</option>
+                                    <option value="">{profilePageCopy.edit.selectCountry}</option>
                                     {countries.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Region/State</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="edit-region" className={labelClass}>{profilePageCopy.edit.regionState}</label>
                                 <select
+                                    id="edit-region"
                                     name="region"
                                     value={location.region}
                                     onChange={handleLocationChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className={fieldClass}
                                     disabled={!location.country}
+                                    autoComplete="address-level1"
                                 >
-                                    <option value="">Select Region</option>
+                                    <option value="">{profilePageCopy.edit.selectRegion}</option>
                                     {regions.map(r => <option key={r} value={r}>{r}</option>)}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">City</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="edit-city" className={labelClass}>{profilePageCopy.edit.city}</label>
                                 <select
+                                    id="edit-city"
                                     name="city"
                                     value={location.city}
                                     onChange={handleLocationChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className={fieldClass}
                                     disabled={!location.region}
+                                    autoComplete="address-level2"
                                 >
-                                    <option value="">Select City</option>
+                                    <option value="">{profilePageCopy.edit.selectCity}</option>
                                     {cities.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
@@ -335,33 +375,36 @@ const EditProfile: React.FC = () => {
                     </div>
 
                     {/* Interests */}
-                    <div className="border-t border-gray-800 pt-6">
-                        <h3 className="text-xl font-semibold mb-4">Interests & Languages</h3>
+                    <div className={sectionClass}>
+                        <h3 className="text-xl font-semibold mb-4">{profilePageCopy.edit.interestsAndLanguages}</h3>
                         <div className="space-y-6">
                             <MultiSelect
-                                label="Passions"
+                                label={commonLabels.passions}
                                 options={availablePassions}
                                 selected={selectedPassions}
                                 onChange={setSelectedPassions}
-                                placeholder="Select your passions..."
+                                placeholder={profilePageCopy.edit.passionsPlaceholder}
+                                id="edit-passions"
+                                name="passions"
+                                maxSelect={10}
                             />
                             <MultiSelect
-                                label="Languages"
+                                label={commonLabels.languages}
                                 options={availableLanguages}
                                 selected={selectedLanguages}
                                 onChange={setSelectedLanguages}
-                                placeholder="Select languages you speak..."
+                                placeholder={profilePageCopy.edit.languagesPlaceholder}
+                                id="edit-languages"
+                                name="languages"
+                                maxSelect={5}
                             />
                         </div>
                     </div>
 
-                    <div className="flex justify-end pt-6 border-t border-gray-800">
-                        <button
-                            type="submit"
-                            className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg font-bold hover:shadow-lg transform hover:scale-105 transition"
-                        >
-                            Save Changes
-                        </button>
+                    <div className="flex justify-end border-t border-line/20 pt-6">
+                        <Button type="submit">
+                            {profilePageCopy.edit.saveChanges}
+                        </Button>
                     </div>
                 </form>
             </div>

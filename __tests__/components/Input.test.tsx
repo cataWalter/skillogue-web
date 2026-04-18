@@ -42,4 +42,11 @@ describe('Input Component', () => {
         expect(input).toHaveAttribute('type', 'password');
         expect(input).toHaveAttribute('placeholder', 'Enter password');
     });
+
+    it('uses semantic danger styling when an error is present', () => {
+        render(<Input label="Email" id="email-error" error="Required" />);
+
+        expect(screen.getByLabelText('Email')).toHaveClass('border-danger');
+        expect(screen.getByText('Required')).toHaveClass('text-danger');
+    });
 });

@@ -78,6 +78,22 @@ describe('SignUp Page', () => {
     })
   })
 
+  it('submits successfully when the email does not contain a domain separator', async () => {
+    mockSignUp.mockResolvedValue({})
+
+    const { container } = render(<SignUp />)
+    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'localpart' } })
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } })
+
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(mockSignUp).toHaveBeenCalledWith('localpart', 'StrongP@ssw0rd!')
+      expect(mockPush).toHaveBeenCalledWith('/login')
+    })
+  })
+
   it('handles signup error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     mockSignUp.mockRejectedValue(new Error('Signup failed'));
@@ -97,5 +113,23 @@ describe('SignUp Page', () => {
     });
 
     consoleSpy.mockRestore()
+  });
+
+  it('falls back to the default error message when signup rejects with a non-Error value', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockSignUp.mockRejectedValue('Signup failed');
+
+    render(<SignUp />);
+
+    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button'));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('An error occurred');
+    });
+
+    consoleSpy.mockRestore();
   });
 })

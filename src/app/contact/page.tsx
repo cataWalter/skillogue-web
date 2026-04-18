@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,16 +11,25 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
+import { contactCategoryValues, staticPageCopy } from '../../lib/app-copy';
+
+const contactMessageMaxLength = 8192;
 
 const contactSchema = z.object({
-    name: z.string().min(2, 'Name is required'),
-    email: z.string().email('Invalid email address'),
-    category: z.enum(['general', 'support', 'bug', 'feedback']),
-    subject: z.string().min(5, 'Subject must be at least 5 characters'),
-    message: z.string().min(10, 'Message must be at least 10 characters'),
+    name: z.string().min(2, staticPageCopy.contact.validation.nameRequired),
+    email: z.string().email(staticPageCopy.contact.validation.invalidEmail),
+    category: z.enum(contactCategoryValues),
+    subject: z.string().min(5, staticPageCopy.contact.validation.subjectMin),
+    message: z
+        .string()
+        .min(10, staticPageCopy.contact.validation.messageMin)
+        .max(contactMessageMaxLength, staticPageCopy.contact.validation.messageMax(contactMessageMaxLength)),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
+
+const selectClass = 'w-full px-4 py-3 bg-surface-secondary border border-line/40 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent text-foreground transition';
+const textareaClass = 'w-full px-4 py-3 bg-surface-secondary border border-line/40 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent text-foreground placeholder-faint transition';
 
 export default function ContactPage() {
     const router = useRouter();
@@ -52,35 +61,38 @@ export default function ContactPage() {
             });
 
             if (response.ok) {
-                toast.success('Message sent successfully! We will get back to you soon.');
+                toast.success(staticPageCopy.contact.success);
                 router.push('/');
             } else {
                 throw new Error('Failed to send message');
             }
         } catch (error) {
             console.error('Error sending message:', error);
-            toast.error('Failed to send message. Please try again.');
+            toast.error(staticPageCopy.contact.failure);
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-gray-900 via-black to-gray-900">
+        <main className="editorial-shell min-h-screen flex flex-col items-center justify-center py-8 sm:py-12 lg:py-16">
             <div className="w-full max-w-2xl">
-                <Link href="/" className="text-gray-400 hover:text-white transition flex items-center gap-2 mb-8">
+                <Link href="/" className="mb-8 inline-flex items-center gap-2 text-faint transition hover:text-foreground">
                     <ArrowLeft size={20} />
-                    Back to Home
+                    {staticPageCopy.common.backToHome}
                 </Link>
 
-                <div className="bg-gray-900/50 p-8 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-sm">
+                <div className="glass-panel rounded-[2rem] p-8 sm:p-10">
                     <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-600/20 text-indigo-400 mb-4">
+                        <p className="editorial-kicker mx-auto mb-4 w-fit border-brand/20 bg-brand/10 text-brand-soft">
+                            Reach the studio
+                        </p>
+                        <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-brand/15 text-brand shadow-glass-sm">
                             <Mail size={32} />
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Contact Us</h1>
-                        <p className="text-gray-400">
-                            Have a question, suggestion, or just want to say hi? We'd love to hear from you.
+                        <h1 className="text-3xl font-bold text-foreground mb-2">{staticPageCopy.contact.title}</h1>
+                        <p className="text-faint">
+                            {staticPageCopy.contact.subtitle}
                         </p>
                     </div>
 
@@ -89,66 +101,62 @@ export default function ContactPage() {
                             <div>
                                 <Input
                                     id="name"
-                                    label="Name"
-                                    placeholder="Your name"
+                                    label={staticPageCopy.contact.name}
+                                    placeholder={staticPageCopy.contact.namePlaceholder}
+                                    error={errors.name?.message}
                                     {...register('name')}
-                                    className={errors.name ? 'border-red-500' : ''}
                                 />
-                                {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
                             </div>
                             <div>
                                 <Input
                                     id="email"
-                                    label="Email"
+                                    label={staticPageCopy.contact.email}
                                     type="email"
-                                    placeholder="your@email.com"
+                                    placeholder={staticPageCopy.contact.emailPlaceholder}
+                                    error={errors.email?.message}
                                     {...register('email')}
-                                    className={errors.email ? 'border-red-500' : ''}
                                 />
-                                {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
                             </div>
                         </div>
 
                         <div>
-                            <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">
-                                Category
+                            <label htmlFor="category" className="block text-sm font-medium text-muted mb-2">
+                                {staticPageCopy.contact.category}
                             </label>
                             <select
                                 id="category"
-                                className={`w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white transition ${errors.category ? 'border-red-500' : ''}`}
+                                className={`${selectClass} ${errors.category ? 'border-danger focus:border-danger focus:ring-danger/40' : ''}`}
                                 {...register('category')}
                             >
-                                <option value="general">General Inquiry</option>
-                                <option value="support">Support Request</option>
-                                <option value="bug">Report a Bug</option>
-                                <option value="feedback">Feedback</option>
+                                {staticPageCopy.contact.categoryOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
                             </select>
-                            {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>}
+                            {errors.category && <p className="text-danger text-sm mt-1">{errors.category.message}</p>}
                         </div>
 
                         <div>
                             <Input
                                 id="subject"
-                                label="Subject"
-                                placeholder="What is this about?"
+                                label={staticPageCopy.contact.subject}
+                                placeholder={staticPageCopy.contact.subjectPlaceholder}
+                                error={errors.subject?.message}
                                 {...register('subject')}
-                                className={errors.subject ? 'border-red-500' : ''}
                             />
-                            {errors.subject && <p className="text-red-500 text-sm mt-1">{errors.subject.message}</p>}
                         </div>
 
                         <div>
-                            <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2">
-                                Message
+                            <label htmlFor="message" className="block text-sm font-medium text-muted mb-2">
+                                {staticPageCopy.contact.message}
                             </label>
                             <textarea
                                 id="message"
                                 rows={5}
-                                className={`w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-500 transition ${errors.message ? 'border-red-500' : ''}`}
-                                placeholder="Tell us more..."
+                                className={`${textareaClass} ${errors.message ? 'border-danger focus:border-danger focus:ring-danger/40' : ''}`}
+                                placeholder={staticPageCopy.contact.messagePlaceholder}
                                 {...register('message')}
                             />
-                            {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message.message}</p>}
+                            {errors.message && <p className="text-danger text-sm mt-1">{errors.message.message}</p>}
                         </div>
 
                         <Button
@@ -158,7 +166,7 @@ export default function ContactPage() {
                             icon={<Send size={18} />}
                             className="w-full"
                         >
-                            Send Message
+                            {staticPageCopy.contact.sendMessage}
                         </Button>
                     </form>
                 </div>

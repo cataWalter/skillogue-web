@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import NotificationsDropdown from './NotificationsDropdown';
+import { componentCopy } from '../lib/app-copy';
 
 const NotificationIcon: React.FC = () => {
     const { unreadCount } = useNotifications();
@@ -23,16 +24,16 @@ const NotificationIcon: React.FC = () => {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setDropdownOpen(!isDropdownOpen)}
-                className="relative p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition"
-                aria-label="Notifications"
+                className="relative p-2 text-muted hover:text-foreground hover:bg-surface-secondary rounded-full transition"
+                aria-label={componentCopy.notificationCenter.ariaLabel}
                 aria-expanded={isDropdownOpen}
                 aria-haspopup="true"
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (
                     <span className="absolute top-0 right-0 flex h-4 w-4">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 justify-center items-center text-xs">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-4 w-4 bg-danger justify-center items-center text-xs text-white">
                             {unreadCount}
                         </span>
                     </span>

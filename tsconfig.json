@@ -16,6 +16,11 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "noUnusedLocals": true, // Segnala variabili locali inutilizzate
+    "noUnusedParameters": true, // Segnala parametri di funzioni inutilizzati
+    "noImplicitReturns": true, // Segnala rami di funzioni senza return
+    "allowUnreachableCode": false, // Trasforma il codice irraggiungibile in errore
+    "noFallthroughCasesInSwitch": true, // Segnala switch case senza break/return
     "plugins": [
       {
         "name": "next"

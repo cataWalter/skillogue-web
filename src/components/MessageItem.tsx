@@ -21,14 +21,14 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ content, createdAt
                 </div>
             )}
             <div
-                className={`max-w-[70%] px-4 py-3 rounded-2xl shadow-md ${
+                className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-glass-sm ${
                     isMe
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-br-md'
-                        : 'bg-gray-800 text-gray-200 rounded-bl-md border border-gray-700'
+                        ? 'bg-gradient-to-r from-brand-start to-brand-end text-white rounded-br-md'
+                        : 'glass-surface text-muted rounded-bl-md border border-line/20'
                 }`}
             >
                 <p className="text-sm sm:text-base">{content}</p>
-                <p className={`text-[10px] mt-1.5 ${isMe ? 'text-indigo-200' : 'text-gray-500'} text-right flex items-center justify-end gap-1`}>
+                <p className={`text-[10px] mt-1.5 ${isMe ? 'text-brand-soft' : 'text-faint'} text-right flex items-center justify-end gap-1`}>
                     <span>{formattedTime}</span>
                     <span>·</span>
                     <span>{formattedDate}</span>

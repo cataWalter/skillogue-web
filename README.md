@@ -36,14 +36,13 @@ Skillogue is built with a rich set of features focused on fostering community, s
 
 ## Technology Stack
 
-This project is built on a modern, full-stack JavaScript stack centered around React for the frontend, Appwrite for authentication, and PostgreSQL for application data.
+This project is built on a modern, full-stack JavaScript stack centered around React for the frontend and Appwrite for auth, data, and backend workflows.
 
 | Category              | Technology                        | Role & Justification                                                                                 |
 |-----------------------|-----------------------------------|------------------------------------------------------------------------------------------------------|
 | **Core Framework**    | **React + Next.js**               | Powers the UI, routing, server components, and API routes.                                           |
-| **Database**          | **PostgreSQL + Drizzle ORM**      | Stores application data with typed queries and CLI-friendly schema management.                       |
-| **Authentication**    | **Appwrite**                      | Handles sign-up, login, sessions, email verification, and password recovery.                         |
+| **Backend Platform**  | **Appwrite**                      | Handles authentication, database documents, functions, and server-side integrations.                 |
 | **Styling & UI**      | **Tailwind CSS**                  | Supports fast, consistent styling across the app.                                                    |
 | **Forms & Validation**| **React Hook Form + Zod**         | Manages form state and validates payloads on the client and server.                                  |
-| **Messaging Updates** | **API Routes + Client Polling**   | Keeps conversation lists and active chats refreshed without relying on external realtime providers.  |
-| **Deployment**        | **Vercel + PostgreSQL + Appwrite**| Vercel serves the app, PostgreSQL stores relational data, and Appwrite manages authentication.       |
+| **Messaging Updates** | **Appwrite Realtime + API Routes**| Keeps conversation lists and active chats refreshed through the compatibility client and API layer.  |
+| **Deployment**        | **Vercel + Appwrite**             | Vercel serves the app and Appwrite provides the required backend services.                           |

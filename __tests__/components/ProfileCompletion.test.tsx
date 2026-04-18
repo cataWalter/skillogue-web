@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ProfileCompletion from '../../src/components/ProfileCompletion';
 
@@ -19,12 +18,13 @@ describe('ProfileCompletion Component', () => {
             passions_count: 1,
             languages_count: 0,
         };
-        render(<ProfileCompletion profile={profile} />);
+        const { container } = render(<ProfileCompletion profile={profile} />);
         
         expect(screen.getByText('Complete Your Profile')).toBeInTheDocument();
         expect(screen.getByText('Add a bio to tell people about yourself.')).toBeInTheDocument();
         expect(screen.getByText('Add more passions to find better connections.')).toBeInTheDocument();
         expect(screen.getByText('Add the languages you speak.')).toBeInTheDocument();
+        expect(container.querySelector('.bg-approval')).toBeInTheDocument();
     });
 
     it('renders partial suggestions', () => {

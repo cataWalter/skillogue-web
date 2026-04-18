@@ -5,12 +5,18 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { appClient } from '../../lib/appClient';
 import MultiSelect from '../../components/MultiSelect';
+import { updateProfile } from '../actions/profile';
+import { normalizeGender } from '@/lib/gender';
+import { getBirthDateRange, isBirthDateWithinAgeRange } from '@/lib/profile-age';
+import { onboardingCopy } from '../../lib/app-copy';
+import { trackAnalyticsEvent } from '../../lib/analytics';
+import { Button } from '../../components/Button';
 
 interface ProfileState {
     first_name: string;
     last_name: string;
     about_me: string;
-    age: string;
+    birth_date: string;
     gender: string;
 }
 
@@ -30,6 +36,9 @@ interface Language {
     name: string;
 }
 
+const fieldClass = 'w-full rounded-xl border border-line/30 bg-surface-secondary/70 p-3 text-foreground shadow-glass-sm focus:outline-none focus:ring-2 focus:ring-brand';
+const labelClass = 'mb-2 block text-sm font-medium text-faint';
+
 const Onboarding: React.FC = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(true);
@@ -37,7 +46,7 @@ const Onboarding: React.FC = () => {
         first_name: '',
         last_name: '',
         about_me: '',
-        age: '',
+        birth_date: '',
         gender: '',
     });
     const [location, setLocation] = useState<LocationState>({
@@ -54,6 +63,8 @@ const Onboarding: React.FC = () => {
     const [cities, setCities] = useState<string[]>([]);
     const [error, setError] = useState('');
     const router = useRouter();
+    const birthDateRange = getBirthDateRange();
+    const totalSteps = 3;
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -70,7 +81,7 @@ const Onboarding: React.FC = () => {
             setAvailablePassions(allPassions || []);
 
             const { data: countryData } = await appClient.rpc('get_distinct_countries');
-            setCountries(countryData?.map((c: { country: string }) => c.country) || []);
+            setCountries(countryData?.map((country: { country: string }) => country.country) || []);
 
             setLoading(false);
         };
@@ -82,8 +93,11 @@ const Onboarding: React.FC = () => {
         if (location.country) {
             const fetchRegions = async () => {
                 const { data, error } = await appClient.rpc('get_distinct_regions', { p_country: location.country });
-                if (error) console.error("Error fetching regions:", error);
-                else setRegions(data.map((r: { region: string }) => r.region).filter(Boolean));
+                if (error) {
+                    console.error('Error fetching regions:', error);
+                } else {
+                    setRegions(data.map((region: { region: string }) => region.region).filter(Boolean));
+                }
             };
             fetchRegions();
         } else {
@@ -96,10 +110,13 @@ const Onboarding: React.FC = () => {
             const fetchCities = async () => {
                 const { data, error } = await appClient.rpc('get_distinct_cities', {
                     p_country: location.country,
-                    p_region: location.region || null
+                    p_region: location.region || null,
                 });
-                if (error) console.error("Error fetching cities:", error);
-                else setCities(data.map((c: { city: string }) => c.city));
+                if (error) {
+                    console.error('Error fetching cities:', error);
+                } else {
+                    setCities(data.map((city: { city: string }) => city.city));
+                }
             };
             fetchCities();
         } else {
@@ -114,7 +131,7 @@ const Onboarding: React.FC = () => {
 
     const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setLocation(prev => {
+        setLocation((prev) => {
             const newState = { ...prev, [name]: value };
             if (name === 'country') {
                 newState.region = '';
@@ -126,249 +143,219 @@ const Onboarding: React.FC = () => {
 
     const nextStep = () => {
         if (step === 1) {
-            if (!profile.first_name || !profile.last_name || !profile.age || !profile.gender) {
-                setError('Please fill in all required fields.');
+            if (!profile.first_name || !profile.last_name || !profile.birth_date || !profile.gender) {
+                setError(onboardingCopy.validation.missingBasics);
                 return;
             }
-            // Validate age
-            const ageNum = parseInt(profile.age);
-            if (isNaN(ageNum) || ageNum < 13 || ageNum > 120) {
-                setError('Please enter a valid age (13-120).');
+
+            if (!isBirthDateWithinAgeRange(profile.birth_date)) {
+                setError(onboardingCopy.validation.invalidBirthDate);
                 return;
             }
-            // Validate name length
+
             if (profile.first_name.length < 2 || profile.last_name.length < 2) {
-                setError('Names must be at least 2 characters long.');
+                setError(onboardingCopy.validation.shortNames);
                 return;
             }
         } else if (step === 2) {
             if (!location.country || !location.city) {
-                setError('Please select your location.');
+                setError(onboardingCopy.validation.missingLocation);
                 return;
             }
         }
+
         setError('');
-        setStep(prev => prev + 1);
+        setStep((prev) => prev + 1);
     };
 
     const prevStep = () => {
         setError('');
-        setStep(prev => prev - 1);
+        setStep((prev) => prev - 1);
     };
 
     const handleSubmit = async () => {
-        // Final validation
         if (selectedPassions.length < 3) {
-            setError('Please select at least 3 passions to help us find your tribe.');
+            setError(onboardingCopy.validation.minPassions);
             return;
         }
 
         if (selectedPassions.length > 10) {
-            setError('Please select no more than 10 passions.');
+            setError(onboardingCopy.validation.maxPassions);
+            return;
+        }
+
+        if (selectedLanguages.length > 5) {
+            setError(onboardingCopy.validation.maxLanguages);
             return;
         }
 
         setLoading(true);
         try {
-            const { data: { user } } = await appClient.auth.getUser();
-            if (!user) throw new Error('No user found');
+            const normalizedGender = normalizeGender(profile.gender);
 
-            // 1. Upsert Location
-            let locationId: number | null = null;
-            if (location.city && location.country) {
-                const { data: locData, error: locError } = await appClient
-                    .from('locations')
-                    .select('id')
-                    .eq('city', location.city)
-                    .eq('region', location.region || '')
-                    .eq('country', location.country)
-                    .maybeSingle();
+            const result = await updateProfile({
+                first_name: profile.first_name,
+                last_name: profile.last_name,
+                about_me: profile.about_me,
+                birth_date: profile.birth_date,
+                gender: normalizedGender,
+                location: {
+                    city: location.city || null,
+                    region: location.region || null,
+                    country: location.country || null,
+                },
+                languages: selectedLanguages,
+                passions: selectedPassions,
+            });
 
-                if (locError) throw locError;
-
-                if (locData) {
-                    locationId = locData.id;
-                } else {
-                    const { data: newLoc, error: newLocError } = await appClient
-                        .from('locations')
-                        .insert({
-                            city: location.city,
-                            region: location.region || '',
-                            country: location.country
-                        })
-                        .select()
-                        .single();
-                    if (newLocError) throw newLocError;
-                    locationId = newLoc.id;
+            if (!result.success) {
+                if (result.details) {
+                    const message = Object.values(result.details).flat().join(', ');
+                    throw new Error(message);
                 }
+
+                throw new Error(result.error);
             }
 
-            // 2. Upsert Profile
-            const { error: updateError } = await appClient
-                .from('profiles')
-                .upsert({
-                    id: user.id,
-                    ...profile,
-                    age: parseInt(profile.age),
-                    location_id: locationId,
-                    updated_at: new Date().toISOString(),
-                });
-
-            if (updateError) throw updateError;
-
-            // 3. Update Languages
-            if (selectedLanguages.length > 0) {
-                const languageInserts = selectedLanguages.map(name => {
-                    const lang = availableLanguages.find(l => l.name === name);
-                    return lang ? { profile_id: user.id, language_id: lang.id } : null;
-                }).filter(Boolean);
-                await appClient.from('profile_languages').insert(languageInserts);
-            }
-
-            // 4. Update Passions
-            if (selectedPassions.length > 0) {
-                const passionInserts = selectedPassions.map(name => {
-                    const passion = availablePassions.find(p => p.name === name);
-                    return passion ? { profile_id: user.id, passion_id: passion.id } : null;
-                }).filter(Boolean);
-                await appClient.from('profile_passions').insert(passionInserts);
-            }
+            void trackAnalyticsEvent('onboarding_completed', {
+                languages: selectedLanguages,
+                passions: selectedPassions,
+                locationCountry: location.country || null,
+                hasBio: Boolean(profile.about_me.trim()),
+            });
 
             router.push('/dashboard');
         } catch (err: unknown) {
             console.error('Error completing onboarding:', err);
-            const message = err instanceof Error ? err.message : 'Failed to save profile';
+            const message = err instanceof Error ? err.message : onboardingCopy.validation.saveFailed;
             setError(message);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
+    if (loading) {
+        return <div className="min-h-screen bg-background text-foreground flex items-center justify-center">{onboardingCopy.loading}</div>;
+    }
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
-            <div className="w-full max-w-2xl bg-gray-900 p-8 rounded-2xl border border-gray-800 shadow-2xl">
+        <div className="editorial-shell min-h-screen flex flex-col items-center justify-center py-8 sm:py-12 lg:py-16">
+            <div className="glass-panel w-full max-w-2xl rounded-[2rem] p-8 sm:p-10">
                 <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                        Welcome to Skillogue!
+                    <p className="editorial-kicker mx-auto mb-4 w-fit border-brand/20 bg-brand/10 text-brand-soft">
+                        Profile launch
+                    </p>
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-brand-start to-brand-end bg-clip-text text-transparent">
+                        {onboardingCopy.title}
                     </h1>
-                    <p className="text-gray-400 mt-2">Let&apos;s set up your profile to find your tribe.</p>
+                    <p className="text-faint mt-2">{onboardingCopy.subtitle}</p>
                 </div>
 
-                {/* Progress Indicator */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Step {step} of 3</span>
-                        <span className="text-sm text-indigo-400 font-medium">{Math.round((step / 3) * 100)}% complete</span>
+                        <span className="text-sm text-faint">{onboardingCopy.stepCounter(step, totalSteps)}</span>
+                        <span className="text-sm text-brand font-medium">{onboardingCopy.progressComplete(step, totalSteps)}</span>
                     </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                        <div 
-                            className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 h-2 rounded-full transition-all duration-500 ease-out"
-                            style={{ width: `${(step / 3) * 100}%` }}
+                    <div className="w-full bg-surface-secondary rounded-full h-2 overflow-hidden">
+                        <div
+                            className="bg-gradient-to-r from-brand-start to-brand-end h-2 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${(step / totalSteps) * 100}%` }}
                         />
                     </div>
                     <div className="flex justify-between mt-3 text-xs">
-                        <span className={`flex items-center gap-1.5 ${step >= 1 ? 'text-indigo-400 font-medium' : 'text-gray-500'}`}>
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}>1</span>
-                            Basic Info
+                        <span className={`flex items-center gap-1.5 ${step >= 1 ? 'text-brand font-medium' : 'text-faint'}`}>
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 1 ? 'bg-brand-start text-white' : 'bg-surface-secondary text-faint'}`}>1</span>
+                            {onboardingCopy.basicInfoStep}
                         </span>
-                        <span className={`flex items-center gap-1.5 ${step >= 2 ? 'text-indigo-400 font-medium' : 'text-gray-500'}`}>
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}>2</span>
-                            Location
+                        <span className={`flex items-center gap-1.5 ${step >= 2 ? 'text-brand font-medium' : 'text-faint'}`}>
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 2 ? 'bg-brand-start text-white' : 'bg-surface-secondary text-faint'}`}>2</span>
+                            {onboardingCopy.locationStep}
                         </span>
-                        <span className={`flex items-center gap-1.5 ${step >= 3 ? 'text-indigo-400 font-medium' : 'text-gray-500'}`}>
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}>3</span>
-                            Passions
+                        <span className={`flex items-center gap-1.5 ${step >= 3 ? 'text-brand font-medium' : 'text-faint'}`}>
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 3 ? 'bg-brand-start text-white' : 'bg-surface-secondary text-faint'}`}>3</span>
+                            {onboardingCopy.passionsStep}
                         </span>
                     </div>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="w-full bg-gray-800 h-2 rounded-full mb-8">
-                    <div
-                        className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${(step / 3) * 100}%` }}
-                    ></div>
-                </div>
-
                 {error && (
-                    <div className="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6 text-center">
+                    <div className="mb-6 rounded-xl border border-danger/30 bg-danger/10 p-4 text-center text-danger-soft">
                         {error}
                     </div>
                 )}
 
                 {step === 1 && (
                     <div className="space-y-6 animate-fadeIn">
-                        <h2 className="text-xl font-semibold text-white">Step 1: The Basics</h2>
+                        <h2 className="text-xl font-semibold text-foreground">{onboardingCopy.stepOneTitle}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label htmlFor="first_name" className="block text-sm font-medium text-gray-400 mb-2">First Name</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="first_name" className={labelClass}>{onboardingCopy.firstName}</label>
                                 <input
                                     id="first_name"
                                     type="text"
                                     name="first_name"
                                     value={profile.first_name}
                                     onChange={handleProfileChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    placeholder="Jane"
+                                    className={`${fieldClass} placeholder-faint`}
+                                    placeholder={onboardingCopy.firstNamePlaceholder}
+                                    autoComplete="given-name"
                                 />
                             </div>
-                            <div>
-                                <label htmlFor="last_name" className="block text-sm font-medium text-gray-400 mb-2">Last Name</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="last_name" className={labelClass}>{onboardingCopy.lastName}</label>
                                 <input
                                     id="last_name"
                                     type="text"
                                     name="last_name"
                                     value={profile.last_name}
                                     onChange={handleProfileChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    placeholder="Doe"
+                                    className={`${fieldClass} placeholder-faint`}
+                                    placeholder={onboardingCopy.lastNamePlaceholder}
+                                    autoComplete="family-name"
                                 />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label htmlFor="age" className="block text-sm font-medium text-gray-400 mb-2">Age</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="birth_date" className={labelClass}>{onboardingCopy.birthDate}</label>
                                 <input
-                                    id="age"
-                                    type="number"
-                                    name="age"
-                                    value={profile.age}
+                                    id="birth_date"
+                                    type="date"
+                                    name="birth_date"
+                                    value={profile.birth_date}
                                     onChange={handleProfileChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    placeholder="25"
-                                    min="18"
+                                    className={`date-input-light-icon ${fieldClass}`}
+                                    min={birthDateRange.min}
+                                    max={birthDateRange.max}
+                                    autoComplete="bday"
                                 />
                             </div>
-                            <div>
-                                <label htmlFor="gender" className="block text-sm font-medium text-gray-400 mb-2">Gender</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="gender" className={labelClass}>{onboardingCopy.gender}</label>
                                 <select
                                     id="gender"
                                     name="gender"
                                     value={profile.gender}
                                     onChange={handleProfileChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className={fieldClass}
                                 >
-                                    <option value="">Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Non-binary">Non-binary</option>
-                                    <option value="Other">Other</option>
-                                    <option value="Prefer not to say">Prefer not to say</option>
+                                    <option value="">{onboardingCopy.selectGender}</option>
+                                    {onboardingCopy.genderOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
-                        <div>
-                            <label htmlFor="about_me" className="block text-sm font-medium text-gray-400 mb-2">About Me</label>
+                        <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                            <label htmlFor="about_me" className={labelClass}>{onboardingCopy.aboutMe}</label>
                             <textarea
                                 id="about_me"
                                 name="about_me"
                                 value={profile.about_me}
                                 onChange={handleProfileChange}
                                 rows={3}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                placeholder="I love hiking and coding..."
+                                className={`${fieldClass} placeholder-faint`}
+                                placeholder={onboardingCopy.aboutPlaceholder}
                             />
                         </div>
                     </div>
@@ -376,47 +363,50 @@ const Onboarding: React.FC = () => {
 
                 {step === 2 && (
                     <div className="space-y-6 animate-fadeIn">
-                        <h2 className="text-xl font-semibold text-white">Step 2: Location</h2>
+                        <h2 className="text-xl font-semibold text-foreground">{onboardingCopy.locationStepTitle}</h2>
                         <div className="space-y-4">
-                            <div>
-                                <label htmlFor="country" className="block text-sm font-medium text-gray-400 mb-2">Country</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="country" className={labelClass}>{onboardingCopy.country}</label>
                                 <select
                                     id="country"
                                     name="country"
                                     value={location.country}
                                     onChange={handleLocationChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className={fieldClass}
+                                    autoComplete="country-name"
                                 >
-                                    <option value="">Select Country</option>
-                                    {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="">{onboardingCopy.selectCountry}</option>
+                                    {countries.map((country) => <option key={country} value={country}>{country}</option>)}
                                 </select>
                             </div>
-                            <div>
-                                <label htmlFor="region" className="block text-sm font-medium text-gray-400 mb-2">Region/State</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="region" className={labelClass}>{onboardingCopy.regionState}</label>
                                 <select
                                     id="region"
                                     name="region"
                                     value={location.region}
                                     onChange={handleLocationChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className={fieldClass}
                                     disabled={!location.country}
+                                    autoComplete="address-level1"
                                 >
-                                    <option value="">Select Region</option>
-                                    {regions.map(r => <option key={r} value={r}>{r}</option>)}
+                                    <option value="">{onboardingCopy.selectRegion}</option>
+                                    {regions.map((region) => <option key={region} value={region}>{region}</option>)}
                                 </select>
                             </div>
-                            <div>
-                                <label htmlFor="city" className="block text-sm font-medium text-gray-400 mb-2">City</label>
+                            <div className="glass-surface rounded-[1.5rem] p-4 sm:p-5">
+                                <label htmlFor="city" className={labelClass}>{onboardingCopy.city}</label>
                                 <select
                                     id="city"
                                     name="city"
                                     value={location.city}
                                     onChange={handleLocationChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className={fieldClass}
                                     disabled={!location.region && !location.country}
+                                    autoComplete="address-level2"
                                 >
-                                    <option value="">Select City</option>
-                                    {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="">{onboardingCopy.selectCity}</option>
+                                    {cities.map((city) => <option key={city} value={city}>{city}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -425,52 +415,61 @@ const Onboarding: React.FC = () => {
 
                 {step === 3 && (
                     <div className="space-y-6 animate-fadeIn">
-                        <h2 className="text-xl font-semibold text-white">Step 3: Interests & Languages</h2>
+                        <h2 className="text-xl font-semibold text-foreground">{onboardingCopy.interestsLanguagesStepTitle}</h2>
                         <div className="space-y-6">
                             <MultiSelect
-                                label="Passions (Select at least 3)"
+                                label={onboardingCopy.passionsWithMinimum}
                                 options={availablePassions}
                                 selected={selectedPassions}
                                 onChange={setSelectedPassions}
-                                placeholder="Select your passions..."
+                                placeholder={onboardingCopy.passionsPlaceholder}
+                                id="onboarding-passions"
+                                name="passions"
+                                maxSelect={10}
                             />
                             <MultiSelect
-                                label="Languages"
+                                label={onboardingCopy.languages}
                                 options={availableLanguages}
                                 selected={selectedLanguages}
                                 onChange={setSelectedLanguages}
-                                placeholder="Select languages you speak..."
+                                placeholder={onboardingCopy.languagesPlaceholder}
+                                id="onboarding-languages"
+                                name="languages"
+                                maxSelect={5}
                             />
                         </div>
                     </div>
                 )}
 
-                <div className="flex justify-between mt-8 pt-6 border-t border-gray-800">
+                <div className="mt-8 flex justify-between border-t border-line/20 pt-6">
                     {step > 1 ? (
-                        <button
+                        <Button
                             onClick={prevStep}
-                            className="flex items-center gap-2 px-6 py-2 text-gray-400 hover:text-white transition"
+                            type="button"
+                            variant="ghost"
+                            icon={<ArrowLeft size={20} />}
                         >
-                            <ArrowLeft size={20} /> Back
-                        </button>
+                            {onboardingCopy.back}
+                        </Button>
                     ) : (
                         <div></div>
                     )}
 
-                    {step < 3 ? (
-                        <button
+                    {step < totalSteps ? (
+                        <Button
                             onClick={nextStep}
-                            className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition"
+                            type="button"
+                            icon={<ArrowRight size={20} />}
                         >
-                            Next <ArrowRight size={20} />
-                        </button>
+                            {onboardingCopy.next}
+                        </Button>
                     ) : (
-                        <button
+                        <Button
                             onClick={handleSubmit}
-                            className="flex items-center gap-2 px-8 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-lg rounded-lg text-white font-bold transition transform hover:scale-105"
+                            type="button"
                         >
-                            Complete Profile
-                        </button>
+                            {onboardingCopy.completeProfile}
+                        </Button>
                     )}
                 </div>
             </div>

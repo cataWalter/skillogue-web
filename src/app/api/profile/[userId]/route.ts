@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {

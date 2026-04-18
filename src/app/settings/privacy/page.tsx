@@ -4,9 +4,17 @@ import { appClient } from '../../../lib/appClient';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Lock, Eye, MapPin, Calendar } from 'lucide-react';
-import Link from 'next/link';
+import { Lock, Eye, MapPin, Calendar, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import {
+    SettingsBackLink,
+    SettingsHero,
+    SettingsPage,
+    SettingsSectionCard,
+    SettingsStatusBanner,
+    SettingsToggleRow,
+} from '../../../components/settings/SettingsShell';
+import { settingsCopy } from '../../../lib/app-copy';
 
 const PrivacySettings: React.FC = () => {
     const router = useRouter();
@@ -61,99 +69,118 @@ const PrivacySettings: React.FC = () => {
 
         if (error) {
             console.error(`Error updating ${key}:`, error);
-            toast.error('Failed to update setting');
+            toast.error(settingsCopy.privacy.updateError);
             // Rollback
             setSettings(prev => ({ ...prev, [key]: !value }));
         } else {
-            toast.success('Settings updated');
+            toast.success(settingsCopy.privacy.updateSuccess);
         }
     };
 
+    const visibilityHighlights = Array.from(new Set([
+        settings.is_private ? settingsCopy.privacy.privateProfileEnabled : settingsCopy.privacy.privateProfileDisabled,
+        settings.show_age ? settingsCopy.privacy.showAgeEnabled : settingsCopy.privacy.showAgeDisabled,
+        settings.show_location ? settingsCopy.privacy.showLocationEnabled : settingsCopy.privacy.showLocationDisabled,
+    ]));
+
     if (loading) {
-        return <div className="p-8 text-center">Loading settings...</div>;
+        return (
+            <SettingsPage>
+                <SettingsBackLink href="/settings" label={settingsCopy.privacy.backToSettings} />
+                <SettingsHero
+                    eyebrow={settingsCopy.privacy.eyebrow}
+                    title={settingsCopy.privacy.title}
+                    description={settingsCopy.privacy.subtitle}
+                    icon={<Lock className="h-7 w-7" />}
+                    highlights={visibilityHighlights}
+                    tone="discovery"
+                />
+                <div className="mt-6">
+                    <SettingsStatusBanner
+                        title={settingsCopy.privacy.loading}
+                        description={settingsCopy.privacy.loadingDescription}
+                        icon={<Loader2 role="status" aria-label={settingsCopy.privacy.loading} className="h-5 w-5 animate-spin" />}
+                        badge={settingsCopy.privacy.eyebrow}
+                        tone="discovery"
+                    />
+                </div>
+            </SettingsPage>
+        );
     }
 
     return (
-        <main className="flex-grow p-6 max-w-4xl mx-auto w-full">
-            <div className="flex items-center mb-8">
-                <Link href="/settings" className="text-gray-400 hover:text-white transition flex items-center gap-2">
-                    <ArrowLeft size={20} />
-                    Back to Settings
-                </Link>
-            </div>
+        <SettingsPage>
+            <SettingsBackLink href="/settings" label={settingsCopy.privacy.backToSettings} />
+            <SettingsHero
+                eyebrow={settingsCopy.privacy.eyebrow}
+                title={settingsCopy.privacy.title}
+                description={settingsCopy.privacy.subtitle}
+                icon={<Lock className="h-7 w-7" />}
+                highlights={visibilityHighlights}
+                tone="discovery"
+            />
 
-            <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-                <Lock className="text-indigo-400" /> Privacy Settings
-            </h1>
-            <p className="text-gray-400 mb-8">
-                Control who can see your profile and personal details.
-            </p>
+            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                <SettingsSectionCard
+                    title={settingsCopy.main.profileVisibilityPrivacy}
+                    description={settingsCopy.privacy.saveHint}
+                    icon={<Eye className="h-6 w-6" />}
+                    badge={settingsCopy.privacy.eyebrow}
+                    tone="discovery"
+                >
+                    <SettingsToggleRow
+                        title={settingsCopy.privacy.privateProfileTitle}
+                        description={settingsCopy.privacy.privateProfileDescription}
+                        helperText={settingsCopy.privacy.privateProfileHelper}
+                        icon={<Eye size={20} />}
+                        checked={settings.is_private}
+                        checkedLabel={settingsCopy.privacy.privateProfileEnabled}
+                        uncheckedLabel={settingsCopy.privacy.privateProfileDisabled}
+                        onChange={(checked) => {
+                            void updateSetting('is_private', checked);
+                        }}
+                        tone="discovery"
+                    />
+                    <SettingsToggleRow
+                        title={settingsCopy.privacy.showAgeTitle}
+                        description={settingsCopy.privacy.showAgeDescription}
+                        helperText={settingsCopy.privacy.showAgeHelper}
+                        icon={<Calendar size={20} />}
+                        checked={settings.show_age}
+                        checkedLabel={settingsCopy.privacy.showAgeEnabled}
+                        uncheckedLabel={settingsCopy.privacy.showAgeDisabled}
+                        onChange={(checked) => {
+                            void updateSetting('show_age', checked);
+                        }}
+                        tone="brand"
+                    />
+                    <SettingsToggleRow
+                        title={settingsCopy.privacy.showLocationTitle}
+                        description={settingsCopy.privacy.showLocationDescription}
+                        helperText={settingsCopy.privacy.showLocationHelper}
+                        icon={<MapPin size={20} />}
+                        checked={settings.show_location}
+                        checkedLabel={settingsCopy.privacy.showLocationEnabled}
+                        uncheckedLabel={settingsCopy.privacy.showLocationDisabled}
+                        onChange={(checked) => {
+                            void updateSetting('show_location', checked);
+                        }}
+                        tone="info"
+                    />
+                </SettingsSectionCard>
 
-            <div className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
-                {/* Private Profile */}
-                <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                            <Eye size={20} className="text-gray-400" /> Private Profile
-                        </h3>
-                        <p className="text-gray-400 text-sm mt-1">
-                            When enabled, only your name and avatar will be visible to others. Your detailed profile info will be hidden.
-                        </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={settings.is_private}
-                            onChange={(e) => updateSetting('is_private', e.target.checked)}
-                        />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
-                </div>
-
-                {/* Show Age */}
-                <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                            <Calendar size={20} className="text-gray-400" /> Show Age
-                        </h3>
-                        <p className="text-gray-400 text-sm mt-1">
-                            Display your age on your public profile.
-                        </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={settings.show_age}
-                            onChange={(e) => updateSetting('show_age', e.target.checked)}
-                        />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
-                </div>
-
-                {/* Show Location */}
-                <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                            <MapPin size={20} className="text-gray-400" /> Show Location
-                        </h3>
-                        <p className="text-gray-400 text-sm mt-1">
-                            Display your city and country on your public profile.
-                        </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={settings.show_location}
-                            onChange={(e) => updateSetting('show_location', e.target.checked)}
-                        />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
+                <div className="space-y-6">
+                    <SettingsStatusBanner
+                        title={settingsCopy.privacy.visibilitySummaryTitle}
+                        description={settingsCopy.privacy.visibilitySummaryDescription}
+                        helperText={settingsCopy.privacy.saveHint}
+                        icon={<Lock className="h-5 w-5" />}
+                        badge={settingsCopy.privacy.title}
+                        tone="discovery"
+                    />
                 </div>
             </div>
-        </main>
+        </SettingsPage>
     );
 };
 

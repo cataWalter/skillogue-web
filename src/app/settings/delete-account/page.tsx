@@ -4,6 +4,14 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '../../../components/Button';
+import {
+    SettingsBackLink,
+    SettingsDangerPanel,
+    SettingsHero,
+    SettingsPage,
+    SettingsStatusBanner,
+} from '../../../components/settings/SettingsShell';
+import { settingsCopy } from '../../../lib/app-copy';
 
 /**
  * Renders the account deletion page.
@@ -22,8 +30,8 @@ const DeleteAccount: React.FC = () => {
      * removes the Appwrite account on the backend, and redirects them.
      */
     const handleDeleteAccount = async () => {
-        if (confirmationText !== 'DELETE') {
-            setErrorMessage('To confirm, you must type "DELETE" in the box.');
+        if (confirmationText !== settingsCopy.deleteAccount.confirmPlaceholder) {
+            setErrorMessage(settingsCopy.deleteAccount.confirmError);
             return;
         }
 
@@ -37,7 +45,7 @@ const DeleteAccount: React.FC = () => {
 
             if (!response.ok) {
                 const payload = await response.json().catch(() => null);
-                throw new Error(payload?.message || 'Failed to delete account');
+                throw new Error(payload?.message || settingsCopy.deleteAccount.deleteFailed);
             }
 
             // Redirect to the home page.
@@ -47,60 +55,86 @@ const DeleteAccount: React.FC = () => {
 
         } catch (err: unknown) {
             console.error('Account deletion error:', err);
-            const message = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again later.';
-            setErrorMessage(`Failed to delete account: ${message}`);
+            const message = err instanceof Error ? err.message : settingsCopy.deleteAccount.unexpectedError;
+            setErrorMessage(`${settingsCopy.deleteAccount.deleteFailed}: ${message}`);
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <main className="flex-grow flex items-center justify-center px-6 py-12">
-            <div className="w-full max-w-lg bg-gray-900/70 backdrop-blur-sm border border-red-500/50 rounded-2xl shadow-2xl p-8">
-                <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-500/20 mb-4">
-                        <AlertTriangle className="h-6 w-6 text-red-400" aria-hidden="true" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-white">Delete Account</h2>
-                    <p className="mt-2 text-gray-400">
-                        This is a permanent action and cannot be undone. All your data, including your profile, messages, and connections, will be permanently removed.
-                    </p>
-                </div>
+        <SettingsPage>
+            <SettingsBackLink href="/settings" label={settingsCopy.deleteAccount.backToSettings} />
+            <SettingsHero
+                eyebrow={settingsCopy.deleteAccount.eyebrow}
+                title={settingsCopy.deleteAccount.title}
+                description={settingsCopy.deleteAccount.subtitle}
+                icon={<AlertTriangle className="h-7 w-7" aria-hidden="true" />}
+                highlights={settingsCopy.deleteAccount.checklist}
+                tone="danger"
+            />
 
-                <div className="mt-8 space-y-6">
-                    <div>
-                        <label htmlFor="confirmation" className="block text-sm font-medium text-gray-300 mb-2">
-                            To confirm, please type &quot;<strong>DELETE</strong>&quot; below:
-                        </label>
-                        <input
-                            id="confirmation"
-                            type="text"
-                            value={confirmationText}
-                            onChange={(e) => setConfirmationText(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-white placeholder-gray-500"
-                            placeholder="DELETE"
-                            disabled={isLoading}
-                        />
-                    </div>
-
-                    {errorMessage && (
-                        <div className="bg-red-900/30 text-red-300 p-3 rounded-lg text-sm flex items-start">
-                            <AlertTriangle className="w-5 h-5 mr-2 mt-0.5" />
-                            {errorMessage}
+            <div className="mt-6">
+                <SettingsDangerPanel
+                    title={settingsCopy.deleteAccount.warningTitle}
+                    description={settingsCopy.deleteAccount.intro}
+                    icon={<AlertTriangle className="h-6 w-6" aria-hidden="true" />}
+                >
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                        <div className="rounded-2xl border border-danger/20 bg-surface/70 p-5">
+                            <h3 className="text-lg font-semibold text-foreground">{settingsCopy.deleteAccount.checklistTitle}</h3>
+                            <ul className="mt-4 space-y-3">
+                                {settingsCopy.deleteAccount.checklist.map((item) => (
+                                    <li key={item} className="flex items-start gap-3">
+                                        <span className="mt-2 h-2 w-2 rounded-full bg-danger" />
+                                        <p className="text-sm leading-6 text-faint">{item}</p>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                    )}
 
-                    <Button
-                        variant="danger"
-                        isLoading={isLoading}
-                        onClick={handleDeleteAccount}
-                        className="w-full"
-                    >
-                        Permanently Delete Account
-                    </Button>
-                </div>
+                        <div className="rounded-2xl border border-line/30 bg-surface/75 p-5">
+                            <label htmlFor="confirmation" className="block text-sm font-medium text-muted">
+                                {settingsCopy.deleteAccount.confirmLabel}
+                            </label>
+                            <p className="mt-2 text-sm leading-6 text-faint">{settingsCopy.deleteAccount.confirmationHelp}</p>
+                            <input
+                                id="confirmation"
+                                type="text"
+                                value={confirmationText}
+                                onChange={(e) => setConfirmationText(e.target.value)}
+                                className="mt-4 w-full rounded-2xl border border-line/40 bg-surface-secondary px-4 py-3 text-foreground placeholder-faint transition focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/30"
+                                placeholder={settingsCopy.deleteAccount.confirmPlaceholder}
+                                disabled={isLoading}
+                            />
+
+                            {errorMessage ? (
+                                <div className="mt-4">
+                                    <SettingsStatusBanner
+                                        title={settingsCopy.deleteAccount.warningTitle}
+                                        description={errorMessage}
+                                        icon={<AlertTriangle className="h-5 w-5" />}
+                                        badge={settingsCopy.deleteAccount.eyebrow}
+                                        tone="danger"
+                                    />
+                                </div>
+                            ) : null}
+
+                            <div className="mt-5">
+                                <Button
+                                    variant="danger"
+                                    isLoading={isLoading}
+                                    onClick={handleDeleteAccount}
+                                    className="w-full"
+                                >
+                                    {settingsCopy.deleteAccount.submit}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </SettingsDangerPanel>
             </div>
-        </main>
+        </SettingsPage>
     );
 };
 

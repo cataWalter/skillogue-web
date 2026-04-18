@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AppDataService } from '@/lib/server/app-data-service';
 import {
   clearAppwriteSessionCookie,
   createAppwriteAdminUsers,
@@ -8,28 +7,18 @@ import {
   getAppwriteErrorStatus,
   getAppwriteSessionSecret,
 } from '@/lib/appwrite/server';
+import { AppDataService } from '@/lib/server/app-data-service';
 
-export const runtime = 'nodejs';
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export async function DELETE(request: NextRequest) {
-  const sessionSecret = getAppwriteSessionSecret(request);
-
-  if (!sessionSecret) {
-    return NextResponse.json({ message: 'Not authenticated.' }, { status: 401 });
-  }
-
-  const userAgent = request.headers.get('user-agent') ?? undefined;
-
+export async function POST(request: NextRequest) {
   try {
+    const sessionSecret = getAppwriteSessionSecret(request);
+    const userAgent = request.headers.get('user-agent') ?? undefined;
     const account = createAppwriteSessionAccount(sessionSecret, userAgent);
     const currentUser = await account.get();
 
-    if (UUID_PATTERN.test(currentUser.$id)) {
-      const service = new AppDataService(sessionSecret);
-      await service.deleteDocument('profiles', currentUser.$id);
+    if (currentUser.$id) {
+      const service = new AppDataService(sessionSecret, userAgent);
+      await service.deleteProfile(currentUser.$id);
     }
 
     const users = createAppwriteAdminUsers(userAgent);
@@ -45,11 +34,7 @@ export async function DELETE(request: NextRequest) {
       { message: getAppwriteErrorMessage(error, 'Failed to delete account.') },
       { status }
     );
-
-    if (status === 401) {
-      clearAppwriteSessionCookie(response);
-    }
-
+    clearAppwriteSessionCookie(response);
     return response;
   }
 }

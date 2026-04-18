@@ -1,9 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
+import { authCopy } from '../../lib/app-copy';
+import FormCard from '../../components/FormCard';
+import Input from '../../components/Input';
+import { Button } from '../../components/Button';
+
+import ForgotPassword from '../forgot-password/page';
 
 const ResetPassword = () => {
     const [password, setPassword] = useState<string>('');
@@ -17,11 +23,10 @@ const ResetPassword = () => {
     const appwriteUserId = searchParams.get('userId');
     const appwriteSecret = searchParams.get('secret');
 
-    useEffect(() => {
-        if (!appwriteUserId || !appwriteSecret) {
-            setError('Invalid or expired link. Please request a new password reset.');
-        }
-    }, [appwriteSecret, appwriteUserId]);
+    // If missing tokens, we ask them to request a new link
+    if (!appwriteUserId || !appwriteSecret) {
+        return <ForgotPassword />;
+    }
 
     const isPasswordValid = (): boolean => {
         const checks = {
@@ -39,26 +44,26 @@ const ResetPassword = () => {
         setLoading(true);
 
         if (!password || !confirmPassword) {
-            setError('Please fill in all fields');
+            setError(authCopy.resetPassword.emptyFieldsError);
             setLoading(false);
             return;
         }
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            setError(authCopy.resetPassword.mismatchError);
             setLoading(false);
             return;
         }
 
         if (!isPasswordValid()) {
-            setError('Please ensure your new password meets all the strength requirements.');
+            setError(authCopy.resetPassword.strengthError);
             setLoading(false);
             return;
         }
 
         try {
             if (!appwriteUserId || !appwriteSecret) {
-                throw new Error('Invalid or expired link. Please request a new password reset.');
+                throw new Error(authCopy.resetPassword.invalidLink);
             }
 
             const response = await fetch('/api/auth/reset-password', {
@@ -73,7 +78,7 @@ const ResetPassword = () => {
 
             if (!response.ok) {
                 const payload = await response.json().catch(() => null);
-                throw new Error(payload?.message || 'Failed to reset password');
+                throw new Error(payload?.message || authCopy.resetPassword.submitError);
             }
 
             setShowSuccess(true);
@@ -82,7 +87,7 @@ const ResetPassword = () => {
                 router.push('/login');
             }, 2000);
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Failed to reset password';
+            const message = err instanceof Error ? err.message : authCopy.resetPassword.submitError;
             setError(message);
             console.error('Password reset error:', err);
         } finally {
@@ -92,14 +97,14 @@ const ResetPassword = () => {
 
     if (showSuccess) {
         return (
-            <main className="flex-grow flex items-center justify-center px-6 py-12">
-                <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden text-center p-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
-                        <CheckCircle className="w-8 h-8 text-green-400" />
+            <main className="editorial-shell flex flex-grow items-center justify-center py-12 sm:py-16">
+                <div className="glass-panel w-full max-w-md rounded-[2rem] p-8 text-center sm:p-10">
+                    <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-approval/20 mb-4">
+                        <CheckCircle className="w-8 h-8 text-approval" />
                     </div>
-                    <h2 className="text-xl font-semibold text-white">Password Updated!</h2>
-                    <p className="text-gray-400 mt-2">
-                        Redirecting to login...
+                    <h2 className="text-xl font-semibold text-foreground">{authCopy.resetPassword.successTitle}</h2>
+                    <p className="text-faint mt-2">
+                        {authCopy.resetPassword.successSubtitle}
                     </p>
                 </div>
             </main>
@@ -107,72 +112,54 @@ const ResetPassword = () => {
     }
 
     return (
-        <main className="flex-grow flex items-center justify-center px-6 py-12">
-            <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-                <div className="p-8">
-                    <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent mb-2">
-                        Set New Password
-                    </h2>
-                    <p className="text-gray-400 text-center mb-8">
-                        Please choose a strong password for your account
-                    </p>
-
-                    <form onSubmit={handleReset} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                New Password
-                            </label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-500"
-                                placeholder="••••••••"
-                            />
-                            {/* Password Strength Meter Component */}
-                            <div className="mt-3">
-                                <PasswordStrengthMeter password={password} />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Confirm Password
-                            </label>
-                            <input
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-500"
-                                placeholder="••••••••"
-                            />
-                        </div>
-
-                        {error && (
-                            <div className="bg-red-900/30 text-red-300 p-3 rounded-lg text-sm flex items-start">
-                                <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
-                                    Updating Password...
-                                </>
-                            ) : (
-                                'Update Password'
-                            )}
-                        </button>
-                    </form>
+        <FormCard title={authCopy.resetPassword.title} subtitle={authCopy.resetPassword.subtitle}>
+            <form onSubmit={handleReset} className="space-y-6">
+                <div>
+                    <Input
+                        id="new-password"
+                        name="newPassword"
+                        type="password"
+                        label={authCopy.resetPassword.newPassword}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder={authCopy.resetPassword.passwordPlaceholder}
+                        autoComplete="new-password"
+                    />
+                    <div className="mt-3">
+                        <PasswordStrengthMeter password={password} />
+                    </div>
                 </div>
-            </div>
-        </main>
+
+                <Input
+                    id="confirm-password"
+                    name="confirmPassword"
+                    type="password"
+                    label={authCopy.resetPassword.confirmPassword}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder={authCopy.resetPassword.passwordPlaceholder}
+                    autoComplete="new-password"
+                />
+
+                {error && (
+                    <div className="flex items-start rounded-xl bg-danger/10 p-3 text-sm text-danger-soft">
+                        <AlertCircle className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                <Button type="submit" disabled={loading} fullWidth>
+                    {loading ? (
+                        <>
+                            <Loader2 className="-ml-1 mr-3 h-5 w-5 animate-spin" />
+                            {authCopy.resetPassword.loading}
+                        </>
+                    ) : (
+                        authCopy.resetPassword.submit
+                    )}
+                </Button>
+            </form>
+        </FormCard>
     );
 };
 

@@ -3,7 +3,7 @@ import Skeleton from './Skeleton';
 
 const SearchSkeleton: React.FC = () => {
     return (
-        <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
+        <div className="bg-surface p-6 rounded-2xl border border-line/30 shadow-lg shadow-black/5">
             <div className="flex flex-col sm:flex-row items-center gap-6">
                 <Skeleton className="w-24 h-24 rounded-full flex-shrink-0" />
                 <div className="flex-grow w-full text-center sm:text-left">
@@ -16,7 +16,7 @@ const SearchSkeleton: React.FC = () => {
                 </div>
             </div>
 
-            <div className="border-t border-gray-800 my-4"></div>
+            <div className="border-t border-line/30 my-4"></div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">

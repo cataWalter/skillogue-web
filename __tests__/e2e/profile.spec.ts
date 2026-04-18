@@ -1,72 +1,59 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { expectLoginRedirect } from './utils/navigation';
 
 test.describe('Profile Pages', () => {
   test.describe('View Profile Page', () => {
     test('should redirect to login when accessing profile without authentication', async ({ page }) => {
-      await page.goto('/profile');
-      await expect(page).toHaveURL(/.*\/login/);
+      await expectLoginRedirect(page, '/profile');
     });
 
-    test('should display profile page elements when authenticated', async ({ page }) => {
-      // Test unauthenticated redirect
-      await page.goto('/profile');
-      await expect(page).toHaveURL(/.*\/login/);
+    test('should keep the profile page protected until authentication', async ({ page }) => {
+      await expectLoginRedirect(page, '/profile');
     });
   });
 
   test.describe('Edit Profile Page', () => {
     test('should redirect to login when accessing edit-profile without authentication', async ({ page }) => {
-      await page.goto('/edit-profile');
-      await expect(page).toHaveURL(/.*\/login/);
+      await expectLoginRedirect(page, '/edit-profile');
     });
 
-    test('should display edit profile form elements when authenticated', async ({ page }) => {
-      // Test unauthenticated redirect
-      await page.goto('/edit-profile');
-      await expect(page).toHaveURL(/.*\/login/);
+    test('should keep edit-profile protected until authentication', async ({ page }) => {
+      await expectLoginRedirect(page, '/edit-profile');
     });
   });
 
   test.describe('User Profile Page ([id])', () => {
     test('should redirect to login when accessing user profile without authentication', async ({ page }) => {
-      await page.goto('/user/some-user-id');
-      await expect(page).toHaveURL(/.*\/login/);
+      await expectLoginRedirect(page, '/user/some-user-id');
     });
 
-    test('should display user profile elements when authenticated', async ({ page }) => {
-      await page.goto('/user/some-user-id');
-      await expect(page).toHaveURL(/.*\/login/);
+    test('should keep user profile routes protected until authentication', async ({ page }) => {
+      await expectLoginRedirect(page, '/user/some-user-id');
     });
 
-    test('should show 404 for invalid user id when authenticated', async ({ page }) => {
-      // When not authenticated, should redirect to login
-      await page.goto('/user/invalid-user-id-123');
-      await expect(page).toHaveURL(/.*\/login/);
+    test('should redirect invalid user profile routes to login when unauthenticated', async ({ page }) => {
+      await expectLoginRedirect(page, '/user/invalid-user-id-123');
     });
   });
 
   test.describe('Profile Card Component', () => {
     test('should have edit profile button link', async ({ page }) => {
-      await page.goto('/profile');
-      await expect(page).toHaveURL(/.*\/login/);
+      await expectLoginRedirect(page, '/profile');
     });
 
     test('should display avatar element', async ({ page }) => {
-      await page.goto('/profile');
-      await expect(page).toHaveURL(/.*\/login/);
+      await expectLoginRedirect(page, '/profile');
     });
   });
 });
 
 test.describe('Onboarding', () => {
   test('should redirect to login when accessing onboarding without authentication', async ({ page }) => {
-    await page.goto('/onboarding');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/onboarding');
   });
 
-  test('should display onboarding elements when authenticated', async ({ page }) => {
-    await page.goto('/onboarding');
-    await expect(page).toHaveURL(/.*\/login/);
+  test('should keep onboarding behind authentication before profile completion checks', async ({ page }) => {
+    await expectLoginRedirect(page, '/onboarding');
   });
 });
 
@@ -123,72 +110,58 @@ test.describe('Static Pages', () => {
 
 test.describe('Profile Navigation Flow', () => {
   test('should navigate from dashboard to profile', async ({ page }) => {
-    // First, try to access dashboard (should redirect to login)
-    await page.goto('/dashboard');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/dashboard');
   });
 
   test('should navigate from profile to edit-profile', async ({ page }) => {
-    await page.goto('/profile');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/profile');
   });
 
   test('should navigate from settings to profile', async ({ page }) => {
-    await page.goto('/settings');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/settings');
   });
 });
 
 test.describe('User Profile Links', () => {
   test('should have message button on user profile', async ({ page }) => {
-    await page.goto('/user/test-user-id');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/user/test-user-id');
   });
 
   test('should have favorite button on user profile', async ({ page }) => {
-    await page.goto('/user/test-user-id');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/user/test-user-id');
   });
 
   test('should have report button on user profile', async ({ page }) => {
-    await page.goto('/user/test-user-id');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/user/test-user-id');
   });
 });
 
 test.describe('Profile Form Validation', () => {
   test('should validate required fields on edit-profile', async ({ page }) => {
-    await page.goto('/edit-profile');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/edit-profile');
   });
 
   test('should have first name input', async ({ page }) => {
-    await page.goto('/edit-profile');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/edit-profile');
   });
 
   test('should have last name input', async ({ page }) => {
-    await page.goto('/edit-profile');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/edit-profile');
   });
 
   test('should have about me textarea', async ({ page }) => {
-    await page.goto('/edit-profile');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/edit-profile');
   });
 
   test('should have passion selection', async ({ page }) => {
-    await page.goto('/edit-profile');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/edit-profile');
   });
 
   test('should have language selection', async ({ page }) => {
-    await page.goto('/edit-profile');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/edit-profile');
   });
 
   test('should have location inputs', async ({ page }) => {
-    await page.goto('/edit-profile');
-    await expect(page).toHaveURL(/.*\/login/);
+    await expectLoginRedirect(page, '/edit-profile');
   });
 });

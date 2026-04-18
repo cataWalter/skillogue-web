@@ -1,32 +1,58 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  fetchAuthSession,
-  type AuthSession as Session,
-  type AuthUser as User,
-} from '@/lib/appwrite/client-auth';
 
-export type { Session, User };
+const readSession = async () => {
+  const response = await fetch('/api/auth/session');
+
+  if (!response || typeof response.json !== 'function') {
+    throw new Error('Invalid session response');
+  }
+
+  const data = await response.json();
+
+  return {
+    session: data?.session ?? null,
+    user: data?.session ? data.session.user : null,
+  };
+};
 
 export const useAuth = () => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchSession = useCallback(async () => {
-    try {
-      const currentSession = await fetchAuthSession();
-      setSession(currentSession);
-      setUser(currentSession?.user || null);
-    } catch (error) {
-      console.error('Error fetching session:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
+    let active = true;
+
+    const loadSession = async () => {
+      try {
+        const data = await readSession();
+
+        if (!active) {
+          return;
+        }
+
+        setSession(data.session);
+        setUser(data.user);
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setSession(null);
+        setUser(null);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadSession();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     const response = await fetch('/api/auth/sign-in/email', {
@@ -40,7 +66,9 @@ export const useAuth = () => {
       throw new Error(error.message || 'Failed to sign in');
     }
     
-    await fetchSession();
+    const data = await response.json();
+    setSession(data.session);
+    setUser(data.session ? data.session.user : null);
   };
 
   const signUp = async (email: string, password: string) => {
@@ -64,6 +92,19 @@ export const useAuth = () => {
     setUser(null);
   };
 
+  const changePassword = async (oldPassword: string, newPassword: string) => {
+    const response = await fetch('/api/auth/change-password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPassword, newPassword }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to change password');
+    }
+  };
+
   const resetPassword = async (email: string) => {
     const response = await fetch('/api/auth/reset-password', {
       method: 'POST',
@@ -77,6 +118,17 @@ export const useAuth = () => {
     }
   };
 
+  const refresh = useCallback(async () => {
+    try {
+      const data = await readSession();
+      setSession(data.session);
+      setUser(data.user);
+    } catch {
+      setSession(null);
+      setUser(null);
+    }
+  }, []);
+
   return {
     session,
     user,
@@ -84,7 +136,8 @@ export const useAuth = () => {
     signIn,
     signUp,
     signOut,
+    changePassword,
     resetPassword,
-    refresh: fetchSession,
+    refresh,
   };
-};
+}

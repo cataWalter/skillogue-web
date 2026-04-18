@@ -16,15 +16,16 @@ const FormCard: React.FC<FormCardProps> = ({ children, title, subtitle, maxWidth
     }[maxWidth];
 
     return (
-        <main className="flex-grow flex items-center justify-center px-6 py-12">
-            <div className={`w-full ${maxWidthClass} bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden`}>
-                <div className="text-center p-8">
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
+        <main className="editorial-shell flex flex-grow items-center justify-center py-12 sm:py-16">
+            <div className={`glass-panel relative w-full overflow-hidden rounded-[2rem] ${maxWidthClass}`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-brand/12 via-transparent to-connection/10" aria-hidden="true" />
+                <div className="relative text-center p-8 sm:p-10">
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-brand-start to-brand-end bg-clip-text text-transparent">
                         {title}
                     </h1>
-                    {subtitle && <p className="text-gray-400 mt-2">{subtitle}</p>}
+                    {subtitle && <p className="mt-3 text-faint">{subtitle}</p>}
                 </div>
-                <div className="px-8 pb-8">
+                <div className="relative px-8 pb-8 sm:px-10 sm:pb-10">
                     {children}
                 </div>
             </div>

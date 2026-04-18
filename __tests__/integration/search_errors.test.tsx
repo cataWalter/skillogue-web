@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import SearchPage from '../../src/app/search/page';
 import { appClient } from '../../src/lib/appClient';

@@ -1,0 +1,690 @@
+/* src/styles/colors.css */
+
+/* Single source of truth for project color values and theme overrides. */
+
+:root {
+    --color-background-rgb: 248 250 252;
+    --color-background-secondary-rgb: 255 255 255;
+    --color-surface-rgb: 255 255 255;
+    --color-surface-secondary-rgb: 235 241 248;
+    --color-surface-overlay-rgb: 15 23 42;
+    --color-foreground-rgb: 15 23 42;
+    --color-muted-rgb: 71 85 105;
+    --color-faint-rgb: 100 116 139;
+    --color-line-rgb: 148 163 184;
+
+    --color-brand-rgb: 37 99 235;
+    --color-brand-soft-rgb: 29 78 216;
+    --color-brand-start-rgb: 29 78 216;
+    --color-brand-end-rgb: 14 165 233;
+    --color-brand-start-hover-rgb: 59 130 246;
+    --color-brand-end-hover-rgb: 56 189 248;
+
+    --color-connection-rgb: 236 72 153;
+    --color-connection-soft-rgb: 190 24 93;
+    --color-connection-start-rgb: 244 114 182;
+    --color-connection-end-rgb: 251 113 133;
+    --color-connection-start-hover-rgb: 249 168 212;
+    --color-connection-end-hover-rgb: 253 164 175;
+
+    --color-discovery-rgb: 20 184 166;
+    --color-discovery-soft-rgb: 13 148 136;
+    --color-discovery-start-rgb: 45 212 191;
+    --color-discovery-end-rgb: 56 189 248;
+    --color-discovery-start-hover-rgb: 94 234 212;
+    --color-discovery-end-hover-rgb: 125 211 252;
+
+    --color-success-rgb: 34 197 94;
+    --color-success-soft-rgb: 21 128 61;
+    --color-success-start-rgb: 34 197 94;
+    --color-success-end-rgb: 16 185 129;
+    --color-success-start-hover-rgb: 74 222 128;
+    --color-success-end-hover-rgb: 52 211 153;
+
+    --color-warning-rgb: 245 158 11;
+    --color-warning-soft-rgb: 180 83 9;
+    --color-warning-start-rgb: 245 158 11;
+    --color-warning-end-rgb: 251 191 36;
+    --color-warning-start-hover-rgb: 251 191 36;
+    --color-warning-end-hover-rgb: 253 224 71;
+
+    --color-danger-rgb: 225 29 72;
+    --color-danger-soft-rgb: 190 18 60;
+    --color-danger-start-rgb: 225 29 72;
+    --color-danger-end-rgb: 239 68 68;
+    --color-danger-start-hover-rgb: 244 63 94;
+    --color-danger-end-hover-rgb: 248 113 113;
+
+    --color-info-rgb: 59 130 246;
+    --color-info-soft-rgb: 29 78 216;
+    --color-info-start-rgb: 59 130 246;
+    --color-info-end-rgb: 14 165 233;
+    --color-info-start-hover-rgb: 96 165 250;
+    --color-info-end-hover-rgb: 56 189 248;
+
+    --color-approval-rgb: 6 182 212;
+    --color-approval-soft-rgb: 8 145 178;
+    --color-approval-start-rgb: 6 182 212;
+    --color-approval-end-rgb: 45 212 191;
+    --color-approval-start-hover-rgb: 34 211 238;
+    --color-approval-end-hover-rgb: 94 234 212;
+
+    --color-focus-rgb: 96 165 250;
+    --color-pulse-glow-rgb: 59 130 246;
+    --color-danger-shadow-rgb: 225 29 72;
+    --color-hero-mesh-brand-rgb: 29 78 216;
+    --color-hero-mesh-connection-rgb: 244 114 182;
+    --color-hero-mesh-discovery-rgb: 45 212 191;
+    --color-hero-mesh-approval-rgb: 34 211 238;
+    --color-settings-hero-primary-rgb: var(--color-brand-start-rgb);
+    --color-settings-hero-secondary-rgb: var(--color-discovery-end-rgb);
+
+    --color-primary: rgb(var(--color-brand-rgb));
+    --color-secondary: rgb(var(--color-discovery-rgb));
+    --color-accent: rgb(var(--color-connection-rgb));
+    --color-background: rgb(var(--color-background-rgb));
+    --color-background-secondary: rgb(var(--color-background-secondary-rgb));
+    --color-text: rgb(var(--color-foreground-rgb));
+    --color-text-secondary: rgb(var(--color-muted-rgb));
+    --color-text-tertiary: rgb(var(--color-faint-rgb));
+    --color-success: rgb(var(--color-success-rgb));
+    --color-warning: rgb(var(--color-warning-rgb));
+    --color-error: rgb(var(--color-danger-rgb));
+    --glass-border: rgb(15 23 42 / 0.08);
+    --glass-bg: rgb(255 255 255 / 0.75);
+    --glass-surface: rgb(255 255 255 / 0.4);
+    --glass-panel: rgb(255 255 255 / 0.9);
+    --gradient-start: rgb(var(--color-brand-start-rgb));
+    --gradient-end: rgb(var(--color-discovery-end-rgb));
+}
+
+html {
+    background-color: var(--color-background);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-background-rgb: 9 13 24;
+        --color-background-secondary-rgb: 17 24 39;
+        --color-surface-rgb: 17 24 39;
+        --color-surface-secondary-rgb: 30 41 59;
+        --color-surface-overlay-rgb: 0 0 0;
+        --color-foreground-rgb: 226 232 240;
+        --color-muted-rgb: 203 213 225;
+        --color-faint-rgb: 148 163 184;
+        --color-line-rgb: 71 85 105;
+
+        --color-brand-rgb: 147 197 253;
+        --color-brand-soft-rgb: 191 219 254;
+        --color-brand-start-rgb: 96 165 250;
+        --color-brand-end-rgb: 56 189 248;
+        --color-brand-start-hover-rgb: 125 211 252;
+        --color-brand-end-hover-rgb: 103 232 249;
+
+        --color-connection-rgb: 251 146 167;
+        --color-connection-soft-rgb: 253 205 211;
+        --color-connection-start-rgb: 244 114 182;
+        --color-connection-end-rgb: 251 113 133;
+        --color-connection-start-hover-rgb: 249 168 212;
+        --color-connection-end-hover-rgb: 253 164 175;
+
+        --color-discovery-rgb: 45 212 191;
+        --color-discovery-soft-rgb: 153 246 228;
+        --color-discovery-start-rgb: 45 212 191;
+        --color-discovery-end-rgb: 96 165 250;
+        --color-discovery-start-hover-rgb: 94 234 212;
+        --color-discovery-end-hover-rgb: 125 211 252;
+
+        --color-success-rgb: 74 222 128;
+        --color-success-soft-rgb: 187 247 208;
+        --color-success-start-rgb: 74 222 128;
+        --color-success-end-rgb: 45 212 191;
+        --color-success-start-hover-rgb: 134 239 172;
+        --color-success-end-hover-rgb: 94 234 212;
+
+        --color-warning-rgb: 251 191 36;
+        --color-warning-soft-rgb: 253 224 71;
+        --color-warning-start-rgb: 245 158 11;
+        --color-warning-end-rgb: 250 204 21;
+        --color-warning-start-hover-rgb: 253 224 71;
+        --color-warning-end-hover-rgb: 254 240 138;
+
+        --color-danger-rgb: 251 113 133;
+        --color-danger-soft-rgb: 253 164 175;
+        --color-danger-start-rgb: 244 63 94;
+        --color-danger-end-rgb: 239 68 68;
+        --color-danger-start-hover-rgb: 251 113 133;
+        --color-danger-end-hover-rgb: 248 113 113;
+
+        --color-info-rgb: 96 165 250;
+        --color-info-soft-rgb: 191 219 254;
+        --color-info-start-rgb: 96 165 250;
+        --color-info-end-rgb: 56 189 248;
+        --color-info-start-hover-rgb: 147 197 253;
+        --color-info-end-hover-rgb: 125 211 252;
+
+        --color-approval-rgb: 34 211 238;
+        --color-approval-soft-rgb: 165 243 252;
+        --color-approval-start-rgb: 34 211 238;
+        --color-approval-end-rgb: 94 234 212;
+        --color-approval-start-hover-rgb: 103 232 249;
+        --color-approval-end-hover-rgb: 153 246 228;
+
+        --color-focus-rgb: 147 197 253;
+        --color-pulse-glow-rgb: 96 165 250;
+        --color-danger-shadow-rgb: 244 63 94;
+        --color-hero-mesh-brand-rgb: 96 165 250;
+        --color-hero-mesh-connection-rgb: 244 114 182;
+        --color-hero-mesh-discovery-rgb: 45 212 191;
+        --color-hero-mesh-approval-rgb: 34 211 238;
+        --color-settings-hero-primary-rgb: var(--color-brand-start-rgb);
+        --color-settings-hero-secondary-rgb: var(--color-discovery-end-rgb);
+
+        --color-primary: rgb(var(--color-brand-rgb));
+        --color-secondary: rgb(var(--color-discovery-rgb));
+        --color-accent: rgb(var(--color-connection-rgb));
+        --color-background: rgb(var(--color-background-rgb));
+        --color-background-secondary: rgb(var(--color-background-secondary-rgb));
+        --color-text: rgb(var(--color-foreground-rgb));
+        --color-text-secondary: rgb(var(--color-muted-rgb));
+        --color-text-tertiary: rgb(var(--color-faint-rgb));
+        --color-success: rgb(var(--color-success-rgb));
+        --color-warning: rgb(var(--color-warning-rgb));
+        --color-error: rgb(var(--color-danger-rgb));
+        --glass-border: rgb(255 255 255 / 0.08);
+        --glass-bg: rgb(17 24 39 / 0.72);
+        --glass-surface: rgb(17 24 39 / 0.4);
+        --glass-panel: rgb(17 24 39 / 0.9);
+        --gradient-start: rgb(var(--color-brand-start-rgb));
+        --gradient-end: rgb(var(--color-discovery-end-rgb));
+    }
+}
+
+.light {
+    --color-background-rgb: 248 250 252;
+    --color-background-secondary-rgb: 255 255 255;
+    --color-surface-rgb: 255 255 255;
+    --color-surface-secondary-rgb: 235 241 248;
+    --color-surface-overlay-rgb: 15 23 42;
+    --color-foreground-rgb: 15 23 42;
+    --color-muted-rgb: 71 85 105;
+    --color-faint-rgb: 100 116 139;
+    --color-line-rgb: 148 163 184;
+
+    --color-brand-rgb: 37 99 235;
+    --color-brand-soft-rgb: 29 78 216;
+    --color-brand-start-rgb: 29 78 216;
+    --color-brand-end-rgb: 14 165 233;
+    --color-brand-start-hover-rgb: 59 130 246;
+    --color-brand-end-hover-rgb: 56 189 248;
+
+    --color-connection-rgb: 236 72 153;
+    --color-connection-soft-rgb: 190 24 93;
+    --color-connection-start-rgb: 244 114 182;
+    --color-connection-end-rgb: 251 113 133;
+    --color-connection-start-hover-rgb: 249 168 212;
+    --color-connection-end-hover-rgb: 253 164 175;
+
+    --color-discovery-rgb: 20 184 166;
+    --color-discovery-soft-rgb: 13 148 136;
+    --color-discovery-start-rgb: 45 212 191;
+    --color-discovery-end-rgb: 56 189 248;
+    --color-discovery-start-hover-rgb: 94 234 212;
+    --color-discovery-end-hover-rgb: 125 211 252;
+
+    --color-success-rgb: 34 197 94;
+    --color-success-soft-rgb: 21 128 61;
+    --color-success-start-rgb: 34 197 94;
+    --color-success-end-rgb: 16 185 129;
+    --color-success-start-hover-rgb: 74 222 128;
+    --color-success-end-hover-rgb: 52 211 153;
+
+    --color-warning-rgb: 245 158 11;
+    --color-warning-soft-rgb: 180 83 9;
+    --color-warning-start-rgb: 245 158 11;
+    --color-warning-end-rgb: 251 191 36;
+    --color-warning-start-hover-rgb: 251 191 36;
+    --color-warning-end-hover-rgb: 253 224 71;
+
+    --color-danger-rgb: 225 29 72;
+    --color-danger-soft-rgb: 190 18 60;
+    --color-danger-start-rgb: 225 29 72;
+    --color-danger-end-rgb: 239 68 68;
+    --color-danger-start-hover-rgb: 244 63 94;
+    --color-danger-end-hover-rgb: 248 113 113;
+
+    --color-info-rgb: 59 130 246;
+    --color-info-soft-rgb: 29 78 216;
+    --color-info-start-rgb: 59 130 246;
+    --color-info-end-rgb: 14 165 233;
+    --color-info-start-hover-rgb: 96 165 250;
+    --color-info-end-hover-rgb: 56 189 248;
+
+    --color-approval-rgb: 6 182 212;
+    --color-approval-soft-rgb: 8 145 178;
+    --color-approval-start-rgb: 6 182 212;
+    --color-approval-end-rgb: 45 212 191;
+    --color-approval-start-hover-rgb: 34 211 238;
+    --color-approval-end-hover-rgb: 94 234 212;
+
+    --color-focus-rgb: 96 165 250;
+    --color-pulse-glow-rgb: 59 130 246;
+    --color-danger-shadow-rgb: 225 29 72;
+    --color-hero-mesh-brand-rgb: 29 78 216;
+    --color-hero-mesh-connection-rgb: 244 114 182;
+    --color-hero-mesh-discovery-rgb: 45 212 191;
+    --color-hero-mesh-approval-rgb: 34 211 238;
+    --color-settings-hero-primary-rgb: var(--color-brand-start-rgb);
+    --color-settings-hero-secondary-rgb: var(--color-discovery-end-rgb);
+
+    --color-primary: rgb(var(--color-brand-rgb));
+    --color-secondary: rgb(var(--color-discovery-rgb));
+    --color-accent: rgb(var(--color-connection-rgb));
+    --color-background: rgb(var(--color-background-rgb));
+    --color-background-secondary: rgb(var(--color-background-secondary-rgb));
+    --color-text: rgb(var(--color-foreground-rgb));
+    --color-text-secondary: rgb(var(--color-muted-rgb));
+    --color-text-tertiary: rgb(var(--color-faint-rgb));
+    --color-success: rgb(var(--color-success-rgb));
+    --color-warning: rgb(var(--color-warning-rgb));
+    --color-error: rgb(var(--color-danger-rgb));
+    --glass-border: rgb(15 23 42 / 0.08);
+    --glass-bg: rgb(255 255 255 / 0.75);
+    --glass-surface: rgb(255 255 255 / 0.4);
+    --glass-panel: rgb(255 255 255 / 0.9);
+    --gradient-start: rgb(var(--color-brand-start-rgb));
+    --gradient-end: rgb(var(--color-discovery-end-rgb));
+    color-scheme: light;
+}
+
+.dark {
+    --color-background-rgb: 9 13 24;
+    --color-background-secondary-rgb: 17 24 39;
+    --color-surface-rgb: 17 24 39;
+    --color-surface-secondary-rgb: 30 41 59;
+    --color-surface-overlay-rgb: 0 0 0;
+    --color-foreground-rgb: 226 232 240;
+    --color-muted-rgb: 203 213 225;
+    --color-faint-rgb: 148 163 184;
+    --color-line-rgb: 71 85 105;
+
+    --color-brand-rgb: 147 197 253;
+    --color-brand-soft-rgb: 191 219 254;
+    --color-brand-start-rgb: 96 165 250;
+    --color-brand-end-rgb: 56 189 248;
+    --color-brand-start-hover-rgb: 125 211 252;
+    --color-brand-end-hover-rgb: 103 232 249;
+
+    --color-connection-rgb: 251 146 167;
+    --color-connection-soft-rgb: 253 205 211;
+    --color-connection-start-rgb: 244 114 182;
+    --color-connection-end-rgb: 251 113 133;
+    --color-connection-start-hover-rgb: 249 168 212;
+    --color-connection-end-hover-rgb: 253 164 175;
+
+    --color-discovery-rgb: 45 212 191;
+    --color-discovery-soft-rgb: 153 246 228;
+    --color-discovery-start-rgb: 45 212 191;
+    --color-discovery-end-rgb: 96 165 250;
+    --color-discovery-start-hover-rgb: 94 234 212;
+    --color-discovery-end-hover-rgb: 125 211 252;
+
+    --color-success-rgb: 74 222 128;
+    --color-success-soft-rgb: 187 247 208;
+    --color-success-start-rgb: 74 222 128;
+    --color-success-end-rgb: 45 212 191;
+    --color-success-start-hover-rgb: 134 239 172;
+    --color-success-end-hover-rgb: 94 234 212;
+
+    --color-warning-rgb: 251 191 36;
+    --color-warning-soft-rgb: 253 224 71;
+    --color-warning-start-rgb: 245 158 11;
+    --color-warning-end-rgb: 250 204 21;
+    --color-warning-start-hover-rgb: 253 224 71;
+    --color-warning-end-hover-rgb: 254 240 138;
+
+    --color-danger-rgb: 251 113 133;
+    --color-danger-soft-rgb: 253 164 175;
+    --color-danger-start-rgb: 244 63 94;
+    --color-danger-end-rgb: 239 68 68;
+    --color-danger-start-hover-rgb: 251 113 133;
+    --color-danger-end-hover-rgb: 248 113 113;
+
+    --color-info-rgb: 96 165 250;
+    --color-info-soft-rgb: 191 219 254;
+    --color-info-start-rgb: 96 165 250;
+    --color-info-end-rgb: 56 189 248;
+    --color-info-start-hover-rgb: 147 197 253;
+    --color-info-end-hover-rgb: 125 211 252;
+
+    --color-approval-rgb: 34 211 238;
+    --color-approval-soft-rgb: 165 243 252;
+    --color-approval-start-rgb: 34 211 238;
+    --color-approval-end-rgb: 94 234 212;
+    --color-approval-start-hover-rgb: 103 232 249;
+    --color-approval-end-hover-rgb: 153 246 228;
+
+    --color-focus-rgb: 147 197 253;
+    --color-pulse-glow-rgb: 96 165 250;
+    --color-danger-shadow-rgb: 244 63 94;
+    --color-hero-mesh-brand-rgb: 96 165 250;
+    --color-hero-mesh-connection-rgb: 244 114 182;
+    --color-hero-mesh-discovery-rgb: 45 212 191;
+    --color-hero-mesh-approval-rgb: 34 211 238;
+    --color-settings-hero-primary-rgb: var(--color-brand-start-rgb);
+    --color-settings-hero-secondary-rgb: var(--color-discovery-end-rgb);
+
+    --color-primary: rgb(var(--color-brand-rgb));
+    --color-secondary: rgb(var(--color-discovery-rgb));
+    --color-accent: rgb(var(--color-connection-rgb));
+    --color-background: rgb(var(--color-background-rgb));
+    --color-background-secondary: rgb(var(--color-background-secondary-rgb));
+    --color-text: rgb(var(--color-foreground-rgb));
+    --color-text-secondary: rgb(var(--color-muted-rgb));
+    --color-text-tertiary: rgb(var(--color-faint-rgb));
+    --color-success: rgb(var(--color-success-rgb));
+    --color-warning: rgb(var(--color-warning-rgb));
+    --color-error: rgb(var(--color-danger-rgb));
+    --glass-border: rgb(255 255 255 / 0.08);
+    --glass-bg: rgb(17 24 39 / 0.72);
+    --glass-surface: rgb(17 24 39 / 0.4);
+    --glass-panel: rgb(17 24 39 / 0.9);
+    --gradient-start: rgb(var(--color-brand-start-rgb));
+    --gradient-end: rgb(var(--color-discovery-end-rgb));
+    color-scheme: dark;
+}
+
+body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+}
+
+body::before {
+    background:
+    radial-gradient(ellipse at 20% 20%, rgb(var(--color-hero-mesh-brand-rgb) / 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgb(var(--color-hero-mesh-connection-rgb) / 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 60%, rgb(var(--color-hero-mesh-discovery-rgb) / 0.05) 0%, transparent 40%),
+    radial-gradient(ellipse at 60% 20%, rgb(var(--color-hero-mesh-approval-rgb) / 0.05) 0%, transparent 40%);
+}
+
+.gradient-mesh {
+    background:
+        radial-gradient(ellipse at 15% 15%, var(--gradient-start) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 85%, var(--gradient-end) 0%, transparent 50%);
+    filter: blur(80px);
+    opacity: 0.4;
+}
+
+.light body::before {
+    background:
+    radial-gradient(ellipse at 18% 18%, rgb(var(--color-hero-mesh-brand-rgb) / 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 82% 82%, rgb(var(--color-hero-mesh-connection-rgb) / 0.12) 0%, transparent 52%),
+    radial-gradient(ellipse at 42% 62%, rgb(var(--color-hero-mesh-discovery-rgb) / 0.08) 0%, transparent 42%),
+    radial-gradient(ellipse at 64% 22%, rgb(var(--color-hero-mesh-approval-rgb) / 0.08) 0%, transparent 42%);
+}
+
+.light .gradient-mesh {
+    opacity: 0.22;
+    filter: blur(96px);
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-background-secondary);
+    border-radius: 5px;
+    border: 2px solid var(--color-background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-tertiary);
+}
+
+*:focus-visible {
+    outline: 2px solid rgb(var(--color-focus-rgb));
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid rgb(var(--color-focus-rgb));
+    outline-offset: 2px;
+}
+
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.text-gradient {
+    background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.messages-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgb(var(--color-pulse-glow-rgb) / 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgb(var(--color-pulse-glow-rgb) / 0);
+    }
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.animate-shimmer {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+.light .animate-shimmer {
+    background: linear-gradient(
+        90deg,
+        rgba(148, 163, 184, 0) 0%,
+        rgba(148, 163, 184, 0.12) 50%,
+        rgba(148, 163, 184, 0) 100%
+    );
+}
+
+.date-input-light-icon {
+    color-scheme: dark;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E");
+    background-position: right 0.875rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem 1rem;
+    padding-right: 2.75rem;
+}
+
+.date-input-light-icon::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+}
+
+.date-input-light-icon::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.8;
+}
+
+.light .date-input-light-icon {
+    color-scheme: light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E");
+}
+
+.light :where(.bg-black) {
+    background-color: #f4f7fb !important;
+}
+
+.light :where(.bg-gray-900) {
+    background-color: #ffffff !important;
+}
+
+.light :where(.bg-gray-900\/95) {
+    background-color: rgba(255, 255, 255, 0.94) !important;
+}
+
+.light :where(.bg-gray-900\/80) {
+    background-color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.light :where(.bg-gray-900\/70) {
+    background-color: rgba(255, 255, 255, 0.74) !important;
+}
+
+.light :where(.bg-gray-900\/50) {
+    background-color: rgba(255, 255, 255, 0.66) !important;
+}
+
+.light :where(.bg-gray-800) {
+    background-color: #eef2f7 !important;
+}
+
+.light :where(.bg-gray-800\/50) {
+    background-color: rgba(238, 242, 247, 0.72) !important;
+}
+
+.light :where(.bg-gray-700\/50) {
+    background-color: rgba(226, 232, 240, 0.82) !important;
+}
+
+.light :where(.text-gray-200) {
+    color: #334155 !important;
+}
+
+.light :where(.text-gray-300) {
+    color: #475569 !important;
+}
+
+.light :where(.text-gray-400) {
+    color: #64748b !important;
+}
+
+.light :where(.text-gray-500) {
+    color: #94a3b8 !important;
+}
+
+.light :where(.border-gray-900) {
+    border-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+.light :where(.border-gray-800) {
+    border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+.light :where(.border-gray-800\/30) {
+    border-color: rgba(99, 102, 241, 0.16) !important;
+}
+
+.light :where(.border-gray-700) {
+    border-color: rgba(148, 163, 184, 0.38) !important;
+}
+
+.light :where(.border-gray-700\/50) {
+    border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+.light :where(.placeholder-gray-400)::placeholder,
+.light :where(.placeholder-gray-500)::placeholder {
+    color: #94a3b8 !important;
+}
+
+.light :where(.hover\:bg-gray-800:hover) {
+    background-color: #e8eef8 !important;
+}
+
+.light :where(.hover\:bg-gray-700:hover) {
+    background-color: #dde6f5 !important;
+}
+
+.light :where(.hover\:bg-gray-600\/50:hover) {
+    background-color: rgba(221, 230, 245, 0.92) !important;
+}
+
+.glass-enhanced {
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.gradient-border {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    border-radius: 0.75rem;
+}
+
+.gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary), var(--color-accent));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.card-hover-lift:hover {
+    box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
+}

@@ -2,11 +2,19 @@
 
 import { appClient } from '../../../lib/appClient';
 
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ShieldCheck, Clock, XCircle, CheckCircle } from 'lucide-react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { ShieldCheck, Clock, XCircle, CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Button } from '../../../components/Button';
+import {
+    SettingsBackLink,
+    SettingsHero,
+    SettingsPage,
+    SettingsSectionCard,
+    SettingsStatusBanner,
+} from '../../../components/settings/SettingsShell';
+import { settingsCopy } from '../../../lib/app-copy';
+import { trackAnalyticsEvent } from '../../../lib/analytics';
 
 export default function VerificationPage() {
     const [status, setStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
@@ -59,7 +67,7 @@ export default function VerificationPage() {
         setLoading(true);
         try {
             const { data: { user } } = await appClient.auth.getUser();
-            if (!user) throw new Error('Not authenticated');
+            if (!user) throw new Error(settingsCopy.verification.notAuthenticated);
 
             const { error } = await appClient
                 .from('verification_requests')
@@ -68,90 +76,133 @@ export default function VerificationPage() {
             if (error) throw error;
 
             setStatus('pending');
-            toast.success('Verification request submitted!');
+            toast.success(settingsCopy.verification.requestSubmitted);
+            void trackAnalyticsEvent('verification_requested');
         } catch (error: unknown) {
             console.error('Error requesting verification:', error);
-            const message = error instanceof Error ? error.message : 'Failed to submit request';
+            const message = error instanceof Error ? error.message : settingsCopy.verification.submitError;
             toast.error(message);
         } finally {
             setLoading(false);
         }
     };
 
+    const statusBadge = {
+        approved: settingsCopy.verification.approvedTitle,
+        none: settingsCopy.verification.noneBadge,
+        pending: settingsCopy.verification.pendingBadge,
+        rejected: settingsCopy.verification.rejectedBadge,
+    }[status];
+
+    const statusTone = {
+        approved: 'approval',
+        none: 'brand',
+        pending: 'warning',
+        rejected: 'danger',
+    }[status] as 'approval' | 'brand' | 'danger' | 'warning';
+
     return (
-        <div className="min-h-screen bg-black text-white p-6">
-            <div className="max-w-2xl mx-auto">
-                <Link href="/settings" className="text-gray-400 hover:text-white transition flex items-center gap-2 mb-8">
-                    <ArrowLeft size={20} />
-                    Back to Settings
-                </Link>
+        <SettingsPage>
+            <SettingsBackLink href="/settings" label={settingsCopy.verification.backToSettings} />
+            <SettingsHero
+                eyebrow={settingsCopy.verification.eyebrow}
+                title={settingsCopy.verification.title}
+                description={settingsCopy.verification.intro}
+                icon={<ShieldCheck className="h-7 w-7" />}
+                highlights={[statusBadge, settingsCopy.verification.requestNote]}
+                tone={statusTone}
+            />
 
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-8">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="bg-indigo-600/20 p-3 rounded-full">
-                            <ShieldCheck className="w-8 h-8 text-indigo-500" />
-                        </div>
-                        <h1 className="text-2xl font-bold">Profile Verification</h1>
-                    </div>
-
+            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+                <SettingsSectionCard
+                    title={settingsCopy.verification.title}
+                    description={settingsCopy.verification.intro}
+                    icon={<ShieldCheck className="h-6 w-6" />}
+                    badge={statusBadge}
+                    tone={statusTone}
+                >
                     {loading ? (
-                        <div className="text-center py-8 text-gray-400">Loading...</div>
-                    ) : (
-                        <div className="space-y-6">
-                            {status === 'none' && (
-                                <>
-                                    <p className="text-gray-300">
-                                        Get a verified badge on your profile to build trust with other users. 
-                                        Verified users are more likely to get responses and make connections.
-                                    </p>
-                                    <Button onClick={handleRequestVerification} className="w-full sm:w-auto">
-                                        Request Verification
-                                    </Button>
-                                </>
-                            )}
+                        <SettingsStatusBanner
+                            title={settingsCopy.verification.loading}
+                            description={settingsCopy.verification.loadingDescription}
+                            icon={<Loader2 role="status" aria-label={settingsCopy.verification.loading} className="h-5 w-5 animate-spin" />}
+                            badge={statusBadge}
+                            tone={statusTone}
+                        />
+                    ) : null}
 
-                            {status === 'pending' && (
-                                <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 flex items-start gap-3">
-                                    <Clock className="text-yellow-500 shrink-0 mt-1" />
-                                    <div>
-                                        <h3 className="font-semibold text-yellow-500">Verification Pending</h3>
-                                        <p className="text-gray-400 text-sm mt-1">
-                                            Your request is being reviewed by our team. This usually takes 24-48 hours.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                    {!loading && status === 'none' ? (
+                        <>
+                            <SettingsStatusBanner
+                                title={settingsCopy.verification.noneTitle}
+                                description={settingsCopy.verification.intro}
+                                helperText={settingsCopy.verification.noneHelper}
+                                icon={<ShieldCheck className="h-5 w-5" />}
+                                badge={settingsCopy.verification.noneBadge}
+                                tone="brand"
+                            />
+                            <div className="flex flex-col gap-3 rounded-2xl border border-line/25 bg-surface-secondary/45 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-sm leading-6 text-faint">{settingsCopy.verification.requestNote}</p>
+                                <Button onClick={handleRequestVerification} className="w-full sm:w-auto">
+                                    {settingsCopy.verification.requestButton}
+                                </Button>
+                            </div>
+                        </>
+                    ) : null}
 
-                            {status === 'approved' && (
-                                <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4 flex items-start gap-3">
-                                    <CheckCircle className="text-green-500 shrink-0 mt-1" />
-                                    <div>
-                                        <h3 className="font-semibold text-green-500">You are Verified!</h3>
-                                        <p className="text-gray-400 text-sm mt-1">
-                                            Your profile now displays the verified badge.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                    {!loading && status === 'pending' ? (
+                        <SettingsStatusBanner
+                            title={settingsCopy.verification.pendingTitle}
+                            description={settingsCopy.verification.pendingDescription}
+                            helperText={settingsCopy.verification.pendingHelper}
+                            icon={<Clock className="h-5 w-5" />}
+                            badge={settingsCopy.verification.pendingBadge}
+                            tone="warning"
+                        />
+                    ) : null}
 
-                            {status === 'rejected' && (
-                                <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4 flex items-start gap-3">
-                                    <XCircle className="text-red-500 shrink-0 mt-1" />
-                                    <div>
-                                        <h3 className="font-semibold text-red-500">Verification Rejected</h3>
-                                        <p className="text-gray-400 text-sm mt-1">
-                                            Unfortunately, we couldn&apos;t verify your profile at this time. You can try again later.
-                                        </p>
-                                        <Button onClick={handleRequestVerification} variant="outline" className="mt-3">
-                                            Try Again
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
+                    {!loading && status === 'approved' ? (
+                        <SettingsStatusBanner
+                            title={settingsCopy.verification.approvedTitle}
+                            description={settingsCopy.verification.approvedDescription}
+                            helperText={settingsCopy.verification.approvedHelper}
+                            icon={<CheckCircle className="h-5 w-5" />}
+                            badge={settingsCopy.verification.approvedTitle}
+                            tone="approval"
+                        />
+                    ) : null}
+
+                    {!loading && status === 'rejected' ? (
+                        <SettingsStatusBanner
+                            title={settingsCopy.verification.rejectedTitle}
+                            description={settingsCopy.verification.rejectedDescription}
+                            helperText={settingsCopy.verification.rejectedHelper}
+                            icon={<XCircle className="h-5 w-5" />}
+                            badge={settingsCopy.verification.rejectedBadge}
+                            tone="danger"
+                            action={
+                                <Button onClick={handleRequestVerification} variant="outline" className="!border-danger/30 !text-danger-soft hover:!bg-danger/10">
+                                    {settingsCopy.verification.tryAgain}
+                                </Button>
+                            }
+                        />
+                    ) : null}
+                </SettingsSectionCard>
+
+                <SettingsSectionCard
+                    title={settingsCopy.verification.benefitsTitle}
+                    description={settingsCopy.verification.requestNote}
+                    icon={<Sparkles className="h-6 w-6" />}
+                    badge={settingsCopy.verification.eyebrow}
+                    tone="brand"
+                >
+                    {settingsCopy.verification.benefits.map((benefit) => (
+                        <div key={benefit} className="rounded-2xl border border-line/25 bg-surface-secondary/45 px-4 py-4">
+                            <p className="text-sm leading-6 text-faint">{benefit}</p>
                         </div>
-                    )}
-                </div>
+                    ))}
+                </SettingsSectionCard>
             </div>
-        </div>
+        </SettingsPage>
     );
 }

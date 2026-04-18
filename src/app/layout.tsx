@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Outfit } from "next/font/google";
 import "./globals.css";
+import "../styles/colors.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import CookieBanner from "../components/CookieBanner";
@@ -22,6 +23,30 @@ const outfit = Outfit({
   subsets: ["latin"],
   variable: '--font-outfit',
 });
+
+const themeInitScript = `
+(() => {
+  const storageKey = 'theme';
+  const root = document.documentElement;
+  const isTheme = (value) => value === 'light' || value === 'dark';
+
+  let savedTheme = null;
+
+  try {
+    savedTheme = window.localStorage.getItem(storageKey);
+  } catch {
+    savedTheme = null;
+  }
+
+  const prefersDark = typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = isTheme(savedTheme) ? savedTheme : (prefersDark ? 'dark' : 'light');
+
+  root.classList.remove('light', 'dark');
+  root.classList.add(theme);
+  root.style.colorScheme = theme;
+})();
+`;
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://skillogue.com'),
@@ -67,8 +92,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${outfit.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${spaceGrotesk.variable} ${outfit.variable}`}>
       <body className="font-sans bg-background text-text flex flex-col min-h-screen selection:bg-primary selection:text-white">
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <div className="gradient-mesh" aria-hidden="true" />
         <Suspense fallback={null}>
           <NotificationProvider>

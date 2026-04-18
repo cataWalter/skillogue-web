@@ -17,6 +17,17 @@ export interface Location {
   country?: string;
 }
 
+const readListResponse = async <T,>(path: string): Promise<T[]> => {
+  const response = await fetch(path);
+
+  if (!response || !response.ok || typeof response.json !== 'function') {
+    return [];
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+};
+
 export const useMasterData = () => {
   const [passions, setPassions] = useState<Passion[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -25,15 +36,15 @@ export const useMasterData = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [passionsRes, languagesRes, locationsRes] = await Promise.all([
-        fetch('/api/passions'),
-        fetch('/api/languages'),
-        fetch('/api/locations'),
+      const [passionsData, languagesData, locationsData] = await Promise.all([
+        readListResponse<Passion>('/api/passions'),
+        readListResponse<Language>('/api/languages'),
+        readListResponse<Location>('/api/locations'),
       ]);
 
-      if (passionsRes.ok) setPassions(await passionsRes.json());
-      if (languagesRes.ok) setLanguages(await languagesRes.json());
-      if (locationsRes.ok) setLocations(await locationsRes.json());
+      setPassions(passionsData);
+      setLanguages(languagesData);
+      setLocations(locationsData);
     } catch (error) {
       console.error('Error fetching master data:', error);
     } finally {

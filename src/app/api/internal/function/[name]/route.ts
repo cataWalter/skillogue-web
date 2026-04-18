@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { invokeCompatFunction } from '@/lib/server/app-data';
-import { getCurrentUserFromRequest } from '@/lib/server/current-user';
-
-export const runtime = 'nodejs';
+import { getAppwriteSessionSecret } from '@/lib/appwrite/server';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ name: string }> }
 ) {
-  const { name } = await params;
-  const payload = (await request.json()) as { body?: Record<string, unknown> };
-  const currentUser = await getCurrentUserFromRequest(request);
-  const result = await invokeCompatFunction(name, payload.body ?? {}, currentUser);
-
-  return NextResponse.json(result);
+  try {
+    const payload = await request.json();
+    const { name } = await params;
+    const service = new AppDataService(
+      getAppwriteSessionSecret(request),
+      request.headers.get('user-agent') ?? undefined
+    );
+    const result = await service.invokeCompatFunction(name, payload.body ?? {});
+    
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
+  }
 }

@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import Avatar from '../../components/Avatar';
 import toast from 'react-hot-toast';
+import { getDisplayBio, getDisplayGender, getDisplayLocation, getDisplayName } from '../../lib/profile-display';
+import { commonLabels, favoritesCopy, profileCopy } from '../../lib/app-copy';
+import { trackAnalyticsEvent } from '../../lib/analytics';
 
 interface SearchResult {
     id: string;
@@ -61,9 +64,11 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
         return [];
     }
 
-    const { data: authData, error: authError } = await appClient.auth.getUser();
+    const authResponse = await appClient.auth.getUser();
+    const authData = authResponse?.data;
+    const authError = authResponse?.error;
 
-    if (authError || !authData.user) {
+    if (authError || !authData?.user) {
         return [];
     }
 
@@ -111,7 +116,11 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
     const locationIds = Array.from(new Set(
         (profilesResponse.data || [])
             .map((profile) => profile.location_id)
-            .filter((locationId): locationId is number => typeof locationId === 'number')
+            .filter(
+                (locationId): locationId is string | number =>
+                    typeof locationId === 'string' || typeof locationId === 'number'
+            )
+            .map((locationId) => String(locationId))
     ));
 
     const locationsResponse = locationIds.length > 0
@@ -123,8 +132,8 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cityByLocationId = new Map<number, any>(
-        (locationsResponse.data || []).map((location: any) => [location.id, location.city])
+    const cityByLocationId = new Map<string, any>(
+        (locationsResponse.data || []).map((location: any) => [String(location.id), location.city])
     );
     const passionsByProfileId = new Map<string, string[]>();
     const languagesByProfileId = new Map<string, string[]>();
@@ -169,7 +178,7 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
             first_name: profile.first_name,
             last_name: profile.last_name,
             about_me: profile.about_me,
-            location: profile.location_id ? cityByLocationId.get(profile.location_id) || null : null,
+            location: profile.location_id ? cityByLocationId.get(String(profile.location_id)) || null : null,
             age: profile.age,
             gender: profile.gender,
             profile_languages: languagesByProfileId.get(profile.id) || [],
@@ -188,10 +197,10 @@ const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value?: strin
     if (!value && !children) return null;
     return (
         <div className="flex items-start gap-3 text-sm">
-            <div className="mt-1 text-indigo-400">{icon}</div>
+            <div className="mt-1 text-brand">{icon}</div>
             <div>
-                <h4 className="font-medium text-gray-400">{label}</h4>
-                {value && <p className="text-white">{value}</p>}
+                <h4 className="font-medium text-faint">{label}</h4>
+                {value && <p className="text-foreground">{value}</p>}
                 {children}
             </div>
         </div>
@@ -199,39 +208,41 @@ const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value?: strin
 };
 
 const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => void }> = ({ user, onRemove }) => {
+    const displayName = getDisplayName(user.first_name, user.last_name);
+
     if (user.is_private) {
         return (
-            <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 hover:border-indigo-600/50 transition-all duration-300 transform hover:-translate-y-1 card-hover-lift relative group">
-                <button 
+            <div className="glass-surface card-hover-lift relative rounded-[1.75rem] p-6 transition-all duration-300 hover:border-brand/40 hover:-translate-y-1 group">
+                <button
                     onClick={() => onRemove(user.id)}
-                    className="absolute top-4 right-4 p-2 bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400 rounded-full transition opacity-0 group-hover:opacity-100 z-10"
-                    title="Remove from Favorites"
+                    className="glass-surface absolute top-4 right-4 z-10 rounded-full p-2 text-faint opacity-0 transition-all duration-300 group-hover:opacity-100 hover:text-danger"
+                    title={favoritesCopy.removeTitle}
                 >
                     <Trash2 size={18} />
                 </button>
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                     <div className="relative">
-                        <Avatar seed={user.id} className="w-24 h-24 rounded-full object-cover border-4 border-gray-700 flex-shrink-0" />
-                        <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                            <Lock size={24} className="text-gray-400" />
+                        <Avatar seed={user.id} className="w-24 h-24 rounded-full object-cover border-4 border-line/40 flex-shrink-0" />
+                        <div className="absolute inset-0 bg-surface-overlay/50 rounded-full flex items-center justify-center">
+                            <Lock size={24} className="text-faint" />
                         </div>
                     </div>
                     <div className="flex-grow text-center sm:text-left">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                             <h3 className="text-2xl font-bold">
-                                <Link href={`/user/${user.id}`} className="hover:text-indigo-400 transition">
-                                    {user.first_name} {user.last_name}
+                                <Link href={`/user/${user.id}`} className="hover:text-brand transition">
+                                    {displayName}
                                 </Link>
                             </h3>
                             <Link
                                 href={`/messages?conversation=${user.id}`}
-                                className="mt-2 sm:mt-0 flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-lg transition-all duration-300 transform hover:scale-105 text-sm text-white shadow-lg hover:shadow-xl"
+                                className="mt-2 sm:mt-0 flex-shrink-0 flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-4 py-2 text-sm text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover hover:shadow-glass-md"
                             >
-                                <MessageSquare size={16} /> Message
+                                <MessageSquare size={16} /> {commonLabels.message}
                             </Link>
                         </div>
-                        <p className="text-gray-500 mt-2 text-sm italic flex items-center justify-center sm:justify-start gap-2">
-                            <Lock size={14} /> Private Profile
+                        <p className="text-faint mt-2 text-sm italic flex items-center justify-center sm:justify-start gap-2">
+                            <Lock size={14} /> {favoritesCopy.privateProfile}
                         </p>
                     </div>
                 </div>
@@ -239,58 +250,64 @@ const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => voi
         );
     }
 
+    const displayBio = getDisplayBio(user.about_me);
+    const displayGender = getDisplayGender(user.gender);
+    const displayLocation = getDisplayLocation(user.location);
+    const joinedDate = new Date(user.created_at);
+    const formattedJoinedDate = Number.isNaN(joinedDate.getTime()) ? null : joinedDate.toLocaleDateString();
+
     return (
-        <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 hover:border-indigo-600/50 transition-all duration-300 transform hover:-translate-y-1 card-hover-lift relative group">
-            <button 
+        <div className="glass-surface card-hover-lift relative rounded-[1.75rem] p-6 transition-all duration-300 hover:border-brand/40 hover:-translate-y-1 group">
+            <button
                 onClick={() => onRemove(user.id)}
-                className="absolute top-4 right-4 p-2 bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400 rounded-full transition opacity-0 group-hover:opacity-100 z-10"
-                title="Remove from Favorites"
+                className="glass-surface absolute top-4 right-4 z-10 rounded-full p-2 text-faint opacity-0 transition-all duration-300 group-hover:opacity-100 hover:text-danger"
+                title={favoritesCopy.removeTitle}
             >
                 <Trash2 size={18} />
             </button>
             <div className="flex flex-col sm:flex-row gap-6">
                 <div className="flex-shrink-0 flex flex-col items-center sm:items-start">
-                    <Avatar seed={user.id} className="w-24 h-24 rounded-full object-cover border-4 border-indigo-500/30 mb-3 shadow-lg" />
+                    <Avatar seed={user.id} className="mb-3 h-24 w-24 rounded-full border-4 border-brand/30 object-cover shadow-glass-md" />
                     <Link
                         href={`/messages?conversation=${user.id}`}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-lg transition-all duration-300 transform hover:scale-105 text-sm text-white shadow-lg shadow-indigo-900/20"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-4 py-2 text-sm text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover hover:shadow-glass-md"
                     >
-                        <MessageSquare size={16} /> Message
+                        <MessageSquare size={16} /> {commonLabels.message}
                     </Link>
                 </div>
 
                 <div className="flex-grow">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 text-center sm:text-left">
                         <h3 className="text-2xl font-bold">
-                            <Link href={`/user/${user.id}`} className="hover:text-indigo-400 transition">
-                                {user.first_name} {user.last_name}
+                            <Link href={`/user/${user.id}`} className="hover:text-brand transition">
+                                {displayName}
                             </Link>
                         </h3>
-                        <span className="text-xs text-gray-500 mt-1 sm:mt-0">
-                            Joined {new Date(user.created_at).toLocaleDateString()}
-                        </span>
+                        {formattedJoinedDate && (
+                            <span className="text-xs text-faint mt-1 sm:mt-0">
+                                {profileCopy.joinedPrefix} {formattedJoinedDate}
+                            </span>
+                        )}
                     </div>
 
-                    {user.about_me && (
-                        <p className="text-gray-400 mb-4 line-clamp-2 text-sm text-center sm:text-left">
-                            {user.about_me}
-                        </p>
-                    )}
+                    <p className="text-faint mb-4 line-clamp-2 text-sm text-center sm:text-left">
+                        {displayBio}
+                    </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 mb-4">
-                        {(user.show_age !== false) && <DetailItem icon={<Calendar size={16} />} label="Age" value={user.age} />}
-                        <DetailItem icon={<User size={16} />} label="Gender" value={user.gender} />
-                        {(user.show_location !== false) && <DetailItem icon={<MapPin size={16} />} label="Location" value={user.location} />}
+                        {(user.show_age !== false) && <DetailItem icon={<Calendar size={16} />} label={commonLabels.age} value={user.age} />}
+                        <DetailItem icon={<User size={16} />} label={commonLabels.gender} value={displayGender} />
+                        {(user.show_location !== false) && <DetailItem icon={<MapPin size={16} />} label={commonLabels.location} value={displayLocation} />}
                         {user.profile_languages && user.profile_languages.length > 0 && (
-                            <DetailItem icon={<Languages size={16} />} label="Languages">
+                            <DetailItem icon={<Languages size={16} />} label={commonLabels.languages}>
                                 <div className="flex flex-wrap gap-1 mt-1">
                                     {user.profile_languages.slice(0, 3).map((lang) => (
-                                        <span key={lang} className="px-2 py-0.5 bg-gray-800 text-indigo-300 rounded text-xs">
+                                        <span key={lang} className="px-2 py-0.5 bg-surface-secondary text-brand-soft rounded text-xs">
                                             {lang}
                                         </span>
                                     ))}
                                     {user.profile_languages.length > 3 && (
-                                        <span className="text-xs text-gray-500">+{user.profile_languages.length - 3}</span>
+                                        <span className="text-xs text-faint">+{user.profile_languages.length - 3}</span>
                                     )}
                                 </div>
                             </DetailItem>
@@ -300,12 +317,12 @@ const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => voi
                     {user.profilepassions && user.profilepassions.length > 0 && (
                         <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
                             {user.profilepassions.slice(0, 5).map((passion) => (
-                                <span key={passion} className="px-3 py-1 bg-indigo-900/40 text-indigo-300 rounded-full text-xs border border-indigo-800/50">
+                                <span key={passion} className="px-3 py-1 bg-brand/15 text-brand-soft rounded-full text-xs border border-brand/25">
                                     {passion}
                                 </span>
                             ))}
                             {user.profilepassions.length > 5 && (
-                                <span className="text-xs text-gray-500 self-center">+{user.profilepassions.length - 5} more</span>
+                                <span className="text-xs text-faint self-center">+{user.profilepassions.length - 5} more</span>
                             )}
                         </div>
                     )}
@@ -322,18 +339,20 @@ const FavoritesPage = () => {
     useEffect(() => {
         const loadFavorites = async () => {
             const { data, error } = await appClient.rpc('get_saved_profiles');
+            const shouldFallback = shouldFallbackFromSavedProfilesRpc(error);
+
             if (error) {
-                if (shouldFallbackFromSavedProfilesRpc(error)) {
+                if (shouldFallback) {
                     try {
                         const fallbackFavorites = await loadFavoritesFromTables();
                         setFavorites(fallbackFavorites);
                     } catch (fallbackError) {
                         console.error(fallbackError);
-                        toast.error('Failed to load favorites');
+                        toast.error(favoritesCopy.loadError);
                     }
                 } else {
                     console.error(error);
-                    toast.error('Failed to load favorites');
+                    toast.error(favoritesCopy.loadError);
                 }
             } else {
                 setFavorites(data || []);
@@ -344,30 +363,41 @@ const FavoritesPage = () => {
     }, []);
 
     const handleRemove = async (id: string) => {
-        if (!confirm('Remove from favorites?')) return;
+        if (!confirm(favoritesCopy.removeConfirm)) return;
         const { error } = await appClient.rpc('unsave_profile', { target_id: id });
         if (!error) {
             setFavorites(prev => prev.filter(f => f.id !== id));
-            toast.success('Removed from favorites');
+            toast.success(favoritesCopy.removeSuccess);
+            void trackAnalyticsEvent('favorite_removed', {
+                profileId: id,
+                source: 'favorites',
+            });
         } else {
-            toast.error('Failed to remove');
+            toast.error(favoritesCopy.removeError);
         }
     };
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
-                <Heart className="text-pink-500" fill="currentColor" />
-                Favorite Profiles
-            </h1>
+        <div className="editorial-shell py-8 sm:py-12 lg:py-16">
+            <div className="glass-panel mb-6 rounded-[2rem] px-6 py-8 sm:px-8 sm:py-10">
+                <div className="editorial-kicker mb-4 border-connection/25 bg-connection/10 text-connection-soft">
+                    <Heart className="fill-current text-connection" size={16} fill="currentColor" />
+                    <span>Saved connections</span>
+                </div>
+                <h1 className="flex items-center gap-3 text-3xl font-bold text-foreground sm:text-4xl">
+                    <Heart className="text-connection fill-current" fill="currentColor" />
+                    {favoritesCopy.title}
+                </h1>
+                <p className="mt-3 max-w-2xl text-faint">Revisit people you want close at hand and jump back into conversation quickly.</p>
+            </div>
             {loading ? (
-                <div className="flex justify-center py-10"><Loader2 className="animate-spin w-8 h-8 text-indigo-500" /></div>
+                <div className="flex justify-center py-10"><Loader2 className="animate-spin w-8 h-8 text-brand" /></div>
             ) : favorites.length === 0 ? (
-                <div className="text-center py-10">
-                    <Heart className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                    <p className="text-xl text-gray-400">You haven&apos;t saved any profiles yet.</p>
-                    <Link href="/search" className="mt-4 inline-block px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition">
-                        Find People
+                <div className="glass-panel py-10 text-center">
+                    <Heart className="w-16 h-16 text-line/80 mx-auto mb-4" />
+                    <p className="text-xl text-faint">{favoritesCopy.emptyState}</p>
+                    <Link href="/search" className="mt-4 inline-block rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-6 py-2 text-white transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover">
+                        {favoritesCopy.findPeople}
                     </Link>
                 </div>
             ) : (

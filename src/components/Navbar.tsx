@@ -2,75 +2,110 @@
 
 import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
-import { usePathname } from 'next/navigation';
-import { Menu, X, User, Settings, LogOut, Heart, MessageCircle, Bell, Search } from 'lucide-react';
+import { isAdminEmail } from '../lib/admin';
+import { usePathname, useRouter } from 'next/navigation';
+import { Menu, X, User, Settings, LogOut, Heart, MessageCircle, Bell, Search, CalendarDays, PartyPopper, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
+import { componentCopy } from '../lib/app-copy';
+import ThemeToggle from './ThemeToggle';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
 
+  const handleSignOut = async () => {
+    await signOut();
+    setMobileMenuOpen(false);
+    router.replace('/');
+    router.refresh();
+  };
+
   const navItems = user ? [
-    { href: '/dashboard', icon: Search, label: 'Search' },
-    { href: '/favorites', icon: Heart, label: 'Favorites' },
-    { href: '/messages', icon: MessageCircle, label: 'Messages' },
-    { href: '/notifications', icon: Bell, label: 'Notifications' },
-    { href: '/profile', icon: User, label: 'Profile' },
-    { href: '/settings', icon: Settings, label: 'Settings' },
+    ...(isAdminEmail(user.email) ? [{ href: '/admin', icon: ShieldAlert, label: 'Admin' }] : []),
+    { href: '/search', icon: Search, label: componentCopy.navbar.search },
+    { href: '/events', icon: PartyPopper, label: componentCopy.navbar.events },
+    { href: '/calendar', icon: CalendarDays, label: componentCopy.navbar.calendar },
+    { href: '/favorites', icon: Heart, label: componentCopy.navbar.favorites },
+    { href: '/messages', icon: MessageCircle, label: componentCopy.navbar.messages },
+    { href: '/notifications', icon: Bell, label: componentCopy.navbar.notifications },
+    { href: '/profile', icon: User, label: componentCopy.navbar.profile },
+    { href: '/settings', icon: Settings, label: componentCopy.navbar.settings },
   ] : [];
 
   return (
-    <nav className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="bg-[var(--glass-bg)] border-[var(--glass-border)] backdrop-blur-glass border-b sticky top-0 z-50 transition-colors duration-300">
+      <div className="px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          <Link
+            href={user ? '/dashboard' : '/'}
+            className="text-xl font-bold bg-gradient-to-r from-brand-start to-brand-end bg-clip-text text-transparent"
+          >
             Skillogue
           </Link>
 
-          {/* Desktop Navigation */}
-          {user && (
-            <div className="hidden md:flex items-center space-x-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                    isActive(item.href)
-                      ? 'bg-gray-800 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  }`}
+          <div className="flex items-center gap-3">
+            {/* Desktop Navigation */}
+            {user && (
+              <div className="hidden md:flex items-center space-x-4">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                      isActive(item.href)
+                        ? 'bg-surface-secondary text-foreground'
+                        : 'text-faint hover:text-foreground hover:bg-surface-secondary'
+                    }`}
+                  >
+                    <item.icon size={18} />
+                    <span className="text-sm">{item.label}</span>
+                  </Link>
+                ))}
+                <button
+                  onClick={() => void handleSignOut()}
+                  className="flex items-center gap-2 px-3 py-2 text-faint hover:text-foreground hover:bg-surface-secondary rounded-lg transition"
                 >
-                  <item.icon size={18} />
-                  <span className="text-sm">{item.label}</span>
-                </Link>
-              ))}
-              <button
-                onClick={() => signOut()}
-                className="flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
-              >
-                <LogOut size={18} />
-                <span className="text-sm">Sign Out</span>
-              </button>
-            </div>
-          )}
+                  <LogOut size={18} />
+                  <span className="text-sm">{componentCopy.navbar.signOut}</span>
+                </button>
+              </div>
+            )}
 
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-gray-400 hover:text-white"
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+            {!user && (
+              <div className="hidden md:flex items-center">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center rounded-full bg-gradient-to-r from-brand-start to-brand-end px-5 py-2 text-sm font-semibold text-white transition-all duration-300 hover:shadow-glass-glow hover:from-brand-start-hover hover:to-brand-end-hover hover:-translate-y-0.5"
+                >
+                  {componentCopy.navbar.logIn}
+                </Link>
+              </div>
+            )}
+
+            <ThemeToggle />
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? componentCopy.navbar.closeNavigationMenu : componentCopy.navbar.openNavigationMenu}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-navigation"
+              className="md:hidden p-2 text-faint hover:text-foreground"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-gray-900 border-b border-gray-800">
+        <div id="mobile-navigation" className="md:hidden bg-surface border-b border-line/30">
           <div className="px-4 py-2 space-y-1">
             {user ? (
               <>
@@ -81,8 +116,8 @@ const Navbar = () => {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-3 py-3 rounded-lg transition ${
                       isActive(item.href)
-                        ? 'bg-gray-800 text-white'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                        ? 'bg-surface-secondary text-foreground'
+                        : 'text-faint hover:text-foreground hover:bg-surface-secondary'
                     }`}
                   >
                     <item.icon size={18} />
@@ -90,14 +125,11 @@ const Navbar = () => {
                   </Link>
                 ))}
                 <button
-                  onClick={() => {
-                    signOut();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-3 w-full px-3 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
+                  onClick={() => void handleSignOut()}
+                  className="flex items-center gap-3 w-full px-3 py-3 text-faint hover:text-foreground hover:bg-surface-secondary rounded-lg transition"
                 >
                   <LogOut size={18} />
-                  <span>Sign Out</span>
+                  <span>{componentCopy.navbar.signOut}</span>
                 </button>
               </>
             ) : (
@@ -105,16 +137,16 @@ const Navbar = () => {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
+                  className="flex items-center gap-3 px-3 py-3 text-faint hover:text-foreground hover:bg-surface-secondary rounded-lg transition"
                 >
-                  Sign In
+                  {componentCopy.navbar.signIn}
                 </Link>
                 <Link
                   href="/signup"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 text-indigo-400 hover:text-indigo-300 hover:bg-gray-800 rounded-lg transition"
+                  className="flex items-center gap-3 px-3 py-3 text-brand hover:text-brand-soft hover:bg-surface-secondary rounded-lg transition"
                 >
-                  Sign Up
+                  {componentCopy.navbar.signUp}
                 </Link>
               </>
             )}

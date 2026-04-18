@@ -12,3 +12,10 @@ jest.mock('next/cache', () => ({
   revalidateTag: jest.fn(),
   cacheTag: jest.fn(),
 }));
+
+// Mock fetch globally for all tests
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+// Export for use in tests
+module.exports = { mockFetch };

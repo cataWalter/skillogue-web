@@ -8,6 +8,7 @@ import ProfileCard from '../../components/ProfileCard';
 import ProfileSkeleton from '../../components/ProfileSkeleton';
 import { FullProfile } from '../../types';
 import { Edit } from 'lucide-react';
+import { profilePageCopy } from '../../lib/app-copy';
 
 const Profile: React.FC = () => {
     const [profile, setProfile] = useState<FullProfile | null>(null);
@@ -27,7 +28,7 @@ const Profile: React.FC = () => {
 
             const { data: profileData, error: profileError } = await appClient
                 .from('profiles')
-                .select(`*, locations(*)`)
+                .select('id, created_at, last_login, first_name, last_name, about_me, age, gender, verified, is_private, show_age, show_location, locations(*)')
                 .eq('id', user.id)
                 .single();
 
@@ -59,7 +60,7 @@ const Profile: React.FC = () => {
 
     if (loading) {
         return (
-            <main className="flex-grow p-4 sm:p-6 w-full">
+            <main className="editorial-shell flex-grow py-8 sm:py-12 lg:py-16">
                 <div className="max-w-4xl mx-auto">
                     <ProfileSkeleton />
                 </div>
@@ -68,20 +69,20 @@ const Profile: React.FC = () => {
     }
 
     if (!profile) {
-        return <div className="text-center p-10 text-white">Could not load profile.</div>;
+        return <div className="editorial-shell py-10 text-center text-foreground">{profilePageCopy.owner.couldNotLoadProfile}</div>;
     }
 
     const actionButton = (
         <Link
             href="/edit-profile"
-            className="self-center sm:self-auto flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all duration-300 transform hover:scale-105 text-white"
+            className="self-center sm:self-auto flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-4 py-2 text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover hover:shadow-glass-md"
         >
-            <Edit size={16} /> Edit Profile
+            <Edit size={16} /> {profilePageCopy.owner.editProfile}
         </Link>
     );
 
     return (
-        <main className="flex-grow p-4 sm:p-6 w-full">
+        <main className="editorial-shell flex-grow py-8 sm:py-12 lg:py-16">
             <div className="max-w-4xl mx-auto">
                 <ProfileCard
                     profile={profile}

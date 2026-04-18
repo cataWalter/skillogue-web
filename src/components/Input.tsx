@@ -12,21 +12,21 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ({ label, id, error, className, ...props }, ref) => {
         return (
             <div className="w-full">
-                <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor={id} className="mb-2 block text-sm font-medium text-muted">
                     {label}
                 </label>
                 <input
                     id={id}
                     ref={ref}
-                    className={`w-full px-4 py-3 bg-gray-800 border rounded-xl text-white placeholder-gray-500 transition-all duration-200 focus:outline-none ${
+                    className={`w-full rounded-xl border bg-surface-secondary/70 px-4 py-3 text-foreground placeholder-faint shadow-glass-sm transition-all duration-200 focus:outline-none ${
                         error
-                            ? 'border-red-500 focus:ring-2 focus:ring-red-500/50'
-                            : 'border-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50'
+                            ? 'border-danger focus:border-danger focus:ring-2 focus:ring-danger/40'
+                            : 'border-line/30 focus:border-brand focus:ring-2 focus:ring-brand/50'
                     } ${className}`}
                     {...props}
                 />
                 {error && (
-                    <p className="mt-1.5 text-sm text-red-400">{error}</p>
+                    <p className="mt-1.5 text-sm text-danger">{error}</p>
                 )}
             </div>
         );

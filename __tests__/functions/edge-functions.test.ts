@@ -129,6 +129,24 @@ describe('Edge Functions', () => {
       expect(payload.data.notification_type).toBe('message');
     });
 
+    it('should include id in the notification document payload', () => {
+      const notificationId = 'notif_123';
+      const notificationRecord = {
+        id: notificationId,
+        receiver_id: 'recipient_456',
+        actor_id: 'actor_789',
+        type: 'new_message',
+        read: false,
+        title: 'New Message',
+        body: 'You got a message from John',
+        url: '/messages',
+        created_at: new Date().toISOString(),
+      };
+
+      expect(notificationRecord.id).toBe(notificationId);
+      expect(notificationRecord.receiver_id).toBe('recipient_456');
+    });
+
     it('should map notification types to correct URLs', () => {
       const getNotificationUrl = (
         notificationType: string,

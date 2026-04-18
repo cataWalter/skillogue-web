@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { pushSubscriptions } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
 import { getCurrentUserFromRequest } from '@/lib/server/current-user';
+import { AppDataService } from '@/lib/server/app-data-service';
+
+export async function GET() {
+  const publicKey =
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ??
+    process.env.NEXT_PUBLIC_VAPID_KEY ??
+    process.env.VAPID_PUBLIC_KEY;
+
+  if (!publicKey) {
+    return NextResponse.json({ error: 'Missing VAPID public key' }, { status: 500 });
+  }
+
+  return NextResponse.json({ publicKey });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,13 +33,14 @@ export async function POST(request: NextRequest) {
     if (!resolvedUserId || !endpoint) {
       return NextResponse.json({ error: 'Missing subscription data' }, { status: 400 });
     }
-    
-    await db.insert(pushSubscriptions).values({
+
+    const service = new AppDataService();
+    await service.savePushSubscription({
       userId: resolvedUserId,
       endpoint,
       p256dh,
       auth,
-    }).onConflictDoNothing();
+    });
     
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -48,16 +60,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Missing subscription data' }, { status: 400 });
     }
 
-    if (endpoint) {
-      await db.delete(pushSubscriptions).where(
-        and(
-          eq(pushSubscriptions.userId, userId),
-          eq(pushSubscriptions.endpoint, endpoint)
-        )
-      );
-    } else {
-      await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
-    }
+    const service = new AppDataService();
+    await service.deletePushSubscription(userId, endpoint);
     
     return NextResponse.json({ success: true });
   } catch (error) {

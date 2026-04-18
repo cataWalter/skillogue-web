@@ -4,6 +4,7 @@ import {
 	buildAppUrl,
 	clearAppwriteSessionCookie,
 	createAppwriteAdminAccount,
+	createAppwriteAdminDatabases,
 	createAppwriteAdminUsers,
 	createAppwriteSessionAccount,
 	getAppwriteErrorMessage,
@@ -11,6 +12,7 @@ import {
 	getAppwriteSessionSecret,
 	setAppwriteSessionCookie,
 } from '@/lib/appwrite/server';
+import { getAppwriteCollectionId, getAppwriteDatabaseId } from '@/lib/appwrite/config';
 
 export const runtime = 'nodejs';
 
@@ -31,13 +33,12 @@ const getUserAgent = (request: NextRequest) =>
 const getRequiredString = (value: unknown) =>
 	typeof value === 'string' ? value.trim() : '';
 
-const buildSessionPayload = (user: { $id: string; email: string; name?: string | null; image?: string | null }, expires: string) => ({
+const buildSessionPayload = (user: { $id: string; email: string; name?: string | null }, expires: string) => ({
 	session: {
 		user: {
 			id: user.$id,
 			email: user.email,
 			name: user.name ?? undefined,
-			image: user.image ?? undefined,
 		},
 		expires,
 	},
@@ -78,9 +79,24 @@ const handleAppwriteSignIn = async (request: NextRequest) => {
 	try {
 		const account = createAppwriteAdminAccount(getUserAgent(request));
 		const session = await account.createEmailPasswordSession({ email, password });
-		const response = NextResponse.json({ success: true });
+		const sessionAccount = createAppwriteSessionAccount(session.secret, getUserAgent(request));
+		const user = await sessionAccount.get();
+		const response = NextResponse.json(buildSessionPayload(user, session.expire));
 
 		setAppwriteSessionCookie(response, session.secret, session.expire);
+
+		// Update last_login timestamp in the profile document (best-effort, non-blocking)
+		try {
+			const databases = createAppwriteAdminDatabases(getUserAgent(request));
+			await databases.updateDocument(
+				getAppwriteDatabaseId(),
+				getAppwriteCollectionId('profiles'),
+				user.$id,
+				{ last_login: new Date().toISOString() }
+			);
+		} catch {
+			// Non-critical: do not fail sign-in if profile update fails
+		}
 
 		return response;
 	} catch (error) {
@@ -217,6 +233,29 @@ const handleAppwriteResetComplete = async (request: NextRequest) => {
 	}
 };
 
+const handleAppwriteChangePassword = async (request: NextRequest) => {
+	const body = await request.json();
+	const oldPassword = getRequiredString(body.oldPassword);
+	const newPassword = getRequiredString(body.newPassword);
+
+	if (!oldPassword || !newPassword) {
+		return jsonError('Current password and new password are required.', 400);
+	}
+
+	try {
+		const sessionSecret = getAppwriteSessionSecret(request);
+		const account = createAppwriteSessionAccount(sessionSecret, getUserAgent(request));
+		await account.updatePassword(newPassword, oldPassword);
+
+		return NextResponse.json({ success: true });
+	} catch (error) {
+		return jsonError(
+			getAppwriteErrorMessage(error, 'Failed to change password.'),
+			getAppwriteErrorStatus(error, 400)
+		);
+	}
+};
+
 const handleAppwriteVerifyEmail = async (request: NextRequest) => {
 	const body = await request.json();
 	const userId = getRequiredString(body.userId);
@@ -281,6 +320,8 @@ export async function PUT(
 	switch (routePath) {
 		case 'reset-password':
 			return handleAppwriteResetComplete(request);
+		case 'change-password':
+			return handleAppwriteChangePassword(request);
 		case 'verify-email':
 			return handleAppwriteVerifyEmail(request);
 		default:

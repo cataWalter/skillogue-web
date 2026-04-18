@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { createAvatar } from '@dicebear/core';
+import { componentCopy } from '../lib/app-copy';
 
 // Import collections
 import {
@@ -66,8 +67,8 @@ const Avatar: React.FC<AvatarProps> = ({ seed, className, alt }) => {
     if (!avatarSvg) {
         return (
             <div
-                className={className || 'w-12 h-12 rounded-full bg-gray-700 animate-pulse'}
-                aria-label="Loading avatar"
+                className={className || 'w-12 h-12 rounded-full bg-surface-secondary animate-pulse'}
+                aria-label={componentCopy.avatar.loadingAriaLabel}
             />
         );
     }
@@ -76,7 +77,7 @@ const Avatar: React.FC<AvatarProps> = ({ seed, className, alt }) => {
         <div className={`relative ${className || 'w-12 h-12 rounded-full'}`}>
             <Image
                 src={avatarSvg}
-                alt={alt || "User Avatar"}
+                alt={alt || componentCopy.avatar.defaultAlt}
                 fill
                 className="rounded-full object-cover"
                 unoptimized

@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PushNotificationToggle from '../../src/components/PushNotificationToggle';
 
@@ -44,6 +43,7 @@ describe('PushNotificationToggle', () => {
 
     expect(screen.getByText('Push Notifications')).toBeInTheDocument();
     expect(screen.getByText('Enable notifications for new messages.')).toBeInTheDocument();
+    expect(screen.getByText('Off')).toBeInTheDocument();
     expect(screen.getByText('Enable')).toBeInTheDocument();
   });
 
@@ -58,6 +58,7 @@ describe('PushNotificationToggle', () => {
 
     expect(screen.getByText('Push Notifications')).toBeInTheDocument();
     expect(screen.getByText('You are receiving notifications.')).toBeInTheDocument();
+    expect(screen.getByText('On')).toBeInTheDocument();
     expect(screen.getByText('Disable')).toBeInTheDocument();
   });
 
@@ -98,14 +99,14 @@ describe('PushNotificationToggle', () => {
 
     render(<PushNotificationToggle />);
 
-    const bellIcon = document.querySelector('.text-green-400');
+    const bellIcon = document.querySelector('.text-approval');
     expect(bellIcon).toBeInTheDocument();
   });
 
   it('should show BellOff icon when not subscribed', () => {
     render(<PushNotificationToggle />);
 
-    const bellOffIcon = document.querySelector('.text-gray-400');
+    const bellOffIcon = document.querySelector('.text-faint');
     expect(bellOffIcon).toBeInTheDocument();
   });
 
@@ -113,7 +114,7 @@ describe('PushNotificationToggle', () => {
     render(<PushNotificationToggle />);
 
     const enableButton = screen.getByText('Enable');
-    expect(enableButton).toHaveClass('bg-indigo-600');
+    expect(enableButton).toHaveClass('from-brand-start');
     expect(enableButton).toHaveClass('text-white');
   });
 
@@ -127,17 +128,17 @@ describe('PushNotificationToggle', () => {
     render(<PushNotificationToggle />);
 
     const disableButton = screen.getByText('Disable');
-    expect(disableButton).toHaveClass('bg-red-500/10');
-    expect(disableButton).toHaveClass('text-red-400');
+    expect(disableButton).toHaveClass('bg-danger/10');
+    expect(disableButton).toHaveClass('text-danger-soft');
   });
 
   it('should have proper container styling', () => {
     render(<PushNotificationToggle />);
 
-    const container = document.querySelector('.bg-gray-800');
+    const container = document.querySelector('div[class*="bg-surface-secondary/"]');
     expect(container).toBeInTheDocument();
-    expect(container).toHaveClass('p-4');
-    expect(container).toHaveClass('rounded-lg');
+    expect(container).toHaveClass('p-5');
+    expect(container).toHaveClass('rounded-[24px]');
   });
 
   it('should handle loading state correctly', () => {

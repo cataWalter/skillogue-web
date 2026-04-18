@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import MultiSelect from '../../src/components/MultiSelect';
 
@@ -27,6 +26,13 @@ describe('MultiSelect Component', () => {
         fireEvent.click(input);
         expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
+
+	it('opens dropdown on focus', () => {
+		render(<MultiSelect {...defaultProps} />);
+		const input = screen.getByRole('combobox');
+		fireEvent.focus(input);
+		expect(screen.getByRole('listbox')).toBeInTheDocument();
+	});
 
     it('filters options', () => {
         render(<MultiSelect {...defaultProps} />);

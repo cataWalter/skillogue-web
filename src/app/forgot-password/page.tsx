@@ -5,6 +5,10 @@ import { useAuth } from '../../hooks/useAuth';
 import Link from 'next/link';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { authCopy } from '../../lib/app-copy';
+import FormCard from '../../components/FormCard';
+import Input from '../../components/Input';
+import { Button } from '../../components/Button';
 
 const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -23,7 +27,7 @@ const ForgotPassword: React.FC = () => {
       setSubmitted(true);
     } catch (error) {
       console.error('Password reset error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to send reset email');
+      alert(error instanceof Error ? error.message : authCopy.forgotPassword.failure);
     } finally {
       setLoading(false);
     }
@@ -31,68 +35,49 @@ const ForgotPassword: React.FC = () => {
 
   if (submitted) {
     return (
-      <div className="flex-grow flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden p-8 text-center">
-          <Mail className="mx-auto h-12 w-12 text-indigo-400 mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Check Your Email</h1>
-          <p className="text-gray-400 mb-6">
-            We've sent a password reset link to <strong>{email}</strong>
+      <main className="editorial-shell flex flex-grow items-center justify-center py-12 sm:py-16">
+        <div className="glass-panel w-full max-w-md rounded-[2rem] p-8 text-center sm:p-10">
+          <div className="glass-surface mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+            <Mail className="h-8 w-8 text-brand" />
+          </div>
+          <h1 className="mb-2 text-2xl font-bold text-foreground">{authCopy.forgotPassword.submittedTitle}</h1>
+          <p className="mb-6 text-faint">
+            {authCopy.forgotPassword.submittedPrefix} <strong>{email}</strong>
           </p>
-          <button
-            onClick={() => router.push('/login')}
-            className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-          >
-            Back to Login
-          </button>
+          <Button onClick={() => router.push('/login')} fullWidth>
+            {authCopy.forgotPassword.backToLogin}
+          </Button>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex-grow flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="text-center p-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-            Reset Password
-          </h1>
-          <p className="text-gray-400 mt-2">Enter your email to receive a reset link</p>
-        </div>
+    <FormCard title={authCopy.forgotPassword.title} subtitle={authCopy.forgotPassword.subtitle}>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Input
+          id="email"
+          type="email"
+          label={authCopy.forgotPassword.emailAddress}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={authCopy.forgotPassword.emailPlaceholder}
+          required
+          disabled={loading}
+        />
 
-        <form onSubmit={handleSubmit} className="p-8 pt-0 space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400"
-              placeholder="you@example.com"
-              required
-              disabled={loading}
-            />
-          </div>
+        <Button type="submit" disabled={loading} fullWidth>
+          {loading ? authCopy.forgotPassword.loading : authCopy.forgotPassword.submit}
+        </Button>
+      </form>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition disabled:opacity-70"
-          >
-            {loading ? 'Sending...' : 'Send Reset Link'}
-          </button>
-        </form>
-
-        <div className="bg-gray-800/50 p-6 text-center border-t border-gray-800">
-          <Link href="/login" className="flex items-center justify-center gap-2 text-gray-400 hover:text-white transition">
-            <ArrowLeft size={16} />
-            Back to Login
-          </Link>
-        </div>
+      <div className="mt-8 border-t border-line/20 pt-6 text-center">
+        <Link href="/login" className="inline-flex items-center justify-center gap-2 text-faint transition hover:text-foreground">
+          <ArrowLeft size={16} />
+          {authCopy.forgotPassword.backToLogin}
+        </Link>
       </div>
-    </div>
+    </FormCard>
   );
 };
 

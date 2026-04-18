@@ -1,10 +1,17 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { verificationRequests } from '@/lib/db/schema';
+import { NextRequest, NextResponse } from 'next/server';
+import { AppDataService } from '@/lib/server/app-data-service';
+import { requireAdminRequest } from '@/lib/server/admin-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const data = await db.select().from(verificationRequests).orderBy(verificationRequests.createdAt);
+    const admin = await requireAdminRequest(request);
+
+    if ('response' in admin) {
+      return admin.response;
+    }
+
+    const service = new AppDataService(undefined, admin.userAgent);
+    const data = await service.listVerificationRequests();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching verification requests:', error);

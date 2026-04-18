@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { componentCopy } from '../lib/app-copy';
 
 interface ModalProps {
     isOpen: boolean;
@@ -48,7 +49,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer 
     const content = (
         <div 
             data-testid="modal-backdrop"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-overlay/80 backdrop-blur-glass transition-opacity"
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
@@ -56,23 +57,23 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer 
         >
             <div 
                 ref={modalRef}
-                className="bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-800 animate-in fade-in zoom-in duration-200"
+                className="glass-panel max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[1.75rem] animate-in fade-in zoom-in duration-200"
             >
-                <div className="flex justify-between items-center p-6 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
-                    <h2 id="modal-title" className="text-xl font-bold text-white">{title}</h2>
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line/20 bg-[var(--glass-panel)]/95 p-6 backdrop-blur-glass">
+                    <h2 id="modal-title" className="text-xl font-bold text-foreground">{title}</h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800 transition"
-                        aria-label="Close modal"
+                        className="glass-surface rounded-full p-1 text-faint transition-colors hover:text-foreground"
+                        aria-label={componentCopy.modal.closeAriaLabel}
                     >
                         <X size={24} />
                     </button>
                 </div>
-                <div className="p-6 text-gray-300">
+                <div className="p-6 text-muted">
                     {children}
                 </div>
                 {footer && (
-                    <div className="flex justify-end p-6 border-t border-gray-800 bg-gray-900 sticky bottom-0 z-10">
+                    <div className="sticky bottom-0 z-10 flex justify-end border-t border-line/20 bg-[var(--glass-panel)]/95 p-6 backdrop-blur-glass">
                         {footer}
                     </div>
                 )}

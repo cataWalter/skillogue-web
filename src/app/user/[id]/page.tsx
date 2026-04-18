@@ -11,6 +11,9 @@ import { MessageSquare, ShieldAlert, UserX, Flag, Ghost, Lock, Heart } from 'luc
 import { appClient } from '../../../lib/appClient';
 import ReportModal from '../../../components/ReportModal';
 import toast from 'react-hot-toast';
+import { profilePageCopy } from '../../../lib/app-copy';
+import { trackAnalyticsEvent } from '../../../lib/analytics';
+import { getDisplayName } from '../../../lib/profile-display';
 
 type Session = {
     user: {
@@ -55,7 +58,7 @@ const UserProfile: React.FC = () => {
             setSession(currentSession);
 
             if (!id || !currentSession?.user) {
-                setError(!id ? 'No user ID provided.' : 'You must be logged in to view profiles.');
+                setError(!id ? profilePageCopy.user.noUserId : profilePageCopy.user.mustBeLoggedIn);
                 setLoading(false);
                 if (!currentSession?.user) router.push('/login');
                 return;
@@ -73,22 +76,27 @@ const UserProfile: React.FC = () => {
                 setLoading(false);
                 return;
             }
-            
+
             checkBlockStatus(id);
 
             const { data: profileData, error: profileError } = await appClient
                 .from('profiles')
-                .select(`*, locations(*)`)
+                .select('id, created_at, last_login, first_name, last_name, about_me, age, gender, verified, is_private, show_age, show_location, locations(*)')
                 .eq('id', id)
                 .single();
 
             if (profileError || !profileData) {
                 console.error('Error loading user profile:', profileError);
-                setError('Could not find this user.');
+                setError(profilePageCopy.user.couldNotFindUser);
                 setLoading(false);
                 return;
             }
             setProfile(profileData as FullProfile);
+            void trackAnalyticsEvent('profile_viewed', {
+                profileId: profileData.id,
+                profileName: getDisplayName(profileData.first_name, profileData.last_name),
+                isPrivate: Boolean(profileData.is_private),
+            });
 
             const [passionRes, languageRes] = await Promise.all([
                 appClient.from('profile_passions').select('passions(name)').eq('profile_id', id),
@@ -101,7 +109,7 @@ const UserProfile: React.FC = () => {
             const { data: savedData } = await appClient.rpc('is_saved', { target_id: id });
             setIsSaved(!!savedData);
 
-            
+
             await checkBlockStatus(id);
 
             setLoading(false);
@@ -110,64 +118,74 @@ const UserProfile: React.FC = () => {
         loadProfile();
     }, [id, router, checkBlockStatus]);
 
-    const handleBlock = async () => {
-        if (!session?.user || !profile) return;
-        if (!confirm(`Are you sure you want to block ${profile.first_name}? You won't see them in search or messages.`)) return;
+    const handleBlock = profile
+        ? async () => {
+            if (!confirm(profilePageCopy.user.blockConfirm(profile.first_name))) return;
 
-        try {
-            const { error } = await appClient.rpc('block_user', { target_id: profile.id });
+            try {
+                const { error } = await appClient.rpc('block_user', { target_id: profile.id });
 
-            if (error) throw error;
-            setIsBlocked(true);
-            toast.success('User blocked successfully');
-            router.push('/dashboard');
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'Error blocking user';
-            toast.error(message);
-        }
-    };
-
-    const handleUnblock = async () => {
-        if (!session?.user || !profile) return;
-        if (!confirm(`Unblock ${profile.first_name}?`)) return;
-
-        try {
-            const { error } = await appClient.rpc('unblock_user', { target_id: profile.id });
-
-            if (error) throw error;
-            setIsBlocked(false);
-            toast.success('User unblocked');
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'Error unblocking user';
-            toast.error(message);
-        }
-    };
-
-    const handleToggleSave = async () => {
-        if (!session?.user || !profile) return;
-        
-        if (isSaved) {
-            const { error } = await appClient.rpc('unsave_profile', { target_id: profile.id });
-            if (!error) {
-                setIsSaved(false);
-                toast.success('Removed from favorites');
-            } else {
-                toast.error('Failed to remove favorite');
-            }
-        } else {
-            const { error } = await appClient.rpc('save_profile', { target_id: profile.id });
-            if (!error) {
-                setIsSaved(true);
-                toast.success('Saved to favorites');
-            } else {
-                toast.error('Failed to save favorite');
+                if (error) throw error;
+                setIsBlocked(true);
+                toast.success(profilePageCopy.user.blockedSuccess);
+                router.push('/dashboard');
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : profilePageCopy.user.blockError;
+                toast.error(message);
             }
         }
-    };
+        : undefined;
+
+    const handleUnblock = profile
+        ? async () => {
+            if (!confirm(profilePageCopy.user.unblockConfirm(profile.first_name))) return;
+
+            try {
+                const { error } = await appClient.rpc('unblock_user', { target_id: profile.id });
+
+                if (error) throw error;
+                setIsBlocked(false);
+                toast.success(profilePageCopy.user.unblockSuccess);
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : profilePageCopy.user.unblockError;
+                toast.error(message);
+            }
+        }
+        : undefined;
+
+    const handleToggleSave = profile
+        ? async () => {
+            if (isSaved) {
+                const { error } = await appClient.rpc('unsave_profile', { target_id: profile.id });
+                if (!error) {
+                    setIsSaved(false);
+                    toast.success(profilePageCopy.user.removedFromFavorites);
+                    void trackAnalyticsEvent('favorite_removed', {
+                        profileId: profile.id,
+                        source: 'user_profile',
+                    });
+                } else {
+                    toast.error(profilePageCopy.user.removeFavoriteError);
+                }
+            } else {
+                const { error } = await appClient.rpc('save_profile', { target_id: profile.id });
+                if (!error) {
+                    setIsSaved(true);
+                    toast.success(profilePageCopy.user.savedToFavorites);
+                    void trackAnalyticsEvent('favorite_added', {
+                        profileId: profile.id,
+                        source: 'user_profile',
+                    });
+                } else {
+                    toast.error(profilePageCopy.user.saveFavoriteError);
+                }
+            }
+        }
+        : undefined;
 
     if (loading) {
         return (
-            <main className="flex-grow p-4 sm:p-6 w-full">
+            <main className="editorial-shell flex-grow py-8 sm:py-12 lg:py-16">
                 <div className="max-w-4xl mx-auto">
                     <ProfileSkeleton />
                 </div>
@@ -177,22 +195,28 @@ const UserProfile: React.FC = () => {
 
     if (isBlockedByProfileUser) {
         return (
-            <div className="flex-grow flex flex-col items-center justify-center p-10 text-center">
-                <Ghost size={64} className="text-gray-600 mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">Profile Unavailable</h2>
-                <p className="text-gray-400">You cannot view this profile.</p>
-                <Link href="/dashboard" className="mt-6 text-indigo-400 hover:text-indigo-300">
-                    Return to Dashboard
+            <div className="editorial-shell flex flex-grow flex-col items-center justify-center py-10 text-center text-foreground">
+                <div className="glass-panel max-w-xl rounded-[2rem] p-10">
+                <Ghost size={64} className="text-muted mb-4" />
+                <h2 className="text-2xl font-bold text-foreground mb-2">{profilePageCopy.user.profileUnavailable}</h2>
+                <p className="text-faint">{profilePageCopy.user.cannotViewProfile}</p>
+                <Link href="/dashboard" className="mt-6 text-brand hover:text-brand">
+                    {profilePageCopy.user.returnToDashboard}
                 </Link>
+                </div>
             </div>
         );
     }
 
     if (error || !profile) {
+        const profileErrorMessage = [error, profilePageCopy.user.profileNotFound].find(
+            (message) => message.length > 0
+        );
+
         return (
-            <div className="text-center p-10 text-white">
-                <p className="text-xl text-red-400 mb-4">{error || 'Profile not found'}</p>
-                <Link href="/dashboard" className="text-indigo-400 hover:underline">Return to Dashboard</Link>
+            <div className="editorial-shell py-10 text-center text-foreground">
+                <p className="text-xl text-danger mb-4">{profileErrorMessage}</p>
+                <Link href="/dashboard" className="text-brand hover:underline">{profilePageCopy.user.returnToDashboard}</Link>
             </div>
         );
     }
@@ -203,29 +227,37 @@ const UserProfile: React.FC = () => {
                 <>
                     <Link
                         href={`/messages?conversation=${profile.id}`}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all duration-300 transform hover:scale-105 text-white"
+                        onClick={() => {
+                            void trackAnalyticsEvent('search_result_clicked', {
+                                profileId: profile.id,
+                                profileName: getDisplayName(profile.first_name, profile.last_name),
+                                target: 'message',
+                                source: 'user_profile',
+                            });
+                        }}
+                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-4 py-2 text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover hover:shadow-glass-md"
                     >
                         <MessageSquare size={18} />
-                        <span>Message</span>
+                        <span>{profilePageCopy.user.message}</span>
                     </Link>
                     <button
                         onClick={handleToggleSave}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${isSaved ? 'bg-pink-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
-                        title={isSaved ? "Remove from Favorites" : "Add to Favorites"}
+                        className={`flex items-center gap-2 rounded-xl border px-4 py-2 transition-all duration-300 hover:-translate-y-0.5 ${isSaved ? 'border-connection/40 bg-connection text-white shadow-glass-sm' : 'glass-surface text-foreground hover:bg-surface-secondary/80'}`}
+                        title={isSaved ? profilePageCopy.user.removeFromFavorites : profilePageCopy.user.addToFavorites}
                     >
-                        <Heart size={18} fill={isSaved ? "currentColor" : "none"} />
+                        <Heart size={18} fill={isSaved ? 'currentColor' : 'none'} />
                     </button>
                     <button
                         onClick={() => setReportModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-white"
-                        title="Report User"
+                        className="glass-surface flex items-center gap-2 rounded-xl px-4 py-2 text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-surface-secondary/80"
+                        title={profilePageCopy.user.reportUser}
                     >
                         <Flag size={18} />
                     </button>
                     <button
                         onClick={handleBlock}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-900/50 hover:bg-red-900/80 text-red-200 rounded-lg transition"
-                        title="Block User"
+                        className="flex items-center gap-2 rounded-xl bg-danger/10 px-4 py-2 text-danger-soft transition-all duration-300 hover:-translate-y-0.5 hover:bg-danger/15"
+                        title={profilePageCopy.user.blockUser}
                     >
                         <ShieldAlert size={18} />
                     </button>
@@ -233,11 +265,11 @@ const UserProfile: React.FC = () => {
             ) : (
                 <button
                     onClick={handleUnblock}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
-                    title="Unblock User"
+                    className="glass-surface flex items-center gap-2 rounded-xl px-4 py-2 text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-surface-secondary/80"
+                    title={profilePageCopy.user.unblockUser}
                 >
                     <UserX size={18} />
-                    <span>Unblock</span>
+                    <span>{profilePageCopy.user.unblock}</span>
                 </button>
             )}
         </div>
@@ -245,23 +277,25 @@ const UserProfile: React.FC = () => {
 
     if (profile.is_private) {
         return (
-            <div className="flex-grow flex flex-col items-center justify-center p-10 text-center animate-fade-in-up">
+            <div className="editorial-shell flex flex-grow flex-col items-center justify-center py-10 text-center text-foreground animate-fade-in-up">
+                <div className="glass-panel max-w-2xl rounded-[2rem] p-8 sm:p-10">
                 <div className="mb-6">
                     <div className="relative inline-block">
                         <Avatar seed={profile.id} className="w-32 h-32 rounded-full mx-auto mb-4" />
-                        <div className="absolute bottom-0 right-0 bg-gray-900 p-2 rounded-full border-2 border-gray-800">
-                            <Lock size={20} className="text-gray-400" />
+                        <div className="glass-surface absolute bottom-0 right-0 rounded-full border-2 border-line/30 p-2">
+                            <Lock size={20} className="text-muted" />
                         </div>
                     </div>
                     <h1 className="text-3xl font-bold">{profile.first_name} {profile.last_name}</h1>
                 </div>
-                <div className="bg-gray-900/50 p-6 rounded-xl border border-gray-800 max-w-md w-full card-hover-lift">
-                    <Lock size={48} className="text-gray-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">This profile is private</h2>
-                    <p className="text-gray-400 mb-6">
-                        {profile.first_name} has limited who can see their profile details.
+                <div className="glass-surface mx-auto max-w-md w-full rounded-[1.5rem] p-6 card-hover-lift">
+                    <Lock size={48} className="text-muted mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold mb-2">{profilePageCopy.user.privateTitle}</h2>
+                    <p className="text-faint mb-6">
+                        {profilePageCopy.user.privateDescription(profile.first_name)}
                     </p>
                     {actionButton}
+                </div>
                 </div>
                 {session?.user && profile && (
                     <ReportModal
@@ -275,7 +309,7 @@ const UserProfile: React.FC = () => {
     }
 
     return (
-        <main className="flex-grow p-4 sm:p-6 w-full">
+        <main className="editorial-shell flex-grow py-8 sm:py-12 lg:py-16">
             <div className="max-w-4xl mx-auto">
                 <ProfileCard
                     profile={profile}

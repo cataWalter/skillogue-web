@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
+import { reportModalCopy } from '../lib/app-copy';
+import { trackAnalyticsEvent } from '../lib/analytics';
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -40,24 +43,27 @@ const ReportModal: React.FC<ReportModalProps> = ({
       if (response.ok) {
         onClose();
         setReason('');
-        alert('Report submitted successfully');
+        toast.success(reportModalCopy.success);
+        void trackAnalyticsEvent('report_submitted', {
+          reportedUserId,
+        });
       }
     } catch (error) {
       console.error('Error submitting report:', error);
-      alert('Failed to submit report');
+      toast.error(reportModalCopy.error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 max-w-md w-full">
+    <div className="fixed inset-0 bg-surface-overlay/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface border border-line/30 rounded-xl p-6 max-w-md w-full shadow-xl shadow-black/15">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-white">Report User</h2>
+          <h2 className="text-xl font-bold text-foreground">{reportModalCopy.title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition"
+            className="text-faint hover:text-foreground transition"
           >
             <X size={20} />
           </button>
@@ -65,15 +71,15 @@ const ReportModal: React.FC<ReportModalProps> = ({
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Reason for reporting
+            <label className="block text-sm font-medium text-muted mb-2">
+              {reportModalCopy.label}
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 bg-surface-secondary border border-line/40 rounded-lg text-foreground placeholder-faint focus:ring-2 focus:ring-brand focus:border-transparent"
               rows={4}
-              placeholder="Please describe why you want to report this user..."
+              placeholder={reportModalCopy.placeholder}
               required
             />
           </div>
@@ -82,17 +88,17 @@ const ReportModal: React.FC<ReportModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition"
+              className="flex-1 px-4 py-2 bg-surface-secondary text-foreground rounded-lg hover:bg-surface-secondary/80 transition"
               disabled={loading}
             >
-              Cancel
+              {reportModalCopy.cancel}
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-brand-start text-white rounded-lg hover:bg-brand-start-hover transition disabled:opacity-50"
               disabled={loading || !reason.trim()}
             >
-              {loading ? 'Submitting...' : 'Submit Report'}
+              {loading ? reportModalCopy.submitting : reportModalCopy.submit}
             </button>
           </div>
         </form>

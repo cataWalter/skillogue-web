@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
 test.describe('Homepage', () => {
   test('should load the homepage without errors', async ({ page }) => {

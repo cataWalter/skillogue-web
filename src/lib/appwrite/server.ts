@@ -1,141 +1,190 @@
-import { Account, Client, Users, Databases } from 'node-appwrite';
-import { NextRequest, NextResponse } from 'next/server';
+import { Account, AppwriteException, Client, Databases, Functions, Users } from 'node-appwrite';
+import type { NextRequest, NextResponse } from 'next/server';
 import {
-  getAppUrl,
-  getAppwriteEndpoint,
-  getAppwriteProjectId,
-  getAppwriteDatabaseId,
-  getAppwriteSessionCookieName,
-  isAppwritePublicConfigReady,
+	getAppwriteApiKey,
+	getAppwriteDatabaseId,
+	getAppwriteEndpoint,
+	getAppwriteProjectId,
+	getAppwriteSessionCookieName,
 } from '@/lib/appwrite/config';
 
-const getAppwriteApiKey = () => process.env.APPWRITE_API_KEY?.trim() ?? '';
+const DEFAULT_APP_URL = 'http://localhost:3000';
 
-const assertAppwriteServerConfig = () => {
-  if (!isAppwritePublicConfigReady() || !getAppwriteApiKey() || !getAppwriteDatabaseId()) {
-    throw new Error('Appwrite server configuration is incomplete.');
-  }
+const assertConfigured = (value: string, name: string) => {
+	if (!value) {
+		throw new Error(`${name} is not configured.`);
+	}
+
+	return value;
 };
 
 const createBaseClient = (userAgent?: string) => {
-  const client = new Client()
-    .setEndpoint(getAppwriteEndpoint())
-    .setProject(getAppwriteProjectId());
+	const client = new Client()
+		.setEndpoint(assertConfigured(getAppwriteEndpoint(), 'NEXT_PUBLIC_APPWRITE_ENDPOINT'))
+		.setProject(assertConfigured(getAppwriteProjectId(), 'NEXT_PUBLIC_APPWRITE_PROJECT_ID'));
 
-  if (userAgent) {
-    client.setForwardedUserAgent(userAgent);
-  }
+	if (userAgent) {
+		client.setForwardedUserAgent(userAgent);
+	}
 
-  return client;
+	return client;
 };
 
-const getSessionCookieOptions = (expiresAt?: string) => {
-  if (expiresAt) {
-    return {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict' as const,
-      path: '/',
-      expires: new Date(expiresAt),
-    };
-  }
+const createAdminClient = (userAgent?: string) => {
+	const client = createBaseClient(userAgent);
 
-  return {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,
-    path: '/',
-    maxAge: 0,
-  };
+	client.setKey(assertConfigured(getAppwriteApiKey(), 'APPWRITE_API_KEY'));
+
+	return client;
 };
 
-export const createAppwriteAdminAccount = (userAgent?: string) => {
-  assertAppwriteServerConfig();
+const createSessionClient = (sessionSecret: string, userAgent?: string) => {
+	const client = createBaseClient(userAgent);
 
-  return new Account(createBaseClient(userAgent).setKey(getAppwriteApiKey()));
+	client.setSession(sessionSecret);
+
+	return client;
 };
 
-export const createAppwriteAdminUsers = (userAgent?: string) => {
-  assertAppwriteServerConfig();
+const parseCookieHeader = (cookieHeader: string | null, name: string) => {
+	if (!cookieHeader) {
+		return undefined;
+	}
 
-  return new Users(createBaseClient(userAgent).setKey(getAppwriteApiKey()));
+	for (const item of cookieHeader.split(';')) {
+		const [rawKey, ...rawValue] = item.trim().split('=');
+
+		if (rawKey === name) {
+			return decodeURIComponent(rawValue.join('='));
+		}
+	}
+
+	return undefined;
 };
 
-export const createAppwriteAdminDatabases = (userAgent?: string) => {
-  assertAppwriteServerConfig();
+const getCookieValue = (request: Request | NextRequest, name: string) => {
+	const nextRequest = request as NextRequest;
 
-  return new Databases(createBaseClient(userAgent).setKey(getAppwriteApiKey()));
+	if (nextRequest.cookies?.get) {
+		return nextRequest.cookies.get(name)?.value;
+	}
+
+	return parseCookieHeader(request.headers.get('cookie'), name);
 };
 
-export const createAppwriteSessionAccount = (
-  sessionSecret: string,
-  userAgent?: string
-) => {
-  assertAppwriteServerConfig();
+const isSecureCookie = () => {
+	const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
 
-  return new Account(createBaseClient(userAgent).setSession(sessionSecret));
+	if (appUrl) {
+		try {
+			const parsedUrl = new URL(appUrl);
+
+			if (parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1') {
+				return false;
+			}
+
+			return parsedUrl.protocol === 'https:';
+		} catch {
+			// Fall through to the environment-based default below.
+		}
+	}
+
+	return process.env.NODE_ENV === 'production';
 };
 
-export const createAppwriteSessionDatabases = (
-  sessionSecret: string,
-  userAgent?: string
-) => {
-  assertAppwriteServerConfig();
+export const buildAppUrl = (path = '/') => {
+	const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || DEFAULT_APP_URL;
 
-  return new Databases(createBaseClient(userAgent).setSession(sessionSecret));
+	return new URL(path, baseUrl).toString();
 };
 
-export const getAppwriteSessionSecret = (request: NextRequest) =>
-  request.cookies.get(getAppwriteSessionCookieName())?.value;
+export const createAppwriteAdminAccount = (userAgent?: string) =>
+	new Account(createAdminClient(userAgent));
+
+export const createAppwriteSessionAccount = (sessionSecret: string, userAgent?: string) =>
+	new Account(createSessionClient(sessionSecret, userAgent));
+
+export const createAppwriteAdminUsers = (userAgent?: string) =>
+	new Users(createAdminClient(userAgent));
+
+export const createAppwriteAdminDatabases = (userAgent?: string) =>
+	new Databases(createAdminClient(userAgent));
+
+export const createAppwriteSessionDatabases = (sessionSecret: string, userAgent?: string) =>
+	new Databases(createSessionClient(sessionSecret, userAgent));
+
+export const createAppwriteAdminFunctions = (userAgent?: string) =>
+	new Functions(createAdminClient(userAgent));
+
+export const getAppwriteSessionSecret = (request: Request | NextRequest) =>
+	getCookieValue(request, getAppwriteSessionCookieName());
 
 export const setAppwriteSessionCookie = (
-  response: NextResponse,
-  secret: string,
-  expiresAt: string
+	response: NextResponse,
+	sessionSecret: string,
+	expiresAt: string
 ) => {
-  response.cookies.set(
-    getAppwriteSessionCookieName(),
-    secret,
-    getSessionCookieOptions(expiresAt)
-  );
+	response.cookies.set({
+		name: getAppwriteSessionCookieName(),
+		value: sessionSecret,
+		expires: new Date(expiresAt),
+		httpOnly: true,
+		sameSite: 'lax',
+		secure: isSecureCookie(),
+		path: '/',
+	});
 };
 
 export const clearAppwriteSessionCookie = (response: NextResponse) => {
-  response.cookies.set(
-    getAppwriteSessionCookieName(),
-    '',
-    getSessionCookieOptions()
-  );
+	response.cookies.set({
+		name: getAppwriteSessionCookieName(),
+		value: '',
+		expires: new Date(0),
+		httpOnly: true,
+		sameSite: 'lax',
+		secure: isSecureCookie(),
+		path: '/',
+	});
 };
 
-export const buildAppUrl = (pathname: string) =>
-  new URL(pathname, getAppUrl()).toString();
+export const getAppwriteErrorStatus = (error: unknown, fallbackStatus = 500) => {
+	if (error instanceof AppwriteException && typeof error.code === 'number') {
+		return error.code;
+	}
 
-export const getAppwriteErrorStatus = (error: unknown, fallback = 500) => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof (error as { code?: unknown }).code === 'number'
-  ) {
-    return (error as { code: number }).code;
-  }
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		typeof (error as { code?: unknown }).code === 'number'
+	) {
+		return (error as { code: number }).code;
+	}
 
-  return fallback;
+	return fallbackStatus;
 };
 
-export const getAppwriteErrorMessage = (
-  error: unknown,
-  fallback = 'Request failed.'
-) => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error &&
-    typeof (error as { message?: unknown }).message === 'string'
-  ) {
-    return (error as { message: string }).message;
-  }
+export const getAppwriteErrorMessage = (error: unknown, fallbackMessage: string) => {
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
 
-  return fallback;
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'message' in error &&
+		typeof (error as { message?: unknown }).message === 'string'
+	) {
+		return (error as { message: string }).message;
+	}
+
+	return fallbackMessage;
+};
+
+export {
+	getAppwriteApiKey,
+	getAppwriteDatabaseId,
+	getAppwriteEndpoint,
+	getAppwriteProjectId,
+	getAppwriteSessionCookieName,
 };

@@ -1,9 +1,59 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import UserProfile from '../src/app/user/[id]/page';
 import { appClient } from '../src/lib/appClient';
-import toast from 'react-hot-toast';
+import { trackAnalyticsEvent } from '../src/lib/analytics';
 import '@testing-library/jest-dom';
+
+const originalConsoleError = console.error;
+
+const mockPush = jest.fn();
+const mockRouter = { push: mockPush };
+const mockParams = { id: 'user-123' };
+
+const flushAsyncEffects = async (cycles = 3) => {
+  for (let index = 0; index < cycles; index += 1) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+};
+
+const createProfileTableMock = (result: { data: unknown; error: unknown }) => ({
+  select: jest.fn(() => ({
+    eq: jest.fn(() => ({
+      single: jest.fn().mockResolvedValue(result),
+      maybeSingle: jest.fn().mockResolvedValue(result),
+    })),
+  })),
+});
+
+const createRelationTableMock = (result: { data: unknown; error: unknown }) => ({
+  select: jest.fn(() => ({
+    eq: jest.fn().mockResolvedValue(result),
+  })),
+});
+
+const createFallbackTableMock = (result = { data: null, error: null }) => ({
+  select: jest.fn(() => ({
+    eq: jest.fn(() => ({
+      single: jest.fn().mockResolvedValue(result),
+      maybeSingle: jest.fn().mockResolvedValue(result),
+    })),
+  })),
+});
+
+const createFromMock = (overrides: Record<string, ReturnType<typeof createProfileTableMock>> = {}) =>
+  (table: string) => {
+    if (overrides[table]) {
+      return overrides[table];
+    }
+
+    if (table === 'profile_passions' || table === 'profile_languages') {
+      return createRelationTableMock({ data: [], error: null });
+    }
+
+    return createFallbackTableMock();
+  };
 
 // Mock App Client client
 jest.mock('../src/lib/appClient', () => ({
@@ -28,8 +78,8 @@ jest.mock('../src/lib/appClient', () => ({
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
-  useParams: () => ({ id: 'user-123' }),
-  useRouter: () => ({ push: jest.fn() }),
+  useParams: () => mockParams,
+  useRouter: () => mockRouter,
 }));
 
 jest.mock('react-hot-toast', () => ({
@@ -40,10 +90,43 @@ jest.mock('react-hot-toast', () => ({
   },
 }));
 
+jest.mock('../src/lib/analytics', () => ({
+	trackAnalyticsEvent: jest.fn(),
+}));
+
+jest.mock('../src/components/ReportModal', () => ({
+  __esModule: true,
+  default: ({ isOpen, reportedUserId, onClose }: { isOpen: boolean; reportedUserId: string; onClose: () => void }) => (
+    <div data-testid="report-modal" data-open={isOpen ? 'true' : 'false'} data-user-id={reportedUserId}>
+      <button type="button" onClick={onClose}>Close report modal</button>
+    </div>
+  ),
+}));
+
 // Import the mocked toast after jest.mock
 import toast from 'react-hot-toast';
 
+const renderUserProfilePage = async () => {
+  await act(async () => {
+    render(<UserProfile />);
+    await flushAsyncEffects(5);
+  });
+};
+
+const waitForUserProfileToSettle = async () => {
+  await waitFor(() => {
+    expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
+  });
+};
+
+const renderLoadedUserProfilePage = async () => {
+  await renderUserProfilePage();
+  await waitForUserProfileToSettle();
+};
+
 describe('UserProfile', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   const mockSession = {
     user: { id: 'me-123' },
   };
@@ -62,34 +145,29 @@ describe('UserProfile', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPush.mockReset();
+    mockParams.id = 'user-123';
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      const stringArgs = args.filter((value): value is string => typeof value === 'string');
+
+      if (
+			stringArgs.some((value) => value.includes('not wrapped in act')) ||
+			args.some((value) => String(value).includes('Not implemented: navigation'))
+		) {
+        return;
+      }
+
+      originalConsoleError(...(args as Parameters<typeof console.error>));
+    });
+    (trackAnalyticsEvent as jest.Mock).mockReset();
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
     
     // Mock profile fetch
-    (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({ data: mockProfile, error: null }),
-            })),
-          })),
-        };
-      }
-      if (table === 'profile_passions' || table === 'profile_languages') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: [], error: null }),
-          })),
-        };
-      }
-      return {
-        select: jest.fn(() => ({
-          eq: jest.fn(() => ({
-            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-          })),
-        })),
-      };
-    });
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: mockProfile, error: null }),
+      })
+    );
 
     // Mock RPCs
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
@@ -99,21 +177,22 @@ describe('UserProfile', () => {
     });
   });
 
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it('renders user profile', async () => {
-    render(<UserProfile />);
-    await waitFor(() => {
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-      expect(screen.getByText('About Jane')).toBeInTheDocument();
-    });
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    expect(screen.getByText('About Jane')).toBeInTheDocument();
   });
 
   it('handles blocking a user', async () => {
     window.confirm = jest.fn(() => true);
-    render(<UserProfile />);
-    
-    await waitFor(() => {
-      expect(screen.getByTitle('Block User')).toBeInTheDocument();
-    });
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByTitle('Block User')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('Block User'));
 
@@ -123,12 +202,20 @@ describe('UserProfile', () => {
     });
   });
 
+  it('cancels blocking a user when confirmation is declined', async () => {
+    window.confirm = jest.fn(() => false);
+
+    await renderLoadedUserProfilePage();
+    fireEvent.click(screen.getByTitle('Block User'));
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(appClient.rpc).not.toHaveBeenCalledWith('block_user', expect.anything());
+  });
+
   it('handles saving a user', async () => {
-    render(<UserProfile />);
-    
-    await waitFor(() => {
-      expect(screen.getByTitle('Add to Favorites')).toBeInTheDocument();
-    });
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByTitle('Add to Favorites')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('Add to Favorites'));
 
@@ -147,14 +234,31 @@ describe('UserProfile', () => {
 
     window.confirm = jest.fn(() => true);
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+  await renderLoadedUserProfilePage();
 
     const blockButton = screen.getByTitle('Block User');
     fireEvent.click(blockButton);
 
     await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith('Error blocking user');
+    });
+  });
+
+  it('surfaces thrown block user errors', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+      if (fn === 'is_saved') return Promise.resolve({ data: false, error: null });
+      if (fn === 'block_user') return Promise.resolve({ error: new Error('Block failed') });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    window.confirm = jest.fn(() => true);
+
+    await renderLoadedUserProfilePage();
+    fireEvent.click(screen.getByTitle('Block User'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Block failed');
     });
   });
 
@@ -168,8 +272,7 @@ describe('UserProfile', () => {
 
     window.confirm = jest.fn(() => true);
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+  await renderLoadedUserProfilePage();
 
     const unblockButton = screen.getByTitle('Unblock User');
     fireEvent.click(unblockButton);
@@ -188,8 +291,7 @@ describe('UserProfile', () => {
         return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+      await renderLoadedUserProfilePage();
 
     const unsaveButton = screen.getByTitle('Remove from Favorites');
     fireEvent.click(unsaveButton);
@@ -205,7 +307,7 @@ describe('UserProfile', () => {
         return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
+      await renderUserProfilePage();
 
     await waitFor(() => {
         expect(screen.getByText('Profile Unavailable')).toBeInTheDocument();
@@ -215,20 +317,13 @@ describe('UserProfile', () => {
 
   it('shows error state when profile fetch fails', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (appClient.from as jest.Mock).mockImplementation((table) => {
-        if (table === 'profiles') {
-            return {
-                select: jest.fn(() => ({
-                    eq: jest.fn(() => ({
-                        single: jest.fn().mockResolvedValue({ data: null, error: { message: 'Profile not found' } }),
-                    })),
-                })),
-            };
-        }
-        return { select: jest.fn() };
-    });
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: null, error: { message: 'Profile not found' } }),
+      })
+    );
 
-    render(<UserProfile />);
+    await renderUserProfilePage();
 
     await waitFor(() => {
         expect(screen.getByText('Could not find this user.')).toBeInTheDocument();
@@ -248,8 +343,7 @@ describe('UserProfile', () => {
         return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+      await renderLoadedUserProfilePage();
 
     const saveButton = screen.getByTitle('Add to Favorites');
     fireEvent.click(saveButton);
@@ -267,8 +361,7 @@ describe('UserProfile', () => {
         return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+      await renderLoadedUserProfilePage();
 
     const unsaveButton = screen.getByTitle('Remove from Favorites');
     fireEvent.click(unsaveButton);
@@ -288,8 +381,7 @@ describe('UserProfile', () => {
 
     window.confirm = jest.fn(() => true);
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+  await renderLoadedUserProfilePage();
 
     const unblockButton = screen.getByTitle('Unblock User');
     fireEvent.click(unblockButton);
@@ -299,11 +391,176 @@ describe('UserProfile', () => {
     });
   });
 
+  it('surfaces thrown unblock user errors', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_blocked') return Promise.resolve({ data: true, error: null });
+      if (fn === 'is_saved') return Promise.resolve({ data: false, error: null });
+      if (fn === 'unblock_user') return Promise.resolve({ error: new Error('Unblock failed') });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    window.confirm = jest.fn(() => true);
+
+    await renderLoadedUserProfilePage();
+    fireEvent.click(screen.getByTitle('Unblock User'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Unblock failed');
+    });
+  });
+
   it('shows loading state initially', async () => {
     render(<UserProfile />);
-    
+
     // Should show loading skeleton before data loads
     // The ProfileSkeleton component renders with animate-pulse class
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
+  });
+
+  it('redirects to login when no session is available', async () => {
+    (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null }, error: null });
+
+    await renderUserProfilePage();
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/login');
+    });
+    expect(screen.getByText('You must be logged in to view profiles.')).toBeInTheDocument();
+  });
+
+  it('shows the missing user id state without redirecting', async () => {
+    mockParams.id = '';
+
+    await renderUserProfilePage();
+
+    await waitFor(() => {
+      expect(screen.getByText('No user ID provided.')).toBeInTheDocument();
+    });
+    expect(mockPush).not.toHaveBeenCalledWith('/login');
+  });
+
+  it('renders the private profile state and tracks message clicks', async () => {
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: { ...mockProfile, is_private: true }, error: null }),
+      })
+    );
+
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByText('This profile is private')).toBeInTheDocument();
+    expect(screen.getByText('Jane has limited who can see their profile details.')).toBeInTheDocument();
+    expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'false');
+
+    fireEvent.click(screen.getByTitle('Report User'));
+    expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'true');
+
+		fireEvent.click(screen.getByRole('button', { name: 'Close report modal' }));
+		expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'false');
+
+    fireEvent.click(screen.getByRole('link', { name: 'Message' }));
+    expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_result_clicked', {
+      profileId: 'user-123',
+      profileName: 'Jane Doe',
+      target: 'message',
+      source: 'user_profile',
+    });
+  });
+
+  it('handles passions fetch error', async () => {
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: mockProfile, error: null }),
+        profile_passions: createRelationTableMock({ data: null, error: { message: 'Passions error' } }),
+      })
+    );
+
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    // Should still render even if passions fail
+  });
+
+  it('handles languages fetch error', async () => {
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: mockProfile, error: null }),
+        profile_languages: createRelationTableMock({ data: null, error: { message: 'Languages error' } }),
+      })
+    );
+
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+  });
+
+  it('handles own profile redirect', async () => {
+    (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-123' } } }, error: null });
+
+    await renderUserProfilePage();
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/profile');
+    });
+  });
+
+  it('handles blocked by user check error', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_blocked_by') return Promise.resolve({ data: null, error: { message: 'Blocked by error' } });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+  });
+
+  it('handles is_saved rpc error', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_saved') return Promise.resolve({ data: null, error: { message: 'Saved check error' } });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+  });
+
+  it('handles checkBlockStatus error', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_blocked') return Promise.resolve({ data: null, error: { message: 'Block check error' } });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+  });
+
+  it('handles unblock user confirm cancel', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_blocked') return Promise.resolve({ data: true, error: null });
+      return Promise.resolve({ data: null, error: null });
+    });
+    window.confirm = jest.fn(() => false);
+
+    await renderLoadedUserProfilePage();
+
+    const unblockButton = screen.getByTitle('Unblock User');
+    fireEvent.click(unblockButton);
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(appClient.rpc).not.toHaveBeenCalledWith('unblock_user', expect.anything());
+  });
+
+  it('opens and closes the public report modal', async () => {
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'false');
+    fireEvent.click(screen.getByTitle('Report User'));
+    expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close report modal' }));
+    expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'false');
   });
 });

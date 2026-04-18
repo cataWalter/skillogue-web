@@ -9,15 +9,18 @@ describe('Button Component', () => {
         render(<Button>Click me</Button>);
         const button = screen.getByRole('button', { name: /click me/i });
         expect(button).toBeInTheDocument();
-        expect(button).toHaveClass('from-indigo-600'); // Default variant uses gradient
+        expect(button).toHaveClass('from-brand-start');
     });
 
     it('renders different variants', () => {
         const { rerender } = render(<Button variant="secondary">Secondary</Button>);
-        expect(screen.getByRole('button')).toHaveClass('from-pink-500');
+        expect(screen.getByRole('button')).toHaveClass('from-connection-start');
 
         rerender(<Button variant="danger">Danger</Button>);
-        expect(screen.getByRole('button')).toHaveClass('from-red-600');
+        expect(screen.getByRole('button')).toHaveClass('from-danger-start');
+
+        rerender(<Button variant="success">Success</Button>);
+        expect(screen.getByRole('button')).toHaveClass('from-success-start');
 
         rerender(<Button variant="outline">Outline</Button>);
         expect(screen.getByRole('button')).toHaveClass('bg-transparent');

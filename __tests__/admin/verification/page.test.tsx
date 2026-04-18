@@ -1,5 +1,4 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AdminVerification from '../../../src/app/admin/verification/page';
 
 // Mock fetch
@@ -39,8 +38,14 @@ describe('AdminVerification', () => {
     mockFetch.mockReset();
   });
 
+  const renderVerificationPage = async () => {
+    await act(async () => {
+      render(<AdminVerification />);
+    });
+  };
+
   it('shows loading state initially', () => {
-    mockFetch.mockResolvedValue({ ok: false });
+    mockFetch.mockImplementation(() => new Promise(() => {}));
     render(<AdminVerification />);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -51,7 +56,7 @@ describe('AdminVerification', () => {
       json: () => Promise.resolve(mockRequests),
     });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -63,7 +68,7 @@ describe('AdminVerification', () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     mockFetch.mockRejectedValue(new Error('Network error'));
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
@@ -79,7 +84,7 @@ describe('AdminVerification', () => {
       json: () => Promise.resolve([]),
     });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('No pending requests')).toBeInTheDocument();
@@ -92,9 +97,13 @@ describe('AdminVerification', () => {
         ok: true,
         json: () => Promise.resolve(mockRequests),
       })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockRequests.slice(1)),
+      });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -120,7 +129,7 @@ describe('AdminVerification', () => {
       })
       .mockResolvedValueOnce({ ok: false });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -134,15 +143,44 @@ describe('AdminVerification', () => {
     });
   });
 
+  it('should handle approve request rejections', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockRequests),
+      })
+      .mockRejectedValueOnce(new Error('approve network failure'));
+
+    await renderVerificationPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Approve')[0]);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith('Error approving:', expect.any(Error));
+      expect(toast.error).toHaveBeenCalledWith('Failed to approve');
+    });
+
+    consoleSpy.mockRestore();
+  });
+
   it('should reject verification request', async () => {
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockRequests),
       })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockRequests.slice(1)),
+      });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -168,7 +206,7 @@ describe('AdminVerification', () => {
       })
       .mockResolvedValueOnce({ ok: false });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -182,13 +220,38 @@ describe('AdminVerification', () => {
     });
   });
 
+  it('should handle reject request rejections', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockRequests),
+      })
+      .mockRejectedValueOnce(new Error('reject network failure'));
+
+    await renderVerificationPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Reject')[0]);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith('Error rejecting:', expect.any(Error));
+      expect(toast.error).toHaveBeenCalledWith('Failed to reject');
+    });
+
+    consoleSpy.mockRestore();
+  });
+
   it('should display formatted dates', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockRequests),
     });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       // Dates should be formatted as locale date strings

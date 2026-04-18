@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { adminCopy } from '../../../lib/app-copy';
 
 interface Report {
     id: number;
@@ -46,44 +47,49 @@ export default function AdminReports() {
         }
     };
 
-    if (loading) return <div className="text-white">Loading...</div>;
+    if (loading) return <div className="text-foreground">{adminCopy.reports.loading}</div>;
 
     return (
-        <div className="text-white">
-            <h1 className="text-3xl font-bold mb-6">User Reports</h1>
+        <div className="text-foreground">
+            <div className="glass-panel mb-6 rounded-[2rem] p-6 sm:p-8">
+                <p className="editorial-kicker mb-4 w-fit border-danger/20 bg-danger/10 text-danger-soft">
+                    Trust queue
+                </p>
+                <h1 className="text-3xl font-bold">{adminCopy.reports.title}</h1>
+            </div>
             <div className="space-y-4">
                 {reports.length === 0 ? (
-                    <div className="text-gray-500">No reports found.</div>
+                    <div className="glass-panel rounded-[1.5rem] p-6 text-faint">{adminCopy.reports.empty}</div>
                 ) : (
                     reports.map((report) => (
-                        <div key={report.id} className="bg-gray-900 border border-gray-800 p-6 rounded-xl">
+                        <div key={report.id} className="glass-surface rounded-[1.5rem] p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-danger/20">
                             <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-2 text-red-400 font-semibold">
+                                <div className="flex items-center gap-2 text-danger font-semibold">
                                     <AlertTriangle size={20} />
-                                    Report against {report.reported?.first_name} {report.reported?.last_name}
+                                    {adminCopy.reports.reportAgainstPrefix} {report.reported?.first_name} {report.reported?.last_name}
                                 </div>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-faint">
                                     {new Date(report.created_at).toLocaleDateString()}
                                 </span>
                             </div>
                             
-                            <div className="bg-black/50 p-4 rounded-lg mb-4 text-gray-300">
+                            <div className="mb-4 rounded-lg border border-line/25 bg-surface-secondary/55 p-4 text-muted">
                                 "{report.reason}"
                             </div>
 
-                            <div className="flex justify-between items-center text-sm text-gray-500">
+                            <div className="flex items-center justify-between text-sm text-faint">
                                 <div>
-                                    Reported by: {report.reporter?.first_name} {report.reporter?.last_name}
+                                    {adminCopy.reports.reportedByPrefix} {report.reporter?.first_name} {report.reporter?.last_name}
                                 </div>
                                 <div className="flex gap-2">
                                     <select
                                         value={report.status}
                                         onChange={(e) => updateReportStatus(report.id, e.target.value)}
-                                        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+                                        className="rounded border border-line/30 bg-surface-secondary/70 px-2 py-1 text-sm text-foreground shadow-glass-sm focus:border-brand focus:outline-none"
                                     >
-                                        <option value="pending">Pending</option>
-                                        <option value="reviewed">Reviewed</option>
-                                        <option value="resolved">Resolved</option>
+                                        {adminCopy.reports.statusOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>

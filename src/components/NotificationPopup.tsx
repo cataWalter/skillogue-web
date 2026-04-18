@@ -17,15 +17,15 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ message, sender, 
     }, [onClose]);
 
     return (
-        <div className="fixed bottom-5 right-5 w-full max-w-sm bg-gray-800 border border-gray-700 rounded-lg shadow-lg text-white p-4 flex items-start gap-4 animate-fade-in-up z-50">
+        <div className="fixed bottom-5 right-5 w-full max-w-sm bg-surface border border-line/30 rounded-lg shadow-lg shadow-black/15 text-foreground p-4 flex items-start gap-4 animate-fade-in-up z-50">
             <div className="flex-shrink-0 pt-1">
-                <MessageSquare className="h-6 w-6 text-indigo-400" />
+                <MessageSquare className="h-6 w-6 text-brand" />
             </div>
             <div className="flex-1">
                 <p className="font-semibold">{sender}</p>
-                <p className="text-sm text-gray-300">{message}</p>
+                <p className="text-sm text-muted">{message}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <button onClick={onClose} className="text-faint hover:text-foreground transition">
                 <X size={18} />
             </button>
         </div>

@@ -3,68 +3,89 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Shield, Users, FileText, LayoutDashboard } from 'lucide-react';
+import { Shield, FileText, LayoutDashboard, Search, SlidersHorizontal, AlertTriangle, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { adminCopy } from '../../lib/app-copy';
+import { isAdminEmail } from '../../lib/admin';
+
+const navLinkClass = 'block rounded-lg px-3 py-2 text-muted transition hover:bg-surface-secondary hover:text-foreground';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [isAdmin, setIsAdmin] = useState(false);
-    const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        const checkAdmin = async () => {
+        if (authLoading) {
+            return;
+        }
+
+        const checkAdmin = () => {
+            console.log('CHECK ADMIN', { user, authLoading });
             if (!user) {
-                router.push('/login');
+                console.log('NO USER REDIRECTING');
+                router.replace('/login');
                 return;
             }
 
-            // In a real implementation, you would fetch the user's role from the database
-            // For now, we'll just check if the user is logged in
-            // You could add an admin check via an API call
-            
-            // Mock: Check if user email ends with @admin.com (for demo purposes)
-            const isAdminUser = user.email?.endsWith('@admin.com') || user.email?.includes('admin');
-            
-            if (!isAdminUser) {
-                router.push('/');
+            if (!isAdminEmail(user.email)) {
+                console.log('NOT ADMIN REDIRECTING', user.email);
+                router.replace('/');
                 return;
             }
 
+            console.log('IS ADMIN, RETURNING TRUE');
             setIsAdmin(true);
-            setLoading(false);
         };
 
         checkAdmin();
-    }, [user, router]);
+    }, [authLoading, user, router]);
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-black text-white">Checking permissions...</div>;
-
+    if (authLoading) return <div className="text-foreground">{adminCopy.layout.loading}</div>;
     if (!isAdmin) return null;
 
     return (
-        <div className="min-h-screen bg-black text-white flex">
-            {/* Sidebar */}
-            <aside className="w-64 border-r border-gray-800 p-6 hidden md:block sticky top-0 h-screen">
-                <div className="flex items-center gap-2 mb-8 text-indigo-400 font-bold text-xl">
-                    <Shield /> Admin Panel
+        <div className="flex min-h-screen bg-background text-foreground">
+            <aside className="w-72 border-r border-line/30 bg-surface/90 p-4 backdrop-blur-sm">
+                <div className="mb-6 rounded-2xl border border-line/30 bg-surface-secondary/60 p-4">
+                    <div className="text-xs uppercase tracking-[0.3em] text-brand">{adminCopy.dashboard.eyebrow}</div>
+                    <div className="mt-2 text-lg font-semibold">{adminCopy.layout.commandCenter}</div>
                 </div>
                 <nav className="space-y-2">
-                    <Link href="/admin" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition text-gray-300 hover:text-white">
-                        <LayoutDashboard size={20} /> Dashboard
+                    <Link href="/admin" className={navLinkClass}>
+                        <LayoutDashboard size={18} className="inline-block mr-2" />
+                        {adminCopy.layout.dashboard}
                     </Link>
-                    <Link href="/admin/verification" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition text-gray-300 hover:text-white">
-                        <Users size={20} /> Verifications
+                    <Link href="/admin/queues" className={navLinkClass}>
+                        <AlertTriangle size={18} className="inline-block mr-2" />
+                        {adminCopy.layout.queues}
                     </Link>
-                    <Link href="/admin/reports" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition text-gray-300 hover:text-white">
-                        <FileText size={20} /> Reports
+                    <Link href="/admin/users" className={navLinkClass}>
+                        <Users size={18} className="inline-block mr-2" />
+                        {adminCopy.layout.investigation}
+                    </Link>
+                    <Link href="/admin/signals" className={navLinkClass}>
+                        <Search size={18} className="inline-block mr-2" />
+                        {adminCopy.layout.signals}
+                    </Link>
+                    <Link href="/admin/controls" className={navLinkClass}>
+                        <SlidersHorizontal size={18} className="inline-block mr-2" />
+                        {adminCopy.layout.controls}
+                    </Link>
+
+                    <div className="my-2 border-t border-line/20" />
+
+                    <Link href="/admin/reports" className={navLinkClass}>
+                        <FileText size={18} className="inline-block mr-2" />
+                        {adminCopy.layout.reports}
+                    </Link>
+                    <Link href="/admin/verification" className={navLinkClass}>
+                        <Shield size={18} className="inline-block mr-2" />
+                        {adminCopy.layout.verification}
                     </Link>
                 </nav>
             </aside>
-            
-            <main className="flex-grow p-8 overflow-y-auto">
-                {children}
-            </main>
+            <main className="flex-1 p-6">{children}</main>
         </div>
     );
 }
