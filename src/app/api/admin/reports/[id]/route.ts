@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { reports } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function PATCH(
   request: Request,
@@ -9,10 +7,9 @@ export async function PATCH(
 ) {
   try {
     const { status } = await request.json();
-    const { id: idStr } = await params;
-    const id = parseInt(idStr);
-    
-    await db.update(reports).set({ status }).where(eq(reports.id, id));
+    const { id } = await params;
+    const service = new AppDataService();
+    await service.updateReportStatus(id, status);
     
     return NextResponse.json({ success: true });
   } catch (error) {

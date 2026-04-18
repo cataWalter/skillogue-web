@@ -1,6 +1,6 @@
-# Database Setup: Appwrite Cloud
+# Appwrite Setup
 
-This project uses Appwrite Cloud for both authentication and database.
+This project now uses Appwrite for the backend services it depends on in runtime: authentication, database documents, and optional function execution.
 
 ## What Changed
 
@@ -11,7 +11,7 @@ This project uses Appwrite Cloud for both authentication and database.
 - **Provider**: Appwrite Auth (managed authentication with email verification and recovery)
 
 ### ORM
-- **Provider**: Handled via `node-appwrite` SDK on the server and `appwrite` SDK on the client.
+- **Access Layer**: Handled via `node-appwrite` on the server and `appwrite` in the browser compatibility client.
 
 ## Prerequisites
 
@@ -21,26 +21,13 @@ This project uses Appwrite Cloud for both authentication and database.
    - `NEXT_PUBLIC_APPWRITE_PROJECT_ID`
    - `NEXT_PUBLIC_APPWRITE_DATABASE_ID`
    - `APPWRITE_API_KEY`
+   - Optional `APPWRITE_COLLECTION_*_ID` / `APPWRITE_FUNCTION_*_ID` overrides if your Appwrite resource IDs do not match the logical names used in code
 3. **Node.js**: v18+ required
 
 
 ## Setup Instructions
 
-### 1. Create/Prepare PostgreSQL Database
-
-Create a database `skillogue` (or your preferred name) and obtain a connection string. Example using local Postgres:
-
-```bash
-createdb skillogue
-```
-
-Your `DATABASE_URL` should look like:
-
-```
-postgresql://username:password@localhost:5432/skillogue
-```
-
-### 2. Configure Environment Variables
+### 1. Configure Environment Variables
 
 Copy `.env.example` to `.env` and fill in your values:
 
@@ -49,72 +36,71 @@ cp .env.example .env
 ```
 
 Required environment variables:
-- `DATABASE_URL`: Your Postgres connection string
 - `NEXT_PUBLIC_APP_URL`: Your app URL (e.g., `http://localhost:3000`)
 - `NEXT_PUBLIC_APPWRITE_ENDPOINT`: Your Appwrite Cloud endpoint
 - `NEXT_PUBLIC_APPWRITE_PROJECT_ID`: Your Appwrite project ID
-- `APPWRITE_API_KEY`: Appwrite server API key with at least `users.write` and `sessions.write`
+- `NEXT_PUBLIC_APPWRITE_DATABASE_ID`: Your Appwrite database ID
+- `APPWRITE_API_KEY`: Appwrite server API key with at least `users.write`, `sessions.write`, `databases.read`, and `databases.write`
 
-### 3. Run Database Migrations
+Optional environment variables:
+- `APPWRITE_COLLECTION_*_ID`: Explicit collection ID mapping when the collection ID is not the same as the logical name in code
+- `APPWRITE_FUNCTION_*_ID`: Explicit function ID mapping when a function ID differs from its logical name
 
-```bash
-# Apply migrations to create tables
-npm run db:migrate
+### 2. Create Appwrite Resources
 
-# Verify the migration
-npm run db:verify
-```
+Create the collections your app needs inside the configured Appwrite database. By default the app resolves collections by logical name, so the simplest path is to create IDs that match the code, for example:
 
-Alternatively, you can use Drizzle Kit:
+- `profiles`
+- `locations`
+- `passions`
+- `languages`
+- `profile_passions`
+- `profile_languages`
+- `favorites`
+- `messages`
+- `notifications`
+- `blocked_users`
+- `verification_requests`
+- `reports`
+- `push_subscriptions`
+- `analytics_events`
+- `contact_requests`
+- `saved_searches`
 
-```bash
-# Generate migration files from schema changes
-npm run db:generate
+If your Appwrite IDs differ, set the matching `APPWRITE_COLLECTION_*_ID` overrides in your environment.
 
-# Push schema directly to database
-npm run db:push
-```
-
-### 4. Install Dependencies
+### 3. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 5. Start Development Server
+### 4. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-## Database Schema
+### 5. Validate Configuration
 
-Auth is provided by Appwrite; application tables use Postgres and Drizzle ORM. Key tables include:
-
-- `profiles` - User profiles (extends auth users)
-- `locations`, `passions`, `languages` - Reference tables
-- `user_passions`, `profile_languages` - Junction tables
-- `messages`, `message_reads`, `notifications`, `favorites` - Application data
-
-## Migrating Legacy Data
-
-If you have existing data in another PostgreSQL provider, export/import using `pg_dump`/`psql`:
+Run a production build to validate the runtime wiring:
 
 ```bash
-# Export
-pg_dump -h <legacy-host> -U <username> -d <db> > backup.sql
+npm run build
+```
 
-# Import
-psql -h <new-host> -U <username> -d <db> < backup.sql
+If you have Appwrite CLI access, you can also verify connectivity with:
+
+```bash
+npx appwrite-cli --version
 ```
 
 ## Troubleshooting
 
-- Verify your `DATABASE_URL` is correct and reachable
-- Ensure SSL configuration is appropriate for your Postgres provider
-- For auth issues, verify Appwrite endpoint, project ID, and API key
+- Verify `NEXT_PUBLIC_APPWRITE_ENDPOINT`, `NEXT_PUBLIC_APPWRITE_PROJECT_ID`, `NEXT_PUBLIC_APPWRITE_DATABASE_ID`, and `APPWRITE_API_KEY`
+- If requests fail for specific collections, confirm the Appwrite collection IDs match the logical names or set `APPWRITE_COLLECTION_*_ID` overrides
+- If function invocations fail, confirm the function exists and set the matching `APPWRITE_FUNCTION_*_ID` override when needed
 
 ## Resources
 
 - [Appwrite Documentation](https://appwrite.io/docs)
-- [Drizzle ORM Documentation](https://orm.drizzle.team)

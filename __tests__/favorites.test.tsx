@@ -9,6 +9,10 @@ import '@testing-library/jest-dom';
 jest.mock('../src/lib/appClient', () => ({
   appClient: {
     rpc: jest.fn(),
+    auth: {
+      getUser: jest.fn(),
+    },
+    from: jest.fn(),
   },
 }));
 
@@ -261,5 +265,391 @@ describe('FavoritesPage', () => {
       // Should still render something even with null data
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
     });
+  });
+
+  it('handles fallback from saved_profiles rpc when code is 42883', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883', message: 'function does not exist' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'favorites') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_languages') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'locations') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      return { select: jest.fn() };
+    });
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("You haven't saved any profiles yet.")).toBeInTheDocument();
+    });
+  });
+
+  it('handles fallback from saved_profiles rpc when message contains uuid = name', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: 'PGRST301', message: 'relation "public.saved_profiles" does not exist' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'favorites') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_languages') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'locations') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      return { select: jest.fn() };
+    });
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("You haven't saved any profiles yet.")).toBeInTheDocument();
+    });
+  });
+
+  it('handles loadFavoritesFromTables with no auth', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: null, error: null });
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("You haven't saved any profiles yet.")).toBeInTheDocument();
+    });
+  });
+
+  it('handles loadFavoritesFromTables with auth error', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Auth error' } });
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("You haven't saved any profiles yet.")).toBeInTheDocument();
+    });
+  });
+
+  it('handles loadFavoritesFromTables with favorites error', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'favorites') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: null, error: { message: 'Favorites error' } })
+          }))
+        };
+      }
+      return { select: jest.fn() };
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith({ message: 'Favorites error' });
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('handles loadFavoritesFromTables with profiles error', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'favorites') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [{ favorite_id: 'fav-1' }], error: null })
+          }))
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: null, error: { message: 'Profiles error' } })
+          }))
+        };
+      }
+      return { select: jest.fn() };
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith({ message: 'Profiles error' });
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('handles loadFavoritesFromTables with passions error', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'favorites') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [{ favorite_id: 'fav-1' }], error: null })
+          }))
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [{ id: 'fav-1', location_id: 1 }], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: null, error: { message: 'Passions error' } })
+          }))
+        };
+      }
+      return { select: jest.fn() };
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith({ message: 'Passions error' });
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('handles loadFavoritesFromTables with languages error', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'favorites') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [{ favorite_id: 'fav-1' }], error: null })
+          }))
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [{ id: 'fav-1', location_id: 1 }], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_languages') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: null, error: { message: 'Languages error' } })
+          }))
+        };
+      }
+      return { select: jest.fn() };
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith({ message: 'Languages error' });
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('handles loadFavoritesFromTables with locations error', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'favorites') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [{ favorite_id: 'fav-1' }], error: null })
+          }))
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [{ id: 'fav-1', location_id: 1 }], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_languages') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'locations') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: null, error: { message: 'Locations error' } })
+          }))
+        };
+      }
+      return { select: jest.fn() };
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith({ message: 'Locations error' });
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('handles fallback error in useEffect', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883' }
+    });
+    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'favorites') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [{ favorite_id: 'fav-1' }], error: null })
+          }))
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [{ id: 'fav-1', location_id: 1 }], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_languages') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'locations') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [{ id: 1, city: 'NYC' }], error: null })
+          }))
+        };
+      }
+      return { select: jest.fn() };
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<FavoritesPage />);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith(new Error('Mock error'));
+    });
+    consoleSpy.mockRestore();
   });
 });

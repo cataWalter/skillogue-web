@@ -6,6 +6,7 @@
     "@dicebear/collection": "^9.2.3",
     "@dicebear/core": "^9.2.3",
     "@hookform/resolvers": "^5.2.2",
+    "appwrite": "^24.2.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "date-fns": "^4.1.0",

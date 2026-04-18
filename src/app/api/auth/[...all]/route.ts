@@ -31,13 +31,12 @@ const getUserAgent = (request: NextRequest) =>
 const getRequiredString = (value: unknown) =>
 	typeof value === 'string' ? value.trim() : '';
 
-const buildSessionPayload = (user: { $id: string; email: string; name?: string | null; image?: string | null }, expires: string) => ({
+const buildSessionPayload = (user: { $id: string; email: string; name?: string | null }, expires: string) => ({
 	session: {
 		user: {
 			id: user.$id,
 			email: user.email,
 			name: user.name ?? undefined,
-			image: user.image ?? undefined,
 		},
 		expires,
 	},
@@ -78,7 +77,9 @@ const handleAppwriteSignIn = async (request: NextRequest) => {
 	try {
 		const account = createAppwriteAdminAccount(getUserAgent(request));
 		const session = await account.createEmailPasswordSession({ email, password });
-		const response = NextResponse.json({ success: true });
+		const sessionAccount = createAppwriteSessionAccount(session.secret, getUserAgent(request));
+		const user = await sessionAccount.get();
+		const response = NextResponse.json(buildSessionPayload(user, session.expire));
 
 		setAppwriteSessionCookie(response, session.secret, session.expire);
 

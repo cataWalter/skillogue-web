@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { verificationRequests, profiles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function PATCH(
   request: Request,
@@ -9,16 +7,9 @@ export async function PATCH(
 ) {
   try {
     const { status, userId } = await request.json();
-    const { id: idStr } = await params;
-    const id = parseInt(idStr);
-    
-    // Update verification request status
-    await db.update(verificationRequests).set({ status }).where(eq(verificationRequests.id, id));
-    
-    // If approved, update profile verified status
-    if (status === 'approved' && userId) {
-      await db.update(profiles).set({ verified: true }).where(eq(profiles.id, userId));
-    }
+    const { id } = await params;
+    const service = new AppDataService();
+    await service.updateVerificationRequest(id, status, userId);
     
     return NextResponse.json({ success: true });
   } catch (error) {

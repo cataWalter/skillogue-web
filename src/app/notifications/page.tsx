@@ -12,7 +12,7 @@ const NotificationsPage: React.FC = () => {
 
     const getNotificationLink = (notification: typeof notifications[number]): string => {
         if (notification.type === 'new_message' && notification.actorId) {
-            return `/messages?with=${notification.actorId}`;
+            return `/messages?conversation=${notification.actorId}`;
         }
         // Fallback for other notification types or if actorId is null
         return '#';

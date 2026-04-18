@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { reports, profiles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function GET() {
   try {
-    const data = await db.select().from(reports).orderBy(reports.createdAt);
+    const service = new AppDataService();
+    const data = await service.listReports();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching reports:', error);

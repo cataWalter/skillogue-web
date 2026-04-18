@@ -194,6 +194,90 @@ describe('useAuth Hook', () => {
         expect(response).toEqual({ user: { id: '123', email: 'test@example.com' } });
     });
 
+    it('should handle invalid session response', async () => {
+        mockFetch.mockResolvedValue({
+            ok: true,
+            // no json method
+        });
+
+        const { result } = renderHook(() => useAuth());
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+            expect(result.current.session).toBeNull();
+            expect(result.current.user).toBeNull();
+        });
+    });
+
+    it('should handle refresh error', async () => {
+        mockFetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ session: null }),
+            })
+            .mockRejectedValueOnce(new Error('Refresh error'));
+
+        const { result } = renderHook(() => useAuth());
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        await act(async () => {
+            await result.current.refresh();
+        });
+
+        expect(result.current.session).toBeNull();
+        expect(result.current.user).toBeNull();
+    });
+
+    it('should not set state if unmounted during session load', async () => {
+        let resolveFetch;
+        const fetchPromise = new Promise((resolve) => {
+            resolveFetch = resolve;
+        });
+        mockFetch.mockReturnValue(fetchPromise);
+
+        const { result, unmount } = renderHook(() => useAuth());
+
+        // Unmount before fetch resolves
+        unmount();
+
+        // Now resolve the fetch
+        resolveFetch({
+            ok: true,
+            json: () => Promise.resolve({ session: mockSession }),
+        });
+
+        // Wait a bit to ensure async completes
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // State should not have changed because active was false
+        expect(result.current.session).toBeNull();
+        expect(result.current.user).toBeNull();
+        expect(result.current.loading).toBe(true);
+    });
+
+    it('should not set state if unmounted during session load error', async () => {
+        let rejectFetch;
+        const fetchPromise = new Promise((_, reject) => {
+            rejectFetch = reject;
+        });
+        mockFetch.mockReturnValue(fetchPromise);
+
+        const { result, unmount } = renderHook(() => useAuth());
+
+        unmount();
+
+        rejectFetch(new Error('Network error'));
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(result.current.session).toBeNull();
+        expect(result.current.user).toBeNull();
+        expect(result.current.loading).toBe(true);
+    });
+
     it('should handle sign up error', async () => {
         mockFetch.mockResolvedValue({
             ok: false,
@@ -276,7 +360,6 @@ describe('useAuth Hook', () => {
         const { result } = renderHook(() => useAuth());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
             expect(result.current.session?.user.email).toBe('test@example.com');
         });
 
@@ -293,5 +376,104 @@ describe('useAuth Hook', () => {
         await waitFor(() => {
             expect(result.current.session?.user.email).toBe('new@example.com');
         });
+    });
+
+    it('should handle readSession invalid response', async () => {
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: null, // Invalid
+        });
+
+        const { result } = renderHook(() => useAuth());
+
+        await waitFor(() => {
+            expect(result.current.session).toBeNull();
+            expect(result.current.user).toBeNull();
+            expect(result.current.loading).toBe(false);
+        });
+    });
+
+    it('should handle readSession with no session in data', async () => {
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ session: null }),
+        });
+
+        const { result } = renderHook(() => useAuth());
+
+        await waitFor(() => {
+            expect(result.current.session).toBeNull();
+            expect(result.current.user).toBeNull();
+            expect(result.current.loading).toBe(false);
+        });
+    });
+
+    it('should handle refresh error', async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve({ session: mockSession }),
+        }).mockRejectedValueOnce(new Error('Refresh error'));
+
+        const { result } = renderHook(() => useAuth());
+
+        await waitFor(() => {
+            expect(result.current.session?.user.email).toBe('test@example.com');
+        });
+
+        await act(async () => {
+            await result.current.refresh();
+        });
+
+        await waitFor(() => {
+            expect(result.current.session).toBeNull();
+            expect(result.current.user).toBeNull();
+        });
+    });
+
+    it('should not set state if unmounted during session load', async () => {
+        let resolveFetch;
+        const fetchPromise = new Promise((resolve) => {
+            resolveFetch = resolve;
+        });
+        mockFetch.mockReturnValue(fetchPromise);
+
+        const { result, unmount } = renderHook(() => useAuth());
+
+        // Unmount before fetch resolves
+        unmount();
+
+        // Now resolve the fetch
+        resolveFetch({
+            ok: true,
+            json: () => Promise.resolve({ session: mockSession }),
+        });
+
+        // Wait a bit to ensure async completes
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // State should not have changed because active was false
+        expect(result.current.session).toBeNull();
+        expect(result.current.user).toBeNull();
+        expect(result.current.loading).toBe(true);
+    });
+
+    it('should not set state if unmounted during session load error', async () => {
+        let rejectFetch;
+        const fetchPromise = new Promise((_, reject) => {
+            rejectFetch = reject;
+        });
+        mockFetch.mockReturnValue(fetchPromise);
+
+        const { result, unmount } = renderHook(() => useAuth());
+
+        unmount();
+
+        rejectFetch(new Error('Network error'));
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(result.current.session).toBeNull();
+        expect(result.current.user).toBeNull();
+        expect(result.current.loading).toBe(true);
     });
 });

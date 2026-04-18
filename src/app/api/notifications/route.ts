@@ -1,11 +1,14 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { notifications } from '@/lib/db/schema';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAppwriteSessionSecret } from '@/lib/appwrite/server';
+import { AppDataService } from '@/lib/server/app-data-service';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // In a real implementation, you would get the user ID from the session
-    const data = await db.select().from(notifications).orderBy(notifications.createdAt);
+    const service = new AppDataService(
+      getAppwriteSessionSecret(request),
+      request.headers.get('user-agent') ?? undefined
+    );
+    const data = await service.listNotifications();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching notifications:', error);

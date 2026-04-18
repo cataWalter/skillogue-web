@@ -301,9 +301,132 @@ describe('UserProfile', () => {
 
   it('shows loading state initially', async () => {
     render(<UserProfile />);
-    
+
     // Should show loading skeleton before data loads
     // The ProfileSkeleton component renders with animate-pulse class
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
+  });
+
+  it('handles passions fetch error', async () => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({ data: mockProfile, error: null }),
+            })),
+          })),
+        };
+      }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: null, error: { message: 'Passions error' } }),
+          })),
+        };
+      }
+      return { select: jest.fn() };
+    });
+
+    render(<UserProfile />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    });
+    // Should still render even if passions fail
+  });
+
+  it('handles languages fetch error', async () => {
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({ data: mockProfile, error: null }),
+            })),
+          })),
+        };
+      }
+      if (table === 'profile_languages') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: null, error: { message: 'Languages error' } }),
+          })),
+        };
+      }
+      return { select: jest.fn() };
+    });
+
+    render(<UserProfile />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    });
+  });
+
+  it('handles own profile redirect', async () => {
+    (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-123' } } }, error: null });
+
+    render(<UserProfile />);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/profile');
+    });
+  });
+
+  it('handles blocked by user check error', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_blocked_by') return Promise.resolve({ data: null, error: { message: 'Blocked by error' } });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    render(<UserProfile />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    });
+  });
+
+  it('handles is_saved rpc error', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_saved') return Promise.resolve({ data: null, error: { message: 'Saved check error' } });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    render(<UserProfile />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    });
+  });
+
+  it('handles checkBlockStatus error', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_blocked') return Promise.resolve({ data: null, error: { message: 'Block check error' } });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    render(<UserProfile />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    });
+  });
+
+  it('handles unblock user confirm cancel', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'is_blocked') return Promise.resolve({ data: true, error: null });
+      return Promise.resolve({ data: null, error: null });
+    });
+    window.confirm = jest.fn(() => false);
+
+    render(<UserProfile />);
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+
+    const unblockButton = screen.getByTitle('Unblock User');
+    fireEvent.click(unblockButton);
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(appClient.rpc).not.toHaveBeenCalledWith('unblock_user', expect.anything());
   });
 });

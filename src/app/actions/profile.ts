@@ -1,10 +1,10 @@
 'use server';
 
-import { profileSchema } from '../../lib/schemas';
+import { profileSchema } from '@/lib/schemas';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getCurrentUserFromCookies } from '@/lib/server/current-user';
-import { saveProfileData } from '@/lib/server/app-data';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function updateProfile(data: z.infer<typeof profileSchema>) {
   try {
@@ -15,7 +15,8 @@ export async function updateProfile(data: z.infer<typeof profileSchema>) {
       return { success: false, error: 'Not authenticated' };
     }
 
-    await saveProfileData(currentUser.id, validatedData);
+    const service = new AppDataService();
+    await service.saveProfileData(currentUser.id, validatedData);
     
     revalidatePath('/profile');
     revalidatePath('/dashboard');

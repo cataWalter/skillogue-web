@@ -2,17 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAppwriteSessionSecret } from '@/lib/appwrite/server';
 import { AppDataService } from '@/lib/server/app-data-service';
 
-export async function POST(request: NextRequest) {
+export async function PATCH(request: NextRequest) {
   try {
-    const payload = await request.json();
     const service = new AppDataService(
       getAppwriteSessionSecret(request),
       request.headers.get('user-agent') ?? undefined
     );
-    const result = await service.executeCompatRpc(payload.name ?? '', payload.args ?? {});
-    
-    return NextResponse.json(result);
+    await service.markAllNotificationsRead();
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
+    console.error('Error marking all notifications as read:', error);
+    return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 });
   }
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useMasterData } from '../hooks/useMasterData';
 
 interface PassionSpotlightProps {
-  userPassions?: Array<{ passion_id: number }>;
+  userPassions?: Array<{ passion_id: number | string }>;
   userId?: string;
 }
 
@@ -18,7 +18,7 @@ const PassionSpotlight = ({ userPassions, userId }: PassionSpotlightProps) => {
       if (userPassions && userPassions.length > 0) {
         const userPassionIds = userPassions.map(p => p.passion_id);
         const randomUserPassionId = userPassionIds[Math.floor(Math.random() * userPassionIds.length)];
-        const userPassion = passions.find(p => p.id === randomUserPassionId);
+        const userPassion = passions.find(p => String(p.id) === String(randomUserPassionId));
         if (userPassion) {
           setFeaturedPassion(userPassion);
           return;

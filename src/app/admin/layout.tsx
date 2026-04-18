@@ -38,33 +38,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         checkAdmin();
     }, [user, router]);
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-black text-white">Checking permissions...</div>;
-
+    if (loading) return <div>Loading...</div>;
     if (!isAdmin) return null;
 
     return (
-        <div className="min-h-screen bg-black text-white flex">
-            {/* Sidebar */}
-            <aside className="w-64 border-r border-gray-800 p-6 hidden md:block sticky top-0 h-screen">
-                <div className="flex items-center gap-2 mb-8 text-indigo-400 font-bold text-xl">
-                    <Shield /> Admin Panel
-                </div>
+        <div className="flex">
+            <aside className="w-64 bg-gray-800 text-white p-4">
                 <nav className="space-y-2">
-                    <Link href="/admin" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition text-gray-300 hover:text-white">
-                        <LayoutDashboard size={20} /> Dashboard
+                    <Link href="/admin/dashboard" className="block py-2 px-3 rounded hover:bg-gray-700">
+                        <LayoutDashboard size={18} className="inline-block mr-2" />
+                        Dashboard
                     </Link>
-                    <Link href="/admin/verification" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition text-gray-300 hover:text-white">
-                        <Users size={20} /> Verifications
+                    <Link href="/admin/users" className="block py-2 px-3 rounded hover:bg-gray-700">
+                        <Users size={18} className="inline-block mr-2" />
+                        Users
                     </Link>
-                    <Link href="/admin/reports" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition text-gray-300 hover:text-white">
-                        <FileText size={20} /> Reports
+                    <Link href="/admin/reports" className="block py-2 px-3 rounded hover:bg-gray-700">
+                        <FileText size={18} className="inline-block mr-2" />
+                        Reports
+                    </Link>
+                    <Link href="/admin/verification" className="block py-2 px-3 rounded hover:bg-gray-700">
+                        <Shield size={18} className="inline-block mr-2" />
+                        Verification
                     </Link>
                 </nav>
             </aside>
-            
-            <main className="flex-grow p-8 overflow-y-auto">
-                {children}
-            </main>
+            <main className="flex-1 p-6">{children}</main>
         </div>
     );
 }

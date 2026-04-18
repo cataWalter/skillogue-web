@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { analyticsEvents } from '@/lib/db/schema';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function POST(request: Request) {
   try {
     const { eventName, properties, path } = await request.json();
-    
-    await db.insert(analyticsEvents).values({
+    const service = new AppDataService();
+
+    await service.trackAnalyticsEvent({
       eventName,
       properties: properties || {},
       path,

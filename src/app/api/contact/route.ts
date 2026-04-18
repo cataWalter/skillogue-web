@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { contactRequests } from '@/lib/db/schema';
+import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function POST(request: Request) {
   try {
     const { name, email, subject, message, category } = await request.json();
-    
-    await db.insert(contactRequests).values({
+    const service = new AppDataService();
+
+    await service.createContactRequest({
       name,
       email,
       subject,
       message,
-      status: 'pending',
+      category,
     });
     
     return NextResponse.json({ success: true });

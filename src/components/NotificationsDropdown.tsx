@@ -10,7 +10,7 @@ const NotificationsDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =
 
     const getNotificationLink = (notification: typeof notifications[number]): string => {
         if (notification.type === 'new_message' && notification.actorId) {
-            return `/messages?with=${notification.actorId}`;
+            return `/messages?conversation=${notification.actorId}`;
         }
         return '/notifications'; // Fallback link
     };

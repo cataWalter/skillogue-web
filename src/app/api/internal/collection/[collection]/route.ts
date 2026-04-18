@@ -4,19 +4,27 @@ import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ name: string }> }
+  { params }: { params: Promise<{ collection: string }> }
 ) {
   try {
     const payload = await request.json();
-    const { name } = await params;
+    const { collection } = await params;
     const service = new AppDataService(
       getAppwriteSessionSecret(request),
       request.headers.get('user-agent') ?? undefined
     );
-    const result = await service.invokeCompatFunction(name, payload.body ?? {});
-    
+    const result = await service.executeCollectionOperation(collection, payload);
+
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      {
+        data: null,
+        error: {
+          message: error instanceof Error ? error.message : 'Internal server error',
+        },
+      },
+      { status: 500 }
+    );
   }
 }
