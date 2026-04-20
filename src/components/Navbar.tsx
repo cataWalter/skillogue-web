@@ -2,16 +2,28 @@
 
 import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, User, Settings, LogOut, Heart, MessageCircle, Bell, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, refresh } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+
+  useEffect(() => {
+    void refresh();
+  }, [pathname, refresh]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setMobileMenuOpen(false);
+    router.replace('/');
+    router.refresh();
+  };
 
   const navItems = user ? [
     { href: '/dashboard', icon: Search, label: 'Search' },
@@ -49,7 +61,7 @@ const Navbar = () => {
                 </Link>
               ))}
               <button
-                onClick={() => signOut()}
+                onClick={() => void handleSignOut()}
                 className="flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
               >
                 <LogOut size={18} />
@@ -90,10 +102,7 @@ const Navbar = () => {
                   </Link>
                 ))}
                 <button
-                  onClick={() => {
-                    signOut();
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={() => void handleSignOut()}
                   className="flex items-center gap-3 w-full px-3 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
                 >
                   <LogOut size={18} />

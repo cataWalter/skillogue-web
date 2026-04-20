@@ -75,11 +75,13 @@ const SignUp: React.FC = () => {
                         </label>
                         <input
                             id="email"
+                            name="email"
                             type="email"
                             placeholder="you@example.com"
                             value={email}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-white placeholder-gray-500"
+                            autoComplete="email"
                             disabled={loading}
                         />
                     </div>
@@ -90,11 +92,13 @@ const SignUp: React.FC = () => {
                         </label>
                         <input
                             id="password"
+                            name="password"
                             type="password"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-white placeholder-gray-500"
+                            autoComplete="new-password"
                             disabled={loading}
                         />
                         <PasswordStrengthMeter password={password} />
@@ -103,6 +107,7 @@ const SignUp: React.FC = () => {
                     <div className="flex items-start gap-3">
                         <input
                             id="agreed"
+                            name="agreed"
                             type="checkbox"
                             checked={agreed}
                             onChange={(e) => setAgreed(e.target.checked)}

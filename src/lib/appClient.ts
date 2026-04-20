@@ -83,6 +83,16 @@ const toCompatResponse = async <T>(response: Response): Promise<QueryResponse<T>
   return (payload as QueryResponse<T>) ?? { data: null as T, error: null };
 };
 
+const callInternalRpc = async <T>(name: string, args?: Record<string, any>) => {
+  const response = await fetch('/api/internal/rpc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, args: args ?? {} }),
+  });
+
+  return toCompatResponse<T>(response);
+};
+
 const fetchSession = async () => {
   const response = await fetch('/api/auth/session', { cache: 'no-store' });
   const payload = (await parseResponse(response)) as SessionPayload | { message?: string } | null;
@@ -161,9 +171,75 @@ class CompatChannel {
   private readonly presenceHandlers: Array<() => void> = [];
   private readonly unsubscribeCallbacks: Array<() => void> = [];
   private readonly trackedPresence: Record<string, any[]> = {};
+  private trackedPresenceUserId?: string;
+  private presenceSyncIntervalId: number | null = null;
+  private presenceHeartbeatIntervalId: number | null = null;
 
   constructor(name: string) {
     this.name = name;
+  }
+
+  private emitPresence() {
+    for (const handler of this.presenceHandlers) {
+      handler();
+    }
+  }
+
+  private replacePresenceState(rows: Array<Record<string, any>>) {
+    for (const key of Object.keys(this.trackedPresence)) {
+      delete this.trackedPresence[key];
+    }
+
+    for (const row of rows) {
+      if (!row?.user_id) {
+        continue;
+      }
+
+      this.trackedPresence[String(row.user_id)] = [row];
+    }
+  }
+
+  private async syncPresenceState() {
+    if (this.name !== 'online-users') {
+      this.emitPresence();
+      return;
+    }
+
+    const { data, error } = await callInternalRpc<Array<Record<string, any>>>('get_online_users');
+
+    if (error) {
+      return;
+    }
+
+    this.replacePresenceState(Array.isArray(data) ? data : []);
+    this.emitPresence();
+  }
+
+  private ensurePresenceSyncInterval() {
+    if (this.presenceSyncIntervalId !== null || this.name !== 'online-users') {
+      return;
+    }
+
+    this.presenceSyncIntervalId = window.setInterval(() => {
+      void this.syncPresenceState();
+    }, 15000);
+  }
+
+  private ensurePresenceHeartbeat() {
+    if (this.presenceHeartbeatIntervalId !== null || this.name !== 'online-users' || !this.trackedPresenceUserId) {
+      return;
+    }
+
+    this.presenceHeartbeatIntervalId = window.setInterval(() => {
+      if (!this.trackedPresenceUserId) {
+        return;
+      }
+
+      void callInternalRpc('track_presence', {
+        user_id: this.trackedPresenceUserId,
+        online_at: new Date().toISOString(),
+      });
+    }, 30000);
   }
 
   on(
@@ -239,11 +315,16 @@ class CompatChannel {
     queueMicrotask(() => callback?.('SUBSCRIBED'));
 
     if (this.presenceHandlers.length) {
-      queueMicrotask(() => {
-        for (const handler of this.presenceHandlers) {
-          handler();
-        }
-      });
+      if (this.name === 'online-users') {
+        this.ensurePresenceSyncInterval();
+        queueMicrotask(() => {
+          void this.syncPresenceState();
+        });
+      } else {
+        queueMicrotask(() => {
+          this.emitPresence();
+        });
+      }
     }
 
     return this;
@@ -251,12 +332,29 @@ class CompatChannel {
 
   async track(payload: Record<string, any>) {
     if (payload?.user_id) {
-      this.trackedPresence[String(payload.user_id)] = [payload];
+      const userId = String(payload.user_id);
+      const onlineAt = typeof payload.online_at === 'string' ? payload.online_at : new Date().toISOString();
+      const normalizedPayload = {
+        ...payload,
+        user_id: userId,
+        online_at: onlineAt,
+      };
+
+      this.trackedPresenceUserId = userId;
+      this.trackedPresence[userId] = [normalizedPayload];
+
+      if (this.name === 'online-users') {
+        const { error } = await callInternalRpc('track_presence', normalizedPayload);
+
+        if (!error) {
+          this.ensurePresenceHeartbeat();
+          await this.syncPresenceState();
+          return;
+        }
+      }
     }
 
-    for (const handler of this.presenceHandlers) {
-      handler();
-    }
+    this.emitPresence();
   }
 
   presenceState() {
@@ -264,6 +362,22 @@ class CompatChannel {
   }
 
   unsubscribe() {
+    if (this.presenceSyncIntervalId !== null) {
+      window.clearInterval(this.presenceSyncIntervalId);
+      this.presenceSyncIntervalId = null;
+    }
+
+    if (this.presenceHeartbeatIntervalId !== null) {
+      window.clearInterval(this.presenceHeartbeatIntervalId);
+      this.presenceHeartbeatIntervalId = null;
+    }
+
+    if (this.name === 'online-users' && this.trackedPresenceUserId) {
+      void callInternalRpc('clear_presence', { user_id: this.trackedPresenceUserId });
+      delete this.trackedPresence[this.trackedPresenceUserId];
+      this.trackedPresenceUserId = undefined;
+    }
+
     for (const callback of this.unsubscribeCallbacks) {
       callback();
     }
@@ -483,13 +597,7 @@ export const appClient = {
     return new CompatQueryBuilder<T>(collection);
   },
   async rpc<T = any>(name: string, args?: Record<string, any>) {
-    const response = await fetch('/api/internal/rpc', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, args: args ?? {} }),
-    });
-
-    return toCompatResponse<T>(response);
+    return callInternalRpc<T>(name, args);
   },
   functions: {
     async invoke(name: string, options?: { body?: Record<string, any> }) {

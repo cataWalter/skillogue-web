@@ -11,9 +11,11 @@ interface MultiSelectProps {
     onChange: (selected: string[]) => void;
     label: string;
     placeholder?: string;
+    id?: string;
+    name?: string;
 }
 
-const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, label, placeholder }) => {
+const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, label, placeholder, id, name }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -46,7 +48,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
         option.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const inputId = `multiselect-${label.replace(/\s+/g, '-').toLowerCase()}`;
+    const inputId = id ?? `multiselect-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
     return (
         <div className="relative" ref={wrapperRef}>
@@ -77,6 +79,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                 ))}
                 <input
                     id={inputId}
+                    name={name ?? inputId}
                     type="text"
                     role="combobox"
                     aria-controls={`${inputId}-listbox`}
@@ -87,6 +90,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                     onFocus={() => setIsOpen(true)}
                     aria-expanded={isOpen}
                     aria-haspopup="listbox"
+                    autoComplete="off"
                 />
                 <ChevronDown className="text-gray-400 ml-auto self-center" size={20} />
             </div>

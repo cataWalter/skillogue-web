@@ -446,6 +446,20 @@ describe('FavoritesPage', () => {
           }))
         };
       }
+      if (table === 'profile_passions') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
+      if (table === 'profile_languages') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        };
+      }
       return { select: jest.fn() };
     });
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -483,6 +497,13 @@ describe('FavoritesPage', () => {
         return {
           select: jest.fn(() => ({
             in: jest.fn().mockResolvedValue({ data: null, error: { message: 'Passions error' } })
+          }))
+        };
+      }
+      if (table === 'profile_languages') {
+        return {
+          select: jest.fn(() => ({
+            in: jest.fn().mockResolvedValue({ data: [], error: null })
           }))
         };
       }
@@ -637,7 +658,7 @@ describe('FavoritesPage', () => {
       if (table === 'locations') {
         return {
           select: jest.fn(() => ({
-            in: jest.fn().mockResolvedValue({ data: [{ id: 1, city: 'NYC' }], error: null })
+            in: jest.fn().mockResolvedValue({ data: null, error: { message: 'Mock error' } })
           }))
         };
       }
@@ -648,7 +669,8 @@ describe('FavoritesPage', () => {
     render(<FavoritesPage />);
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(new Error('Mock error'));
+      expect(consoleSpy).toHaveBeenCalledWith({ message: 'Mock error' });
+      expect(toast.error).toHaveBeenCalledWith('Failed to load favorites');
     });
     consoleSpy.mockRestore();
   });

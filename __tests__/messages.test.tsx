@@ -87,17 +87,25 @@ describe('Messages Page', () => {
     },
   ];
 
+  const buildRpcMock = (overrides: Record<string, { data?: unknown; error?: unknown }> = {}) => {
+    return (fn: string) => {
+      if (fn in overrides) {
+        return Promise.resolve(overrides[fn]);
+      }
+
+      if (fn === 'get_conversations') return Promise.resolve({ data: mockConversations, error: null });
+      if (fn === 'mark_messages_as_read') return Promise.resolve({ error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+      return Promise.resolve({ data: null, error: null });
+    };
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
     
     // Mock RPCs
-    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-      if (fn === 'get_conversations') return Promise.resolve({ data: mockConversations, error: null });
-      if (fn === 'mark_messages_as_read') return Promise.resolve({ error: null });
-      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
-      return Promise.resolve({ data: null, error: null });
-    });
+    (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock());
 
     // Mock DB queries
     (appClient.from as jest.Mock).mockImplementation((table) => {
@@ -321,10 +329,9 @@ describe('Messages Page', () => {
 
   it('handles loadConversations error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-      if (fn === 'get_conversations') return Promise.resolve({ data: null, error: { message: 'Conversations error' } });
-      return Promise.resolve({ data: null, error: null });
-    });
+    (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock({
+      get_conversations: { data: null, error: { message: 'Conversations error' } },
+    }));
 
     render(<Messages />);
 
@@ -336,10 +343,9 @@ describe('Messages Page', () => {
 
   it('handles markMessagesAsRead error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-      if (fn === 'mark_messages_as_read') return Promise.resolve({ error: { message: 'Mark read error' } });
-      return Promise.resolve({ data: null, error: null });
-    });
+    (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock({
+      mark_messages_as_read: { error: { message: 'Mark read error' } },
+    }));
 
     render(<Messages />);
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
@@ -381,46 +387,73 @@ describe('Messages Page', () => {
 
   it('handles refreshActiveConversation error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const intervalCallbacks: Array<() => void> = [];
+    const setIntervalSpy = jest.spyOn(window, 'setInterval').mockImplementation(((callback: TimerHandler) => {
+      if (typeof callback === 'function') {
+        intervalCallbacks.push(callback as () => void);
+      }
+
+      return 1 as unknown as number;
+    }) as typeof window.setInterval);
+    let rangeCallCount = 0;
+    const rangeMock = jest.fn().mockImplementation(() => {
+      rangeCallCount += 1;
+
+      if (rangeCallCount === 1) {
+        return Promise.resolve({ data: mockMessages, error: null });
+      }
+
+      return Promise.resolve({ data: null, error: { message: 'Refresh error' } });
+    });
+    const messagesTableMock = {
+      select: jest.fn(() => ({
+        or: jest.fn(() => ({
+          order: jest.fn(() => ({
+            range: rangeMock,
+          })),
+        })),
+      })),
+      insert: jest.fn().mockResolvedValue({ error: null }),
+    };
+
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'messages') {
-        return {
-          select: jest.fn(() => ({
-            or: jest.fn(() => ({
-              order: jest.fn(() => ({
-                range: jest.fn().mockResolvedValueOnce({ data: mockMessages, error: null }).mockResolvedValueOnce({ data: null, error: { message: 'Refresh error' } }),
-              })),
-            })),
-          })),
-          insert: jest.fn().mockResolvedValue({ error: null }),
-        };
+        return messagesTableMock;
       }
+
       return { select: jest.fn() };
     });
 
     render(<Messages />);
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
+    await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
+
+    await act(async () => {
+      intervalCallbacks.forEach((callback) => callback());
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith('Error refreshing conversation:', { message: 'Refresh error' });
     });
+    setIntervalSpy.mockRestore();
     consoleSpy.mockRestore();
   });
 
   it('handles checkBlockedStatus error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-      if (fn === 'is_blocked') return Promise.resolve({ data: null, error: { message: 'Blocked check error' } });
-      return Promise.resolve({ data: null, error: null });
-    });
+    (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock({
+      is_blocked: { data: null, error: { message: 'Blocked check error' } },
+    }));
 
     render(<Messages />);
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
+    await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
 
-    // checkBlockedStatus is called in useEffect
     await waitFor(() => {
-      // Since it's async, we can check after some time
+      expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
     });
   });
 
@@ -428,10 +461,9 @@ describe('Messages Page', () => {
     window.confirm = jest.fn(() => true);
     window.alert = jest.fn();
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-      if (fn === 'block_user') return Promise.resolve({ error: { message: 'Block error' } });
-      return Promise.resolve({ data: null, error: null });
-    });
+    (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock({
+      block_user: { error: { message: 'Block error' } },
+    }));
 
     render(<Messages />);
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
@@ -450,6 +482,30 @@ describe('Messages Page', () => {
 
   it('handles sendMessage error in push notification', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const insertMock = jest.fn().mockResolvedValue({ error: null });
+
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'messages') {
+        return {
+          select: jest.fn(() => ({
+            or: jest.fn(() => ({
+              order: jest.fn(() => ({
+                range: jest.fn().mockResolvedValue({ data: mockMessages, error: null }),
+              })),
+            })),
+          })),
+          insert: insertMock,
+        };
+      }
+
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          })),
+        })),
+      };
+    });
     (appClient.functions.invoke as jest.Mock).mockRejectedValue(new Error('Push error'));
 
     render(<Messages />);
@@ -461,10 +517,35 @@ describe('Messages Page', () => {
     fireEvent.change(input, { target: { value: 'New message' } });
 
     const form = input.closest('form');
-    fireEvent.submit(form!);
+    await act(async () => {
+      fireEvent.submit(form!);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to send push:', new Error('Push error'));
+      expect(insertMock).toHaveBeenCalledWith({
+        sender_id: 'me-123',
+        receiver_id: 'user-1',
+        content: 'New message',
+      });
+      expect(appClient.functions.invoke).toHaveBeenCalledWith('send-push', {
+        body: {
+          receiver_id: 'user-1',
+          title: 'New Message',
+          body: 'New message',
+          url: '/messages?conversation=me-123',
+        },
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to send push:', expect.any(Error));
     });
     consoleSpy.mockRestore();
   });

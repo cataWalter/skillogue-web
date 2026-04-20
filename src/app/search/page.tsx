@@ -393,51 +393,65 @@ const Search: React.FC = () => {
                         </h2>
                         <form onSubmit={handleSearch} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Keywords</label>
+                                <label htmlFor="search-query" className="block text-sm font-medium text-gray-400 mb-1">Keywords</label>
                                 <input
+                                    id="search-query"
+                                    name="query"
                                     type="text"
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     placeholder="Name, bio, etc."
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    autoComplete="off"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Location</label>
+                                <label htmlFor="search-location" className="block text-sm font-medium text-gray-400 mb-1">Location</label>
                                 <input
+                                    id="search-location"
+                                    name="location"
                                     type="text"
                                     value={location}
                                     onChange={(e) => setLocation(e.target.value)}
                                     placeholder="City, Country"
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    autoComplete="off"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-1">Min Age</label>
+                                    <label htmlFor="search-min-age" className="block text-sm font-medium text-gray-400 mb-1">Min Age</label>
                                     <input
+                                        id="search-min-age"
+                                        name="minAge"
                                         type="number"
                                         value={minAge}
                                         onChange={(e) => setMinAge(e.target.value)}
                                         className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        inputMode="numeric"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-1">Max Age</label>
+                                    <label htmlFor="search-max-age" className="block text-sm font-medium text-gray-400 mb-1">Max Age</label>
                                     <input
+                                        id="search-max-age"
+                                        name="maxAge"
                                         type="number"
                                         value={maxAge}
                                         onChange={(e) => setMaxAge(e.target.value)}
                                         className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        inputMode="numeric"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Gender</label>
+                                <label htmlFor="search-gender" className="block text-sm font-medium text-gray-400 mb-1">Gender</label>
                                 <select
+                                    id="search-gender"
+                                    name="gender"
                                     value={gender}
                                     onChange={(e) => setGender(e.target.value)}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -451,13 +465,16 @@ const Search: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Language</label>
+                                <label htmlFor="search-language" className="block text-sm font-medium text-gray-400 mb-1">Language</label>
                                 <input
+                                    id="search-language"
+                                    name="language"
                                     type="text"
                                     value={language}
                                     onChange={(e) => setLanguage(e.target.value)}
                                     placeholder="English, Spanish..."
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    autoComplete="off"
                                 />
                             </div>
 
@@ -468,6 +485,8 @@ const Search: React.FC = () => {
                                     selected={selectedPassions}
                                     onChange={setSelectedPassions}
                                     placeholder="Select passions..."
+                                    id="search-passions"
+                                    name="passions"
                                 />
                             </div>
 
@@ -540,7 +559,10 @@ const Search: React.FC = () => {
                                 <span className="text-sm text-gray-400">
                                     {totalResults} {totalResults === 1 ? 'result' : 'results'}
                                 </span>
+                                <label htmlFor="search-sort" className="sr-only">Sort results</label>
                                 <select
+                                    id="search-sort"
+                                    name="sortBy"
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value as 'recent' | 'passions')}
                                     className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -683,12 +705,16 @@ const Search: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75">
                     <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full border border-gray-700">
                         <h3 className="text-xl font-bold mb-4">Save Search</h3>
+                        <label htmlFor="save-search-name" className="block text-sm font-medium text-gray-400 mb-2">Search name</label>
                         <input
+                            id="save-search-name"
+                            name="saveSearchName"
                             type="text"
                             value={saveSearchName}
                             onChange={(e) => setSaveSearchName(e.target.value)}
                             placeholder="Give this search a name..."
                             className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            autoComplete="off"
                         />
                         <div className="flex justify-end gap-3">
                             <button

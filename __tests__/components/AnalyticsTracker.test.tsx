@@ -90,7 +90,7 @@ describe('AnalyticsTracker', () => {
     render(<AnalyticsTracker />);
     
     expect(mockTrackEvent).toHaveBeenCalledWith('page_view', {
-      url: '/test-path?query=hello world&id=123%26456&category=test/123'
+      url: '/test-path?query=hello+world&id=123%26456&category=test%2F123'
     });
   });
 

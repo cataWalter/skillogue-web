@@ -53,11 +53,13 @@ const Login: React.FC = () => {
                             </label>
                             <input
                                 id="email"
+                                name="email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400 transition"
                                 placeholder="you@example.com"
+                                autoComplete="email"
                                 disabled={loading}
                             />
                         </div>
@@ -68,11 +70,13 @@ const Login: React.FC = () => {
                             </label>
                             <input
                                 id="password"
+                                name="password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400 transition"
                                 placeholder="••••••••"
+                                autoComplete="current-password"
                                 disabled={loading}
                             />
                         </div>

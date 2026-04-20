@@ -138,6 +138,8 @@ const compareValues = (left: unknown, right: unknown) => {
   return String(left ?? '').localeCompare(String(right ?? ''));
 };
 
+const PRESENCE_TTL_MS = 60_000;
+
 const toCompatError = (error: unknown, fallbackMessage = 'Request failed.'): CompatError => ({
   message: getAppwriteErrorMessage(error, fallbackMessage),
   code:
@@ -248,6 +250,40 @@ export class AppDataService {
     return documents.map((document) => normalizeDocument(document));
   }
 
+  private async listDocumentsPage(collection: string, queries: string[] = [], limit = BATCH_SIZE, offset = 0) {
+    const response = await this.repo.listDocuments<any>(this.getCollectionId(collection), [
+      ...queries,
+      Query.limit(limit),
+      Query.offset(offset),
+    ]);
+
+    return response.documents.map((document) => normalizeDocument(document));
+  }
+
+  private async listDocumentsWindow(collection: string, queries: string[] = [], targetCount: number | null = null) {
+    if (targetCount === null) {
+      return this.listAllDocuments(collection, queries);
+    }
+
+    const documents: Record<string, any>[] = [];
+    let offset = 0;
+
+    while (documents.length < targetCount) {
+      const batchLimit = Math.min(BATCH_SIZE, targetCount - documents.length);
+      const batch = await this.listDocumentsPage(collection, queries, batchLimit, offset);
+
+      documents.push(...batch);
+
+      if (batch.length < batchLimit) {
+        break;
+      }
+
+      offset += batch.length;
+    }
+
+    return documents;
+  }
+
   private parseMessageOrExpression(expression: string) {
     const match = expression.match(
       /^and\(sender_id\.eq\.([^,]+),receiver_id\.eq\.([^\)]+)\),and\(sender_id\.eq\.([^,]+),receiver_id\.eq\.([^\)]+)\)$/
@@ -310,6 +346,101 @@ export class AppDataService {
     return documents.filter((document) => filters.every((filter) => this.matchesFilter(document, filter)));
   }
 
+  private getWindowParameters(operation: CollectionOperation) {
+    const offset = operation.range?.from ?? 0;
+    const limit = operation.range
+      ? Math.max(0, operation.range.to - operation.range.from + 1)
+      : operation.limit ?? null;
+
+    return {
+      offset,
+      limit,
+      targetCount: limit === null ? null : offset + limit,
+    };
+  }
+
+  private mergeMessageDocuments(messageGroups: Array<Record<string, any>[]>, ascending: boolean) {
+    const merged = new Map<string, Record<string, any>>();
+
+    for (const group of messageGroups) {
+      for (const message of group) {
+        const key = String(message.id ?? message._appwriteId);
+        const current = merged.get(key);
+
+        if (!current || compareValues(message.created_at, current.created_at) > 0) {
+          merged.set(key, message);
+        }
+      }
+    }
+
+    return Array.from(merged.values()).sort((left, right) => {
+      const result = compareValues(left.created_at, right.created_at);
+      return ascending ? result : -result;
+    });
+  }
+
+  private async getConversationDocuments(
+    parsedFilter: NonNullable<ReturnType<AppDataService['parseMessageOrExpression']>>,
+    operation: CollectionOperation
+  ) {
+    const { offset, limit, targetCount } = this.getWindowParameters(operation);
+    const ascending = operation.order?.ascending ?? true;
+    const orderQuery = ascending ? Query.orderAsc('created_at') : Query.orderDesc('created_at');
+
+    try {
+      const [sentMessages, receivedMessages] = await Promise.all([
+        this.listDocumentsWindow(
+          'messages',
+          [
+            Query.equal('sender_id', parsedFilter.senderA),
+            Query.equal('receiver_id', parsedFilter.receiverA),
+            orderQuery,
+          ],
+          targetCount
+        ),
+        this.listDocumentsWindow(
+          'messages',
+          [
+            Query.equal('sender_id', parsedFilter.senderB),
+            Query.equal('receiver_id', parsedFilter.receiverB),
+            orderQuery,
+          ],
+          targetCount
+        ),
+      ]);
+
+      const merged = this.mergeMessageDocuments([sentMessages, receivedMessages], ascending);
+
+      if (limit === null && offset === 0) {
+        return merged;
+      }
+
+      return merged.slice(offset, limit === null ? undefined : offset + limit);
+    } catch {
+      const allMessages = await this.listAllDocuments('messages');
+      const filtered = this.applyFilters(allMessages, operation.filters);
+      return this.applyOrderAndWindow(filtered, operation);
+    }
+  }
+
+  private async listMessagesForParticipant(userId: string, ascending = true) {
+    try {
+      const [sentMessages, receivedMessages] = await Promise.all([
+        this.listAllDocuments('messages', [Query.equal('sender_id', userId)]),
+        this.listAllDocuments('messages', [Query.equal('receiver_id', userId)]),
+      ]);
+
+      return this.mergeMessageDocuments([sentMessages, receivedMessages], ascending);
+    } catch {
+      const allMessages = await this.listAllDocuments('messages');
+      const relevantMessages = allMessages.filter(
+        (message) => String(message.sender_id) === userId || String(message.receiver_id) === userId
+      );
+
+      return this.mergeMessageDocuments([relevantMessages], ascending);
+    }
+  }
+
   private applyOrderAndWindow(documents: Record<string, any>[], operation: CollectionOperation) {
     const ordered = [...documents];
 
@@ -320,10 +451,7 @@ export class AppDataService {
       });
     }
 
-    const offset = operation.range?.from ?? 0;
-    const explicitLimit = operation.range
-      ? Math.max(0, operation.range.to - operation.range.from + 1)
-      : operation.limit ?? null;
+    const { offset, limit: explicitLimit } = this.getWindowParameters(operation);
 
     if (offset > 0 || explicitLimit !== null) {
       return ordered.slice(offset, explicitLimit === null ? undefined : offset + explicitLimit);
@@ -480,6 +608,11 @@ export class AppDataService {
 
   private async addProfileCounts(profiles: Record<string, any>[]) {
     const profileIds = profiles.map((profile) => String(profile.id));
+
+    if (!profileIds.length) {
+      return profiles;
+    }
+
     const [passionRows, languageRows] = await Promise.all([
       this.listAllDocuments('profile_passions', [Query.equal('profile_id', profileIds)]),
       this.listAllDocuments('profile_languages', [Query.equal('profile_id', profileIds)]),
@@ -546,6 +679,14 @@ export class AppDataService {
 
     const queries: string[] = [];
 
+    if (collection === 'messages' && orFilters.length === 1) {
+      const parsed = this.parseMessageOrExpression(orFilters[0].expression);
+
+      if (parsed && (!operation.order?.column || operation.order.column === 'created_at')) {
+        return this.getConversationDocuments(parsed, operation);
+      }
+    }
+
     for (const filter of eqFilters) {
       queries.push(Query.equal(filter.column, filter.value as any));
     }
@@ -587,10 +728,47 @@ export class AppDataService {
         typeof requestedId === 'string' || typeof requestedId === 'number'
           ? String(requestedId)
           : ID.unique();
+      const createdAt = new Date().toISOString();
       const data = {
         ...entry,
         id: requestedId ?? documentId,
       };
+
+      switch (collection) {
+        case 'profiles':
+          data.created_at ??= createdAt;
+          data.updated_at ??= createdAt;
+          data.verified ??= false;
+          data.is_private ??= false;
+          data.show_age ??= true;
+          data.show_location ??= true;
+          break;
+        case 'messages':
+        case 'favorites':
+        case 'blocked_users':
+        case 'saved_searches':
+          data.created_at ??= createdAt;
+          break;
+        case 'notifications':
+          data.created_at ??= createdAt;
+          data.read ??= false;
+          break;
+        case 'reports':
+        case 'verification_requests':
+        case 'contact_requests':
+          data.created_at ??= createdAt;
+          data.status ??= 'pending';
+          break;
+        case 'analytics_events':
+          data.created_at ??= createdAt;
+          if (typeof data.properties !== 'string') {
+            data.properties = JSON.stringify(data.properties ?? {});
+          }
+          break;
+        default:
+          break;
+      }
+
       const createdDocument = await this.repo.createDocument<any>(
         this.getCollectionId(collection),
         data,
@@ -925,6 +1103,12 @@ export class AppDataService {
           String(args?.sender_id_param ?? args?.sender_id ?? ''),
           String(args?.receiver_id_param ?? args?.receiver_id ?? '')
         );
+      case 'track_presence':
+        return this.trackPresence(String(args?.user_id ?? ''), args?.online_at);
+      case 'clear_presence':
+        return this.clearPresence(String(args?.user_id ?? ''));
+      case 'get_online_users':
+        return this.getOnlineUsers();
       case 'search_profiles':
         return this.searchProfiles(args ?? {});
       case 'get_suggested_profiles':
@@ -1079,6 +1263,10 @@ export class AppDataService {
         action: 'delete',
         filters: [{ type: 'eq', column: 'favorite_id', value: id }],
       }),
+      this.executeCollectionOperation('saved_searches', {
+        action: 'delete',
+        filters: [{ type: 'eq', column: 'user_id', value: id }],
+      }),
       this.executeCollectionOperation('blocked_users', {
         action: 'delete',
         filters: [{ type: 'eq', column: 'blocker_id', value: id }],
@@ -1103,7 +1291,23 @@ export class AppDataService {
         action: 'delete',
         filters: [{ type: 'eq', column: 'actor_id', value: id }],
       }),
+      this.executeCollectionOperation('reports', {
+        action: 'delete',
+        filters: [{ type: 'eq', column: 'reporter_id', value: id }],
+      }),
+      this.executeCollectionOperation('reports', {
+        action: 'delete',
+        filters: [{ type: 'eq', column: 'reported_id', value: id }],
+      }),
       this.executeCollectionOperation('verification_requests', {
+        action: 'delete',
+        filters: [{ type: 'eq', column: 'user_id', value: id }],
+      }),
+      this.executeCollectionOperation('push_subscriptions', {
+        action: 'delete',
+        filters: [{ type: 'eq', column: 'user_id', value: id }],
+      }),
+      this.executeCollectionOperation('user_presence', {
         action: 'delete',
         filters: [{ type: 'eq', column: 'user_id', value: id }],
       }),
@@ -1308,13 +1512,7 @@ export class AppDataService {
 
   async listMessagesForUser(userId?: string) {
     const resolvedUserId = userId ?? (await this.requireCurrentUser()).id;
-    const messages = await this.listAllDocuments('messages');
-    const relevantMessages = messages
-      .filter(
-        (message) =>
-          String(message.sender_id) === resolvedUserId || String(message.receiver_id) === resolvedUserId
-      )
-      .sort((left, right) => compareValues(left.created_at, right.created_at));
+    const relevantMessages = await this.listMessagesForParticipant(resolvedUserId, true);
     const profilesById = await this.fetchByIds(
       'profiles',
       relevantMessages.flatMap((message) => [message.sender_id, message.receiver_id]).filter(Boolean)
@@ -1344,6 +1542,75 @@ export class AppDataService {
         },
       };
     });
+  }
+
+  private async trackPresence(_requestedUserId?: string, requestedOnlineAt?: string) {
+    const currentUser = await this.requireCurrentUser();
+    const onlineAt = typeof requestedOnlineAt === 'string' && !Number.isNaN(Date.parse(requestedOnlineAt))
+      ? requestedOnlineAt
+      : new Date().toISOString();
+
+    await this.executeCollectionOperation('user_presence', {
+      action: 'upsert',
+      payload: {
+        id: currentUser.id,
+        user_id: currentUser.id,
+        online_at: onlineAt,
+      },
+    });
+
+    return {
+      data: {
+        user_id: currentUser.id,
+        online_at: onlineAt,
+      },
+      error: null,
+    };
+  }
+
+  private async clearPresence(_requestedUserId?: string) {
+    const currentUser = await this.requireCurrentUser();
+
+    await this.executeCollectionOperation('user_presence', {
+      action: 'delete',
+      filters: [{ type: 'eq', column: 'user_id', value: currentUser.id }],
+    });
+
+    return { data: true, error: null };
+  }
+
+  private async getOnlineUsers() {
+    const now = Date.now();
+    const presenceRows = await this.listAllDocuments('user_presence', [Query.orderDesc('online_at')]);
+    const activeRows: Array<{ user_id: string; online_at: string }> = [];
+    const staleUserIds: string[] = [];
+
+    for (const row of presenceRows) {
+      const userId = String(row.user_id ?? '');
+      const onlineAtValue = typeof row.online_at === 'string' ? Date.parse(row.online_at) : Number.NaN;
+
+      if (!userId) {
+        continue;
+      }
+
+      if (!Number.isNaN(onlineAtValue) && now - onlineAtValue <= PRESENCE_TTL_MS) {
+        activeRows.push({ user_id: userId, online_at: row.online_at });
+      } else {
+        staleUserIds.push(userId);
+      }
+    }
+
+    if (staleUserIds.length) {
+      await this.executeCollectionOperation('user_presence', {
+        action: 'delete',
+        filters: [{ type: 'in', column: 'user_id', value: unique(staleUserIds) }],
+      });
+    }
+
+    return {
+      data: activeRows,
+      error: null,
+    };
   }
 
   async listBlockedUsers(userId?: string) {
@@ -1657,10 +1924,7 @@ export class AppDataService {
   }
 
   private async getConversations(currentUserId: string) {
-    const messages = await this.listAllDocuments('messages');
-    const relevantMessages = messages.filter(
-      (message) => String(message.sender_id) === currentUserId || String(message.receiver_id) === currentUserId
-    );
+    const relevantMessages = await this.listMessagesForParticipant(currentUserId, false);
     const conversationMap = new Map<string, any>();
 
     for (const message of relevantMessages) {
@@ -1689,10 +1953,13 @@ export class AppDataService {
       data: Array.from(conversationMap.values())
         .map((conversation) => {
           const profile = profilesById.get(String(conversation.user_id));
+          const firstName = profile?.first_name ?? '';
+          const lastName = profile?.last_name ?? '';
           return {
             ...conversation,
-            first_name: profile?.first_name ?? '',
-            last_name: profile?.last_name ?? '',
+            first_name: firstName,
+            last_name: lastName,
+            full_name: [firstName, lastName].filter(Boolean).join(' ').trim(),
           };
         })
         .sort((left, right) => compareValues(right.last_message_time, left.last_message_time)),
@@ -1727,68 +1994,47 @@ export class AppDataService {
 
   private async searchProfiles(filters: Record<string, any>) {
     const currentUserId = filters.p_current_user_id ? String(filters.p_current_user_id) : undefined;
-    const [profiles, locations, passionRows, languageRows, blockedRows] = await Promise.all([
-      this.listAllDocuments('profiles'),
+    const toNullableNumber = (value: unknown) => {
+      if (value === null || value === undefined || value === '') {
+        return null;
+      }
+
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const loadBlockedRows = async (column: 'blocker_id' | 'blocked_id') => {
+      if (!currentUserId) {
+        return [];
+      }
+
+      try {
+        return await this.listAllDocuments('blocked_users', [Query.equal(column, currentUserId)]);
+      } catch {
+        const allBlockedRows = await this.listAllDocuments('blocked_users');
+        return allBlockedRows.filter((row) => String(row[column]) === currentUserId);
+      }
+    };
+    const [locations, passions, languages, blockedByCurrentRows, blockedCurrentRows] = await Promise.all([
       this.listLocations(),
-      this.listAllDocuments('profile_passions'),
-      this.listAllDocuments('profile_languages'),
-      currentUserId ? this.listAllDocuments('blocked_users') : Promise.resolve([]),
+      this.listAllDocuments('passions'),
+      this.listAllDocuments('languages'),
+      loadBlockedRows('blocker_id'),
+      loadBlockedRows('blocked_id'),
     ]);
 
-    const passionsByProfile = new Map<string, string[]>();
-    const passionIdsByProfile = new Map<string, string[]>();
-    const languagesByProfile = new Map<string, string[]>();
     const locationsById = new Map<string, any>(locations.map((location: any) => [String(location.id), location]));
-    const passionsById = await this.fetchByIds(
-      'passions',
-      passionRows.map((row) => row.passion_id).filter(Boolean)
-    );
-    const languagesById = await this.fetchByIds(
-      'languages',
-      languageRows.map((row) => row.language_id).filter(Boolean)
-    );
-
-    for (const row of passionRows) {
-      const profileId = String(row.profile_id);
-      const names = passionsByProfile.get(profileId) ?? [];
-      const ids = passionIdsByProfile.get(profileId) ?? [];
-      const passion = passionsById.get(String(row.passion_id));
-
-      if (passion?.name) {
-        names.push(passion.name);
-      }
-
-      if (row.passion_id) {
-        ids.push(String(row.passion_id));
-      }
-
-      passionsByProfile.set(profileId, names);
-      passionIdsByProfile.set(profileId, ids);
-    }
-
-    for (const row of languageRows) {
-      const profileId = String(row.profile_id);
-      const names = languagesByProfile.get(profileId) ?? [];
-      const language = languagesById.get(String(row.language_id));
-
-      if (language?.name) {
-        names.push(language.name);
-      }
-
-      languagesByProfile.set(profileId, names);
-    }
+    const passionsById = new Map<string, any>(passions.map((passion: any) => [String(passion.id), passion]));
+    const languagesById = new Map<string, any>(languages.map((language: any) => [String(language.id), language]));
 
     const blockedByCurrent = new Set<string>();
     const blockedCurrent = new Set<string>();
 
-    for (const block of blockedRows) {
-      if (String(block.blocker_id) === currentUserId) {
-        blockedByCurrent.add(String(block.blocked_id));
-      }
+    for (const block of blockedByCurrentRows) {
+      blockedByCurrent.add(String(block.blocked_id));
+    }
 
-      if (String(block.blocked_id) === currentUserId) {
-        blockedCurrent.add(String(block.blocker_id));
-      }
+    for (const block of blockedCurrentRows) {
+      blockedCurrent.add(String(block.blocker_id));
     }
 
     const query = lowerCase(filters.p_query);
@@ -1798,33 +2044,71 @@ export class AppDataService {
     const passionFilter = Array.isArray(filters.p_passion_ids)
       ? filters.p_passion_ids.map((value: unknown) => String(value))
       : [];
-    const minAge = typeof filters.p_min_age === 'number' ? filters.p_min_age : null;
-    const maxAge = typeof filters.p_max_age === 'number' ? filters.p_max_age : null;
-    const offset = Number(filters.p_offset ?? 0);
-    const limit = Number(filters.p_limit ?? 10);
+    const minAge = toNullableNumber(filters.p_min_age);
+    const maxAge = toNullableNumber(filters.p_max_age);
+    const offset = Math.max(0, Math.floor(toNullableNumber(filters.p_offset) ?? 0));
+    const limit = Math.max(1, Math.floor(toNullableNumber(filters.p_limit) ?? 10));
+    const matchedLocationIds = locationQuery
+      ? locations
+          .filter((location: any) => {
+            const locationValue = [location.city, location.region, location.country].filter(Boolean).join(', ');
+            return lowerCase(locationValue).includes(locationQuery);
+          })
+          .map((location: any) => String(location.id))
+      : [];
 
-    const results = profiles
-      .filter((profile) => !currentUserId || String(profile.id) !== currentUserId)
-      .filter((profile) => !currentUserId || (!blockedByCurrent.has(String(profile.id)) && !blockedCurrent.has(String(profile.id))))
-      .map((profile) => {
-        const location = profile.location_id ? locationsById.get(String(profile.location_id)) : null;
-        return {
-          id: profile.id,
-          first_name: profile.first_name ?? null,
-          last_name: profile.last_name ?? null,
-          about_me: profile.about_me ?? null,
-          location: location ? [location.city, location.region, location.country].filter(Boolean).join(', ') : null,
-          age: profile.age ?? null,
-          gender: profile.gender ?? null,
-          profile_languages: languagesByProfile.get(String(profile.id)) ?? [],
-          created_at: profile.created_at,
-          profilepassions: passionsByProfile.get(String(profile.id)) ?? [],
-          is_private: profile.is_private ?? false,
-          show_age: profile.show_age ?? true,
-          show_location: profile.show_location ?? true,
-        };
-      })
-      .filter((profile) => {
+    if (locationQuery && !matchedLocationIds.length) {
+      return {
+        data: [],
+        error: null,
+      };
+    }
+
+    const profileQueries = [Query.orderDesc('created_at')];
+
+    if (matchedLocationIds.length) {
+      profileQueries.push(Query.equal('location_id', matchedLocationIds));
+    }
+
+    const targetResultCount = offset + limit;
+    const batchSize = Math.min(BATCH_SIZE, Math.max(limit, 25));
+    const results: Array<Record<string, any>> = [];
+    let profileOffset = 0;
+
+    while (results.length < targetResultCount) {
+      const profiles = await this.listDocumentsPage('profiles', profileQueries, batchSize, profileOffset);
+
+      if (!profiles.length) {
+        break;
+      }
+
+      profileOffset += profiles.length;
+
+      const candidateProfiles = profiles.filter((profile) => {
+        const profileId = String(profile.id);
+
+        if (currentUserId && profileId === currentUserId) {
+          return false;
+        }
+
+        if (currentUserId && (blockedByCurrent.has(profileId) || blockedCurrent.has(profileId))) {
+          return false;
+        }
+
+        const profileAge = typeof profile.age === 'number' ? profile.age : Number(profile.age);
+
+        if (minAge !== null && (!Number.isFinite(profileAge) || profileAge < minAge)) {
+          return false;
+        }
+
+        if (maxAge !== null && (!Number.isFinite(profileAge) || profileAge > maxAge)) {
+          return false;
+        }
+
+        if (genderFilter && lowerCase(profile.gender) !== genderFilter) {
+          return false;
+        }
+
         if (query) {
           const haystack = [profile.first_name, profile.last_name, profile.about_me]
             .map((value) => lowerCase(value))
@@ -1835,39 +2119,102 @@ export class AppDataService {
           }
         }
 
-        if (locationQuery && !lowerCase(profile.location).includes(locationQuery)) {
-          return false;
-        }
+        if (locationQuery) {
+          const location = profile.location_id ? locationsById.get(String(profile.location_id)) : null;
+          const locationValue = location ? [location.city, location.region, location.country].filter(Boolean).join(', ') : null;
 
-        if (minAge !== null && (profile.age === null || profile.age < minAge)) {
-          return false;
-        }
-
-        if (maxAge !== null && (profile.age === null || profile.age > maxAge)) {
-          return false;
-        }
-
-        if (genderFilter && lowerCase(profile.gender) !== genderFilter) {
-          return false;
-        }
-
-        if (languageQuery) {
-          const hasLanguage = (profile.profile_languages ?? []).some((language) => lowerCase(language).includes(languageQuery));
-          if (!hasLanguage) {
-            return false;
-          }
-        }
-
-        if (passionFilter.length) {
-          const profilePassionIds = passionIdsByProfile.get(String(profile.id)) ?? [];
-          if (!passionFilter.some((passionId) => profilePassionIds.includes(passionId))) {
+          if (!lowerCase(locationValue).includes(locationQuery)) {
             return false;
           }
         }
 
         return true;
-      })
-      .sort((left, right) => compareValues(right.created_at, left.created_at));
+      });
+
+      if (candidateProfiles.length) {
+        const candidateProfileIds = candidateProfiles.map((profile) => String(profile.id));
+        const [passionRows, languageRows] = await Promise.all([
+          this.listAllDocuments('profile_passions', [Query.equal('profile_id', candidateProfileIds)]),
+          this.listAllDocuments('profile_languages', [Query.equal('profile_id', candidateProfileIds)]),
+        ]);
+        const passionsByProfile = new Map<string, string[]>();
+        const passionIdsByProfile = new Map<string, string[]>();
+        const languagesByProfile = new Map<string, string[]>();
+
+        for (const row of passionRows) {
+          const profileId = String(row.profile_id);
+          const names = passionsByProfile.get(profileId) ?? [];
+          const ids = passionIdsByProfile.get(profileId) ?? [];
+          const passion = passionsById.get(String(row.passion_id));
+
+          if (passion?.name) {
+            names.push(passion.name);
+          }
+
+          if (row.passion_id) {
+            ids.push(String(row.passion_id));
+          }
+
+          passionsByProfile.set(profileId, names);
+          passionIdsByProfile.set(profileId, ids);
+        }
+
+        for (const row of languageRows) {
+          const profileId = String(row.profile_id);
+          const names = languagesByProfile.get(profileId) ?? [];
+          const language = languagesById.get(String(row.language_id));
+
+          if (language?.name) {
+            names.push(language.name);
+          }
+
+          languagesByProfile.set(profileId, names);
+        }
+
+        const matchedProfiles = candidateProfiles
+          .map((profile) => {
+            const location = profile.location_id ? locationsById.get(String(profile.location_id)) : null;
+            return {
+              id: profile.id,
+              first_name: profile.first_name ?? null,
+              last_name: profile.last_name ?? null,
+              about_me: profile.about_me ?? null,
+              location: location ? [location.city, location.region, location.country].filter(Boolean).join(', ') : null,
+              age: profile.age ?? null,
+              gender: profile.gender ?? null,
+              profile_languages: languagesByProfile.get(String(profile.id)) ?? [],
+              created_at: profile.created_at,
+              profilepassions: passionsByProfile.get(String(profile.id)) ?? [],
+              is_private: profile.is_private ?? false,
+              show_age: profile.show_age ?? true,
+              show_location: profile.show_location ?? true,
+            };
+          })
+          .filter((profile) => {
+            if (languageQuery) {
+              const hasLanguage = (profile.profile_languages ?? []).some((language) => lowerCase(language).includes(languageQuery));
+              if (!hasLanguage) {
+                return false;
+              }
+            }
+
+            if (passionFilter.length) {
+              const profilePassionIds = passionIdsByProfile.get(String(profile.id)) ?? [];
+              if (!passionFilter.some((passionId) => profilePassionIds.includes(passionId))) {
+                return false;
+              }
+            }
+
+            return true;
+          });
+
+        results.push(...matchedProfiles);
+      }
+
+      if (profiles.length < batchSize) {
+        break;
+      }
+    }
 
     return {
       data: results.slice(offset, offset + limit),

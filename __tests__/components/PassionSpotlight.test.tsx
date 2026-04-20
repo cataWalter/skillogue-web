@@ -8,6 +8,9 @@ jest.mock('../../src/hooks/useMasterData', () => ({
   useMasterData: () => mockUseMasterData(),
 }));
 
+const hasExactParagraphText = (text: string) => (_content: string, element: Element | null) =>
+  element?.tagName.toLowerCase() === 'p' && element.textContent === text;
+
 describe('PassionSpotlight Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -80,7 +83,7 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} userId="user-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Your passion for Coding')).toBeInTheDocument();
+      expect(screen.getByText(hasExactParagraphText('Your passion for Coding'))).toBeInTheDocument();
     });
   });
 
@@ -95,7 +98,9 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Connect with others who share your love for Coding')).toBeInTheDocument();
+      expect(
+        screen.getByText(hasExactParagraphText('Connect with others who share your love for Coding'))
+      ).toBeInTheDocument();
     });
   });
 
@@ -111,7 +116,11 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      const text = screen.getByText(/Connect with others who share your love for (Coding|Music)/);
+      const text = screen.getByText(
+        (_content, element) =>
+          element?.tagName.toLowerCase() === 'p' &&
+          /Connect with others who share your love for (Coding|Music)/.test(element.textContent ?? '')
+      );
       expect(text).toBeInTheDocument();
     });
   });
@@ -126,7 +135,9 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Connect with others who share your love for Coding')).toBeInTheDocument();
+      expect(
+        screen.getByText(hasExactParagraphText('Connect with others who share your love for Coding'))
+      ).toBeInTheDocument();
     });
   });
 
@@ -141,7 +152,13 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Connect with others who share your love for (Coding|Music)/)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          (_content, element) =>
+            element?.tagName.toLowerCase() === 'p' &&
+            /Connect with others who share your love for (Coding|Music)/.test(element.textContent ?? '')
+        )
+      ).toBeInTheDocument();
     });
   });
 });

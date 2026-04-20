@@ -12,12 +12,17 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
 
+const contactMessageMaxLength = 8192;
+
 const contactSchema = z.object({
     name: z.string().min(2, 'Name is required'),
     email: z.string().email('Invalid email address'),
     category: z.enum(['general', 'support', 'bug', 'feedback']),
     subject: z.string().min(5, 'Subject must be at least 5 characters'),
-    message: z.string().min(10, 'Message must be at least 10 characters'),
+    message: z
+        .string()
+        .min(10, 'Message must be at least 10 characters')
+        .max(contactMessageMaxLength, `Message must be at most ${contactMessageMaxLength} characters`),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;

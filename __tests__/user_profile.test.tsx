@@ -5,6 +5,45 @@ import { appClient } from '../src/lib/appClient';
 import toast from 'react-hot-toast';
 import '@testing-library/jest-dom';
 
+const mockPush = jest.fn();
+
+const createProfileTableMock = (result: { data: unknown; error: unknown }) => ({
+  select: jest.fn(() => ({
+    eq: jest.fn(() => ({
+      single: jest.fn().mockResolvedValue(result),
+      maybeSingle: jest.fn().mockResolvedValue(result),
+    })),
+  })),
+});
+
+const createRelationTableMock = (result: { data: unknown; error: unknown }) => ({
+  select: jest.fn(() => ({
+    eq: jest.fn().mockResolvedValue(result),
+  })),
+});
+
+const createFallbackTableMock = (result = { data: null, error: null }) => ({
+  select: jest.fn(() => ({
+    eq: jest.fn(() => ({
+      single: jest.fn().mockResolvedValue(result),
+      maybeSingle: jest.fn().mockResolvedValue(result),
+    })),
+  })),
+});
+
+const createFromMock = (overrides: Record<string, ReturnType<typeof createProfileTableMock>> = {}) =>
+  (table: string) => {
+    if (overrides[table]) {
+      return overrides[table];
+    }
+
+    if (table === 'profile_passions' || table === 'profile_languages') {
+      return createRelationTableMock({ data: [], error: null });
+    }
+
+    return createFallbackTableMock();
+  };
+
 // Mock App Client client
 jest.mock('../src/lib/appClient', () => ({
   appClient: {
@@ -29,7 +68,7 @@ jest.mock('../src/lib/appClient', () => ({
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useParams: () => ({ id: 'user-123' }),
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock('react-hot-toast', () => ({
@@ -62,34 +101,15 @@ describe('UserProfile', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPush.mockReset();
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
     
     // Mock profile fetch
-    (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({ data: mockProfile, error: null }),
-            })),
-          })),
-        };
-      }
-      if (table === 'profile_passions' || table === 'profile_languages') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: [], error: null }),
-          })),
-        };
-      }
-      return {
-        select: jest.fn(() => ({
-          eq: jest.fn(() => ({
-            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-          })),
-        })),
-      };
-    });
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: mockProfile, error: null }),
+      })
+    );
 
     // Mock RPCs
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
@@ -215,18 +235,11 @@ describe('UserProfile', () => {
 
   it('shows error state when profile fetch fails', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (appClient.from as jest.Mock).mockImplementation((table) => {
-        if (table === 'profiles') {
-            return {
-                select: jest.fn(() => ({
-                    eq: jest.fn(() => ({
-                        single: jest.fn().mockResolvedValue({ data: null, error: { message: 'Profile not found' } }),
-                    })),
-                })),
-            };
-        }
-        return { select: jest.fn() };
-    });
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: null, error: { message: 'Profile not found' } }),
+      })
+    );
 
     render(<UserProfile />);
 
@@ -308,25 +321,12 @@ describe('UserProfile', () => {
   });
 
   it('handles passions fetch error', async () => {
-    (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({ data: mockProfile, error: null }),
-            })),
-          })),
-        };
-      }
-      if (table === 'profile_passions') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: null, error: { message: 'Passions error' } }),
-          })),
-        };
-      }
-      return { select: jest.fn() };
-    });
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: mockProfile, error: null }),
+        profile_passions: createRelationTableMock({ data: null, error: { message: 'Passions error' } }),
+      })
+    );
 
     render(<UserProfile />);
 
@@ -337,25 +337,12 @@ describe('UserProfile', () => {
   });
 
   it('handles languages fetch error', async () => {
-    (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({ data: mockProfile, error: null }),
-            })),
-          })),
-        };
-      }
-      if (table === 'profile_languages') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: null, error: { message: 'Languages error' } }),
-          })),
-        };
-      }
-      return { select: jest.fn() };
-    });
+    (appClient.from as jest.Mock).mockImplementation(
+      createFromMock({
+        profiles: createProfileTableMock({ data: mockProfile, error: null }),
+        profile_languages: createRelationTableMock({ data: null, error: { message: 'Languages error' } }),
+      })
+    );
 
     render(<UserProfile />);
 

@@ -32,7 +32,7 @@ const Dashboard: React.FC = () => {
                     about_me,
                     passions_count: profile_passions(count),
                     languages_count: profile_languages(count)
-                `).eq('id', user.id).single() as any;
+                `).eq('id', user.id).maybeSingle() as any;
 
                 // Fetch conversations
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,8 +45,13 @@ const Dashboard: React.FC = () => {
                 // Fetch user passions
                 const passionsRes = await appClient.from('profile_passions').select('passion_id, passions(name)').eq('profile_id', user.id);
 
-                if (profileRes.error || !profileRes.data?.first_name) {
+                if (profileRes.error) {
                     console.error("Profile incomplete or error fetching:", profileRes.error);
+                    router.push('/onboarding');
+                    return;
+                }
+
+                if (!profileRes.data?.first_name) {
                     router.push('/onboarding');
                     return;
                 }

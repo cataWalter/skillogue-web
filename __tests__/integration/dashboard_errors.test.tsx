@@ -21,6 +21,15 @@ jest.mock('next/navigation', () => ({
     useRouter: () => mockRouter,
 }));
 
+const createProfileSelectMock = (result: { data: unknown; error: unknown }) => ({
+    select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue(result),
+            maybeSingle: jest.fn().mockResolvedValue(result),
+        })
+    })
+});
+
 describe('Dashboard Error Handling', () => {
     const mockUser = {
         id: 'user-123',
@@ -66,13 +75,7 @@ describe('Dashboard Error Handling', () => {
         // Mock passions fetch with error
         (appClient.from as jest.Mock).mockImplementation((table) => {
             if (table === 'profiles') {
-                return {
-                    select: jest.fn().mockReturnValue({
-                        eq: jest.fn().mockReturnValue({
-                            single: jest.fn().mockResolvedValue({ data: mockProfile, error: null })
-                        })
-                    })
-                };
+                return createProfileSelectMock({ data: mockProfile, error: null });
             }
             if (table === 'profile_passions') {
                 return {

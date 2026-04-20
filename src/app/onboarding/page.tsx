@@ -312,6 +312,7 @@ const Onboarding: React.FC = () => {
                                     onChange={handleProfileChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     placeholder="Jane"
+                                    autoComplete="given-name"
                                 />
                             </div>
                             <div>
@@ -324,6 +325,7 @@ const Onboarding: React.FC = () => {
                                     onChange={handleProfileChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     placeholder="Doe"
+                                    autoComplete="family-name"
                                 />
                             </div>
                         </div>
@@ -339,6 +341,7 @@ const Onboarding: React.FC = () => {
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     placeholder="25"
                                     min="18"
+                                    inputMode="numeric"
                                 />
                             </div>
                             <div>
@@ -386,6 +389,7 @@ const Onboarding: React.FC = () => {
                                     value={location.country}
                                     onChange={handleLocationChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    autoComplete="country-name"
                                 >
                                     <option value="">Select Country</option>
                                     {countries.map(c => <option key={c} value={c}>{c}</option>)}
@@ -400,6 +404,7 @@ const Onboarding: React.FC = () => {
                                     onChange={handleLocationChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     disabled={!location.country}
+                                    autoComplete="address-level1"
                                 >
                                     <option value="">Select Region</option>
                                     {regions.map(r => <option key={r} value={r}>{r}</option>)}
@@ -414,6 +419,7 @@ const Onboarding: React.FC = () => {
                                     onChange={handleLocationChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     disabled={!location.region && !location.country}
+                                    autoComplete="address-level2"
                                 >
                                     <option value="">Select City</option>
                                     {cities.map(c => <option key={c} value={c}>{c}</option>)}
@@ -433,6 +439,8 @@ const Onboarding: React.FC = () => {
                                 selected={selectedPassions}
                                 onChange={setSelectedPassions}
                                 placeholder="Select your passions..."
+                                id="onboarding-passions"
+                                name="passions"
                             />
                             <MultiSelect
                                 label="Languages"
@@ -440,6 +448,8 @@ const Onboarding: React.FC = () => {
                                 selected={selectedLanguages}
                                 onChange={setSelectedLanguages}
                                 placeholder="Select languages you speak..."
+                                id="onboarding-languages"
+                                name="languages"
                             />
                         </div>
                     </div>

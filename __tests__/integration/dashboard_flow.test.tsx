@@ -21,6 +21,15 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+const createProfileSelectMock = (result: { data: unknown; error: unknown }) => ({
+  select: jest.fn(() => ({
+    eq: jest.fn(() => ({
+      single: jest.fn().mockResolvedValue(result),
+      maybeSingle: jest.fn().mockResolvedValue(result),
+    })),
+  })),
+});
+
 describe('Dashboard Integration Flow', () => {
   const mockUser = { id: 'user-123', email: 'test@example.com' };
   
@@ -68,13 +77,7 @@ describe('Dashboard Integration Flow', () => {
     // Mock DB queries
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({ data: mockProfile, error: null }),
-            })),
-          })),
-        };
+        return createProfileSelectMock({ data: mockProfile, error: null });
       }
       if (table === 'profile_passions') {
         return {
@@ -121,20 +124,14 @@ describe('Dashboard Integration Flow', () => {
 
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({ 
-                  data: {
-                      ...mockProfile,
-                      passions_count: [{ count: 0 }],
-                      languages_count: [{ count: 0 }]
-                  }, 
-                  error: null 
-              }),
-            })),
-          })),
-        };
+        return createProfileSelectMock({
+          data: {
+            ...mockProfile,
+            passions_count: [{ count: 0 }],
+            languages_count: [{ count: 0 }],
+          },
+          error: null,
+        });
       }
       if (table === 'profile_passions') {
         return {
@@ -180,13 +177,7 @@ describe('Dashboard Integration Flow', () => {
     // Mock incomplete profile
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              single: jest.fn().mockResolvedValue({ data: { ...mockProfile, first_name: null }, error: null }),
-            })),
-          })),
-        };
+        return createProfileSelectMock({ data: { ...mockProfile, first_name: null }, error: null });
       }
       return {
         select: jest.fn(() => ({

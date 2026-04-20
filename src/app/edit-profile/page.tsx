@@ -24,6 +24,7 @@ interface Passion {
     id: number;
     name: string;
 }
+
 interface Language {
     id: number;
     name: string;
@@ -222,32 +223,37 @@ const EditProfile: React.FC = () => {
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">First Name</label>
+                            <label htmlFor="edit-first-name" className="block text-sm font-medium text-gray-400 mb-2">First Name</label>
                             <input
+                                id="edit-first-name"
                                 type="text"
                                 name="first_name"
                                 value={profile.first_name}
                                 onChange={handleProfileChange}
                                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                autoComplete="given-name"
                                 required
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Last Name</label>
+                            <label htmlFor="edit-last-name" className="block text-sm font-medium text-gray-400 mb-2">Last Name</label>
                             <input
+                                id="edit-last-name"
                                 type="text"
                                 name="last_name"
                                 value={profile.last_name}
                                 onChange={handleProfileChange}
                                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                autoComplete="family-name"
                                 required
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">About Me</label>
+                        <label htmlFor="edit-about-me" className="block text-sm font-medium text-gray-400 mb-2">About Me</label>
                         <textarea
+                            id="edit-about-me"
                             name="about_me"
                             value={profile.about_me}
                             onChange={handleProfileChange}
@@ -259,8 +265,9 @@ const EditProfile: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Age</label>
+                            <label htmlFor="edit-age" className="block text-sm font-medium text-gray-400 mb-2">Age</label>
                             <input
+                                id="edit-age"
                                 type="number"
                                 name="age"
                                 value={profile.age}
@@ -268,11 +275,13 @@ const EditProfile: React.FC = () => {
                                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 required
                                 min="18"
+                                inputMode="numeric"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Gender</label>
+                            <label htmlFor="edit-gender" className="block text-sm font-medium text-gray-400 mb-2">Gender</label>
                             <select
+                                id="edit-gender"
                                 name="gender"
                                 value={profile.gender}
                                 onChange={handleProfileChange}
@@ -294,38 +303,44 @@ const EditProfile: React.FC = () => {
                         <h3 className="text-xl font-semibold mb-4">Location</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Country</label>
+                                <label htmlFor="edit-country" className="block text-sm font-medium text-gray-400 mb-2">Country</label>
                                 <select
+                                    id="edit-country"
                                     name="country"
                                     value={location.country}
                                     onChange={handleLocationChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    autoComplete="country-name"
                                 >
                                     <option value="">Select Country</option>
                                     {countries.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Region/State</label>
+                                <label htmlFor="edit-region" className="block text-sm font-medium text-gray-400 mb-2">Region/State</label>
                                 <select
+                                    id="edit-region"
                                     name="region"
                                     value={location.region}
                                     onChange={handleLocationChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     disabled={!location.country}
+                                    autoComplete="address-level1"
                                 >
                                     <option value="">Select Region</option>
                                     {regions.map(r => <option key={r} value={r}>{r}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">City</label>
+                                <label htmlFor="edit-city" className="block text-sm font-medium text-gray-400 mb-2">City</label>
                                 <select
+                                    id="edit-city"
                                     name="city"
                                     value={location.city}
                                     onChange={handleLocationChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     disabled={!location.region}
+                                    autoComplete="address-level2"
                                 >
                                     <option value="">Select City</option>
                                     {cities.map(c => <option key={c} value={c}>{c}</option>)}
@@ -344,6 +359,8 @@ const EditProfile: React.FC = () => {
                                 selected={selectedPassions}
                                 onChange={setSelectedPassions}
                                 placeholder="Select your passions..."
+                                id="edit-passions"
+                                name="passions"
                             />
                             <MultiSelect
                                 label="Languages"
@@ -351,6 +368,8 @@ const EditProfile: React.FC = () => {
                                 selected={selectedLanguages}
                                 onChange={setSelectedLanguages}
                                 placeholder="Select languages you speak..."
+                                id="edit-languages"
+                                name="languages"
                             />
                         </div>
                     </div>

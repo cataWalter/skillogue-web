@@ -549,10 +549,13 @@ const Messages: React.FC = () => {
                             <form onSubmit={sendMessage} className="p-4 border-t border-gray-800 bg-gray-900/50">
                                 <div className="flex gap-2 items-center">
                                     <input
+                                        id="message-input"
+                                        name="message"
                                         type="text"
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
                                         placeholder="Type a message..."
+                                        aria-label="Type a message"
                                         className="flex-grow bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                     />
                                     <button

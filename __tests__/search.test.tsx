@@ -38,6 +38,31 @@ jest.mock('../src/components/SearchSkeleton', () => ({
   default: () => <div data-testid="search-skeleton">Skeleton</div>,
 }));
 
+const createSavedSearchInsertMock = (result: { data: unknown; error: unknown }) =>
+  jest.fn(() => ({
+    select: jest.fn(() => ({
+      single: jest.fn().mockResolvedValue(result),
+    })),
+  }));
+
+const createSavedSearchTableMock = ({
+  savedSearches = [],
+  insertResult = { data: { id: 999, name: 'My Search' }, error: null },
+  deleteResult = { error: null },
+}: {
+  savedSearches?: unknown[];
+  insertResult?: { data: unknown; error: unknown };
+  deleteResult?: { error: unknown };
+} = {}) => ({
+  select: jest.fn(() => ({
+    eq: jest.fn().mockResolvedValue({ data: savedSearches, error: null }),
+  })),
+  insert: createSavedSearchInsertMock(insertResult),
+  delete: jest.fn(() => ({
+    eq: jest.fn().mockResolvedValue(deleteResult),
+  })),
+});
+
 describe('Search Page', () => {
   const mockSession = { user: { id: 'user-123' } };
   const mockPassions = [
@@ -59,9 +84,23 @@ describe('Search Page', () => {
       is_private: false,
     },
   ];
+  const mockPagedResults = Array.from({ length: 10 }, (_, index) => ({
+    id: String(index + 1),
+    first_name: `User${index + 1}`,
+    last_name: 'Doe',
+    about_me: 'Developer',
+    location: 'NYC',
+    age: 25 + index,
+    gender: 'Male',
+    profile_languages: ['English'],
+    created_at: `2023-01-${String(index + 1).padStart(2, '0')}`,
+    profilepassions: ['Coding'],
+    is_private: false,
+  }));
 
   beforeEach(() => {
     jest.clearAllMocks();
+    window.alert = jest.fn();
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'passions') {
@@ -70,13 +109,7 @@ describe('Search Page', () => {
         };
       }
       if (table === 'saved_searches') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: [], error: null }),
-          })),
-          insert: jest.fn().mockResolvedValue({ data: null, error: null }),
-          delete: jest.fn().mockResolvedValue({ data: null, error: null }),
-        };
+        return createSavedSearchTableMock();
       }
       return { select: jest.fn() };
     });
@@ -113,15 +146,17 @@ describe('Search Page', () => {
   });
 
   it('loads more results', async () => {
-    (appClient.rpc as jest.Mock).mockResolvedValueOnce({ data: mockResults, error: null }).mockResolvedValueOnce({ data: [], error: null });
+    (appClient.rpc as jest.Mock)
+      .mockResolvedValueOnce({ data: mockPagedResults, error: null })
+      .mockResolvedValueOnce({ data: [], error: null });
 
     render(<Search />);
 
     await waitFor(() => {
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('User1 Doe')).toBeInTheDocument();
     });
 
-    const loadMoreButton = screen.getByText('Load More');
+    const loadMoreButton = screen.getByRole('button', { name: 'Load More' });
     fireEvent.click(loadMoreButton);
 
     await waitFor(() => {
@@ -133,13 +168,13 @@ describe('Search Page', () => {
     render(<Search />);
 
     await waitFor(() => {
-      expect(screen.getByText('Save Search')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save Search' })).toBeInTheDocument();
     });
 
-    const saveButton = screen.getByText('Save Search');
+    const saveButton = screen.getByRole('button', { name: 'Save Search' });
     fireEvent.click(saveButton);
 
-    const modal = await screen.findByText('Save Search');
+    const modal = await screen.findByRole('heading', { name: 'Save Search' });
     expect(modal).toBeInTheDocument();
 
     const input = screen.getByPlaceholderText('Give this search a name...');
@@ -161,12 +196,9 @@ describe('Search Page', () => {
         };
       }
       if (table === 'saved_searches') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: [], error: null }),
-          })),
-          insert: jest.fn().mockResolvedValue({ data: null, error: { message: 'Save error' } }),
-        };
+        return createSavedSearchTableMock({
+          insertResult: { data: null, error: { message: 'Save error' } },
+        });
       }
       return { select: jest.fn() };
     });
@@ -174,10 +206,10 @@ describe('Search Page', () => {
     render(<Search />);
 
     await waitFor(() => {
-      expect(screen.getByText('Save Search')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save Search' })).toBeInTheDocument();
     });
 
-    const saveButton = screen.getByText('Save Search');
+    const saveButton = screen.getByRole('button', { name: 'Save Search' });
     fireEvent.click(saveButton);
 
     const input = await screen.findByPlaceholderText('Give this search a name...');
@@ -211,11 +243,7 @@ describe('Search Page', () => {
         };
       }
       if (table === 'saved_searches') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: [savedSearch], error: null }),
-          })),
-        };
+        return createSavedSearchTableMock({ savedSearches: [savedSearch] });
       }
       return { select: jest.fn() };
     });
@@ -254,12 +282,7 @@ describe('Search Page', () => {
         };
       }
       if (table === 'saved_searches') {
-        return {
-          select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: [savedSearch], error: null }),
-          })),
-          delete: jest.fn().mockResolvedValue({ error: null }),
-        };
+        return createSavedSearchTableMock({ savedSearches: [savedSearch] });
       }
       return { select: jest.fn() };
     });
@@ -299,7 +322,7 @@ describe('Search Page', () => {
     render(<Search />);
 
     await waitFor(() => {
-      expect(screen.queryByText('Save Search')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Save Search' })).not.toBeInTheDocument();
     });
   });
 
@@ -309,6 +332,9 @@ describe('Search Page', () => {
         return {
           select: jest.fn().mockResolvedValue({ data: null, error: { message: 'Passions error' } }),
         };
+      }
+      if (table === 'saved_searches') {
+        return createSavedSearchTableMock();
       }
       return { select: jest.fn() };
     });
