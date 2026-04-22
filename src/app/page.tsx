@@ -37,6 +37,7 @@ export default function Home() {
 
       <section className="px-4 sm:px-6 py-12 sm:py-20 bg-gray-900/50">
         <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-8 md:gap-12 text-center">
+          <h2 className="sr-only">Core features</h2>
           <div className="flex flex-col items-center p-6 bg-gray-900/50 rounded-2xl border border-gray-800 hover:border-purple-500/50 transition-all duration-300 card-hover-lift">
             <div className="p-4 bg-purple-600/20 rounded-2xl mb-4">
               <Sparkles className="h-12 w-12 text-purple-400" />

@@ -73,6 +73,9 @@ const Navbar = () => {
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation"
             className="md:hidden p-2 text-gray-400 hover:text-white"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -82,7 +85,7 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-gray-900 border-b border-gray-800">
+        <div id="mobile-navigation" className="md:hidden bg-gray-900 border-b border-gray-800">
           <div className="px-4 py-2 space-y-1">
             {user ? (
               <>
