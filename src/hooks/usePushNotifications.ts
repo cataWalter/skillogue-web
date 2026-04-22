@@ -1,6 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 
+const decodeVapidKey = (value: string) => {
+  const padding = '='.repeat((4 - (value.length % 4)) % 4);
+  const base64 = `${value}${padding}`.replace(/-/g, '+').replace(/_/g, '/');
+  const rawValue = atob(base64);
+
+  return Uint8Array.from(rawValue, (character) => character.charCodeAt(0));
+};
+
+const ensureServiceWorkerRegistration = async () => {
+  const existingRegistration = await navigator.serviceWorker.getRegistration();
+
+  if (existingRegistration) {
+    return existingRegistration;
+  }
+
+  await navigator.serviceWorker.register('/sw.js');
+
+  // ready does not resolve until the registration becomes active.
+  return navigator.serviceWorker.ready;
+};
+
 export const usePushNotifications = () => {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -8,24 +29,36 @@ export const usePushNotifications = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
+    if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
       setIsSupported(true);
     }
   }, []);
 
   const requestPermission = async () => {
-    if (!isSupported) return;
+    if (!isSupported || loading) return;
+
+    const vapidKey =
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_VAPID_KEY;
+
+    if (!vapidKey) {
+      console.error(
+        'Missing NEXT_PUBLIC_VAPID_PUBLIC_KEY or NEXT_PUBLIC_VAPID_KEY for push notifications.'
+      );
+      return;
+    }
 
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return;
 
     try {
       setLoading(true);
-      const registration = await navigator.serviceWorker.ready;
-      const sub = await registration.pushManager.subscribe({
+      const registration = await ensureServiceWorkerRegistration();
+      const existingSubscription = await registration.pushManager.getSubscription();
+      const sub = existingSubscription ?? await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_KEY,
+        applicationServerKey: decodeVapidKey(vapidKey),
       });
+
       setSubscription(sub);
 
       // Save subscription to server

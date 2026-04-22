@@ -9,7 +9,12 @@ export interface CurrentAuthUser {
   name?: string;
 }
 
-const mapAccountUser = (user: { $id: string; email: string; name?: string | null }): CurrentAuthUser => ({
+const mapAccountUser = (user: {
+  $id: string;
+  email: string;
+  name?: string | null;
+  emailVerification?: boolean;
+}): CurrentAuthUser => ({
   id: user.$id,
   email: user.email,
   name: user.name ?? undefined,
@@ -23,6 +28,16 @@ const getUserFromSecret = async (sessionSecret?: string, userAgent?: string) => 
   try {
     const account = createAppwriteSessionAccount(sessionSecret, userAgent);
     const user = await account.get();
+
+    if (user.emailVerification !== true) {
+      try {
+        await account.deleteSession({ sessionId: 'current' });
+      } catch {
+        // Best effort cleanup only.
+      }
+
+      return null;
+    }
 
     return mapAccountUser(user);
   } catch {

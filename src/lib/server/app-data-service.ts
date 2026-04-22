@@ -113,6 +113,44 @@ const normalizeDocument = (value: any): any => {
 
 const unique = <T,>(values: T[]) => Array.from(new Set(values));
 
+const normalizePushFunctionPayload = (data: any, actorId?: string | null) => {
+  const receiverId =
+    typeof data?.receiver_id === 'string'
+      ? data.receiver_id.trim()
+      : typeof data?.recipient_id === 'string'
+        ? data.recipient_id.trim()
+        : '';
+
+  const title = typeof data?.title === 'string' && data.title.trim() ? data.title.trim() : 'New message';
+  const body =
+    typeof data?.body === 'string'
+      ? data.body
+      : typeof data?.message === 'string'
+        ? data.message
+        : '';
+  const notificationType =
+    typeof data?.notification_type === 'string' && data.notification_type.trim()
+      ? data.notification_type.trim()
+      : 'message';
+  const relatedId =
+    typeof data?.related_id === 'string' && data.related_id.trim()
+      ? data.related_id.trim()
+      : actorId ?? null;
+
+  return {
+    ...data,
+    actor_id: typeof data?.actor_id === 'string' && data.actor_id.trim() ? data.actor_id.trim() : actorId ?? null,
+    receiver_id: receiverId || undefined,
+    recipient_id: receiverId || undefined,
+    title,
+    body,
+    message: body,
+    url: typeof data?.url === 'string' && data.url.trim() ? data.url.trim() : undefined,
+    notification_type: notificationType,
+    related_id: relatedId,
+  };
+};
+
 const lowerCase = (value: unknown) =>
   typeof value === 'string' ? value.trim().toLowerCase() : '';
 
@@ -1034,26 +1072,27 @@ export class AppDataService {
       return { success: false, message: `Unsupported function: ${name}` };
     }
 
+    const currentUser = await this.getCurrentUser();
+    const payload = normalizePushFunctionPayload(data, currentUser?.id ?? null);
+
     const functionId = getAppwriteFunctionId(name);
 
     if (functionId) {
-      await this.functions.createExecution(functionId, JSON.stringify(data ?? {}), false);
+      await this.functions.createExecution(functionId, JSON.stringify(payload), false);
       return { success: true };
     }
 
-    const currentUser = await this.getCurrentUser();
-
-    if (data?.receiver_id) {
+    if (payload.receiver_id) {
       await this.executeCollectionOperation('notifications', {
         action: 'insert',
         payload: {
-          receiver_id: data.receiver_id,
-          actor_id: currentUser?.id ?? null,
+          receiver_id: payload.receiver_id,
+          actor_id: payload.actor_id,
           type: 'new_message',
           read: false,
-          title: data.title ?? 'New message',
-          body: data.body ?? '',
-          url: data.url ?? null,
+          title: payload.title,
+          body: payload.body,
+          url: payload.url ?? null,
           created_at: new Date().toISOString(),
         },
       });

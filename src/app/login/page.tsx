@@ -5,6 +5,9 @@ import { useAuth } from '../../hooks/useAuth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const EMAIL_VERIFICATION_REQUIRED_FRAGMENT = 'Please verify your email before signing in';
 
 const Login: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
@@ -16,7 +19,9 @@ const Login: React.FC = () => {
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!email || !password) {
-            alert('Please fill in both fields');
+            toast.error('Please fill in both fields', {
+                id: 'login-error',
+            });
             return;
         }
         try {
@@ -26,7 +31,10 @@ const Login: React.FC = () => {
         } catch (error: unknown) {
             console.error('Login error:', error);
             const message = error instanceof Error ? error.message : 'An error occurred';
-            alert(message);
+            toast.error(message, {
+                id: 'login-error',
+                duration: message.includes(EMAIL_VERIFICATION_REQUIRED_FRAGMENT) ? 6000 : 4000,
+            });
         } finally {
             setLoading(false);
         }

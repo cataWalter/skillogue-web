@@ -13,6 +13,8 @@ jest.mock('node-appwrite', () => ({
 
 import { createAppwriteSessionAccount } from '../src/lib/appwrite/server';
 import { AppDataService } from '../src/lib/server/app-data-service';
+import { getAppwriteFunctionId } from '../src/lib/appwrite/config';
+import { createAppwriteAdminFunctions } from '../src/lib/appwrite/server';
 
 jest.mock('../src/lib/appwrite/config', () => ({
   getAppwriteCollectionId: jest.fn((name: string) => name),
@@ -297,5 +299,64 @@ describe('AppDataService messaging compatibility', () => {
     expect(response).toEqual({ data: null, error: null });
     expect(listAllDocumentsSpy).toHaveBeenCalledTimes(1);
     expect(listAllDocumentsSpy).toHaveBeenCalledWith('profiles', [expect.stringContaining('missing-user')]);
+  });
+
+  it('enriches send-push executions with the authenticated actor and normalized fields', async () => {
+    const createExecution = jest.fn().mockResolvedValue({});
+
+    (getAppwriteFunctionId as jest.Mock).mockReturnValue('send-push');
+    (createAppwriteAdminFunctions as jest.Mock).mockReturnValue({ createExecution });
+
+    const service = new AppDataService('session-secret');
+
+    await service.invokeCompatFunction('send-push', {
+      recipient_id: 'user-1',
+      title: 'New Message',
+      message: 'Hello there',
+    });
+
+    expect(createExecution).toHaveBeenCalledWith(
+      'send-push',
+      JSON.stringify({
+        recipient_id: 'user-1',
+        title: 'New Message',
+        message: 'Hello there',
+        actor_id: 'me',
+        receiver_id: 'user-1',
+        body: 'Hello there',
+        notification_type: 'message',
+        related_id: 'me',
+      }),
+      false
+    );
+  });
+
+  it('preserves fallback notifications when send-push is unresolved but aliases are used', async () => {
+    (getAppwriteFunctionId as jest.Mock).mockReturnValue(undefined);
+    const service = new AppDataService('session-secret');
+    const executeCollectionOperationSpy = jest.spyOn(service, 'executeCollectionOperation').mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    await service.invokeCompatFunction('send-push', {
+      recipient_id: 'user-1',
+      title: 'New Message',
+      message: 'Hello there',
+    });
+
+    expect(executeCollectionOperationSpy).toHaveBeenCalledWith('notifications', {
+      action: 'insert',
+      payload: {
+        receiver_id: 'user-1',
+        actor_id: 'me',
+        type: 'new_message',
+        read: false,
+        title: 'New Message',
+        body: 'Hello there',
+        url: null,
+        created_at: expect.any(String),
+      },
+    });
   });
 });

@@ -24,3 +24,12 @@ yarn-error.log*
 next-env.d.ts
 .vercel
 .env*.local
+
+# Local verification artifacts
+.agent-api-tests.log
+.jest-full.json
+.lint-agent.log
+.playwright-mcp/
+brevo-login-snapshot.md
+lighthouse-live-desktop.json
+lighthouse-live-mobile.json
