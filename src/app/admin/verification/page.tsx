@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { adminCopy } from '../../../lib/app-copy';
 
 interface VerificationRequest {
     id: number;
@@ -42,14 +43,14 @@ export default function AdminVerification() {
             });
             
             if (response.ok) {
-                toast.success('User verified successfully');
+                toast.success(adminCopy.verification.userVerified);
                 fetchRequests();
             } else {
-                toast.error('Failed to approve');
+                toast.error(adminCopy.verification.failedToApprove);
             }
         } catch (error) {
             console.error('Error approving:', error);
-            toast.error('Failed to approve');
+            toast.error(adminCopy.verification.failedToApprove);
         }
     };
 
@@ -62,35 +63,35 @@ export default function AdminVerification() {
             });
             
             if (response.ok) {
-                toast.success('Request rejected');
+                toast.success(adminCopy.verification.rejected);
                 fetchRequests();
             } else {
-                toast.error('Failed to reject');
+                toast.error(adminCopy.verification.failedToReject);
             }
         } catch (error) {
             console.error('Error rejecting:', error);
-            toast.error('Failed to reject');
+            toast.error(adminCopy.verification.failedToReject);
         }
     };
 
-    if (loading) return <div className="text-white">Loading...</div>;
+    if (loading) return <div className="text-white">{adminCopy.verification.loading}</div>;
 
     return (
         <div className="text-white">
-            <h1 className="text-3xl font-bold mb-6">Verification Requests</h1>
+            <h1 className="text-3xl font-bold mb-6">{adminCopy.verification.title}</h1>
             <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
                 <table className="w-full text-left">
                     <thead className="bg-gray-800 text-gray-400">
                         <tr>
-                            <th className="p-4">User</th>
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Actions</th>
+                            <th className="p-4">{adminCopy.verification.user}</th>
+                            <th className="p-4">{adminCopy.verification.date}</th>
+                            <th className="p-4">{adminCopy.verification.actions}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
                         {requests.length === 0 ? (
                             <tr>
-                                <td colSpan={3} className="p-8 text-center text-gray-500">No pending requests</td>
+                                <td colSpan={3} className="p-8 text-center text-gray-500">{adminCopy.verification.empty}</td>
                             </tr>
                         ) : (
                             requests.map((req) => (
@@ -107,14 +108,14 @@ export default function AdminVerification() {
                                             <button 
                                                 onClick={() => handleApprove(req.id, req.user_id)}
                                                 className="p-2 bg-green-900/30 text-green-500 rounded hover:bg-green-900/50 transition"
-                                                title="Approve"
+                                                title={adminCopy.verification.approveTitle}
                                             >
                                                 <Check size={18} />
                                             </button>
                                             <button 
                                                 onClick={() => handleReject(req.id)}
                                                 className="p-2 bg-red-900/30 text-red-500 rounded hover:bg-red-900/50 transition"
-                                                title="Reject"
+                                                title={adminCopy.verification.rejectTitle}
                                             >
                                                 <X size={18} />
                                             </button>

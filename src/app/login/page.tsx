@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { authCopy } from '../../lib/app-copy';
 
 const EMAIL_VERIFICATION_REQUIRED_FRAGMENT = 'Please verify your email before signing in';
 
@@ -25,7 +26,7 @@ const Login: React.FC = () => {
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!email || !password) {
-            toast.error('Please fill in both fields', {
+            toast.error(authCopy.login.emptyFieldsError, {
                 id: 'login-error',
             });
             return;
@@ -36,7 +37,7 @@ const Login: React.FC = () => {
             router.push('/dashboard');
         } catch (error: unknown) {
             console.error('Login error:', error);
-            const message = error instanceof Error ? error.message : 'An error occurred';
+            const message = error instanceof Error ? error.message : authCopy.login.unexpectedError;
 
             if (message.includes(EMAIL_VERIFICATION_REQUIRED_FRAGMENT)) {
                 router.push(buildResendVerificationUrl(email));
@@ -59,9 +60,9 @@ const Login: React.FC = () => {
                 {/* Header */}
                 <div className="text-center p-8">
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-                        Welcome Back
+                        {authCopy.login.title}
                     </h1>
-                    <p className="text-gray-400 mt-2">Sign in to your account</p>
+                    <p className="text-gray-400 mt-2">{authCopy.login.signInSubtitle}</p>
                 </div>
 
                 {/* Form */}
@@ -69,7 +70,7 @@ const Login: React.FC = () => {
                     <div className="space-y-6">
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                                Email
+                                {authCopy.login.email}
                             </label>
                             <input
                                 id="email"
@@ -78,7 +79,7 @@ const Login: React.FC = () => {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400 transition"
-                                placeholder="you@example.com"
+                                placeholder={authCopy.login.emailPlaceholder}
                                 autoComplete="email"
                                 disabled={loading}
                             />
@@ -86,7 +87,7 @@ const Login: React.FC = () => {
 
                         <div>
                             <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                                Password
+                                {authCopy.login.password}
                             </label>
                             <input
                                 id="password"
@@ -95,7 +96,7 @@ const Login: React.FC = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400 transition"
-                                placeholder="••••••••"
+                                placeholder={authCopy.login.passwordPlaceholder}
                                 autoComplete="current-password"
                                 disabled={loading}
                             />
@@ -124,12 +125,12 @@ const Login: React.FC = () => {
                                             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                         ></path>
                                     </svg>
-                                    Signing in...
+                                    {authCopy.login.loading}
                                 </span>
                             ) : (
                                 <span className="flex items-center justify-center gap-2">
                                     <LogIn size={20} />
-                                    Sign In
+                                    {authCopy.login.signIn}
                                 </span>
                             )}
                         </button>
@@ -139,13 +140,13 @@ const Login: React.FC = () => {
                 {/* Footer */}
                 <div className="bg-gray-800/50 p-6 text-center border-t border-gray-800">
                     <p className="text-gray-400 text-sm mb-4">
-                        Don't have an account?{' '}
+                        {authCopy.login.footerPrefix}{' '}
                         <Link href="/signup" className="text-indigo-400 hover:text-indigo-300 font-medium transition">
-                            Sign up
+                            {authCopy.login.signUp}
                         </Link>
                     </p>
                     <Link href="/forgot-password" className="text-sm text-gray-500 hover:text-gray-400 transition">
-                        Forgot your password?
+                        {authCopy.login.forgotPassword}
                     </Link>
                 </div>
             </div>

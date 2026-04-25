@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from './useAuth';
 
 const decodeVapidKey = (value: string) => {
   const padding = '='.repeat((4 - (value.length % 4)) % 4);
@@ -23,7 +22,6 @@ const ensureServiceWorkerRegistration = async () => {
 };
 
 export const usePushNotifications = () => {
-  const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,17 +57,18 @@ export const usePushNotifications = () => {
         applicationServerKey: decodeVapidKey(vapidKey),
       });
 
-      setSubscription(sub);
+      const json = sub.toJSON();
+      const response = await fetch('/api/push-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(json),
+      });
 
-      // Save subscription to server
-      if (user) {
-        const json = sub.toJSON();
-        await fetch('/api/push-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(json),
-        });
+      if (!response.ok) {
+        throw new Error('Failed to save push subscription.');
       }
+
+      setSubscription(sub);
     } catch (error) {
       console.error('Error subscribing to push notifications:', error);
     } finally {

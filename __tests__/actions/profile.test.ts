@@ -17,8 +17,8 @@ jest.mock('../../src/lib/server/app-data-service', () => ({
 }));
 
 // Mock console
-const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation(() => { });
+const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => { });
 
 describe('profile actions', () => {
   beforeEach(() => {
@@ -47,7 +47,7 @@ describe('profile actions', () => {
         first_name: 'John',
         last_name: 'Doe',
         about_me: 'Test bio',
-        age: 25,
+        birth_date: '1995-04-25',
         gender: 'male',
         location: { country: 'USA', city: 'NYC' },
         languages: ['English'],
@@ -65,7 +65,7 @@ describe('profile actions', () => {
         first_name: '',
         last_name: 'Doe',
         about_me: 'Test bio',
-        age: 25,
+        birth_date: '1995-04-25',
         gender: 'male',
         location: { country: 'USA', city: 'NYC' },
         languages: ['English'],
@@ -78,12 +78,12 @@ describe('profile actions', () => {
       expect(result.error).toBe('Validation failed');
     });
 
-    it('should return validation error for invalid age (too young)', async () => {
+    it('should return validation error for invalid birth date (too young)', async () => {
       const invalidData = {
         first_name: 'John',
         last_name: 'Doe',
         about_me: 'Test bio',
-        age: 10,
+        birth_date: '2015-04-25',
         gender: 'male',
         location: { country: 'USA', city: 'NYC' },
         languages: ['English'],
@@ -101,7 +101,7 @@ describe('profile actions', () => {
         first_name: 'John',
         last_name: 'Doe',
         about_me: 'Test bio',
-        age: 25,
+        birth_date: '1995-04-25',
         gender: 'male',
         location: { country: null, city: null, region: null },
         languages: [],
@@ -111,6 +111,29 @@ describe('profile actions', () => {
       const result = await updateProfile(validData);
 
       expect(result.success).toBe(true);
+    });
+
+    it('should return validation error for unsupported gender values', async () => {
+      const invalidData = {
+        first_name: 'John',
+        last_name: 'Doe',
+        about_me: 'Test bio',
+        birth_date: '1995-04-25',
+        gender: 'other',
+        location: { country: 'USA', city: 'NYC' },
+        languages: ['English'],
+        passions: ['Music'],
+      };
+
+      const result = await updateProfile(invalidData);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Validation failed');
+      expect(result).toMatchObject({
+        details: {
+          gender: expect.arrayContaining(['Gender must be Male or Female']),
+        },
+      });
     });
   });
 

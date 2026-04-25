@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useMasterData } from '../../src/hooks/useMasterData';
 
 // Mock fetch globally
@@ -86,7 +86,9 @@ describe('useMasterData Hook', () => {
 
         mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockPassions) });
 
-        await result.current.refresh();
+        await act(async () => {
+            await result.current.refresh();
+        });
 
         await waitFor(() => {
             expect(result.current.passions).toEqual(mockPassions);
@@ -104,7 +106,9 @@ describe('useMasterData Hook', () => {
 
         mockFetch.mockRejectedValue(new Error('Refresh error'));
 
-        await result.current.refresh();
+        await act(async () => {
+            await result.current.refresh();
+        });
 
         // Should not crash, data remains
         expect(result.current.passions).toEqual([]);

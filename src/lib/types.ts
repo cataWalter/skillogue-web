@@ -1,10 +1,12 @@
+import type { GenderOption } from './gender';
+
 export type FullProfile = {
   id: string;
   first_name: string;
   last_name: string;
   about_me: string;
   age: number;
-  gender: 'Male' | 'Female' | 'Other';
+  gender: GenderOption;
   verified: boolean;
   created_at: string;
   user_id: string;

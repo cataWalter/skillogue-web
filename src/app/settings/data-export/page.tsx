@@ -5,6 +5,7 @@ import { getUserData } from '@/app/actions/export-data';
 import { ArrowLeft, Download, FileJson, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
+import { settingsCopy } from '../../../lib/app-copy';
 
 export default function DataExportPage() {
     const [loading, setLoading] = useState(false);
@@ -25,10 +26,10 @@ export default function DataExportPage() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            toast.success('Data export started');
+            toast.success(settingsCopy.dataExport.exportStarted);
         } catch (error) {
             console.error('Export failed:', error);
-            toast.error('Failed to export data');
+            toast.error(settingsCopy.dataExport.exportError);
         } finally {
             setLoading(false);
         }
@@ -39,7 +40,7 @@ export default function DataExportPage() {
             <div className="max-w-2xl mx-auto">
                 <Link href="/settings" className="text-gray-400 hover:text-white transition flex items-center gap-2 mb-8">
                     <ArrowLeft size={20} />
-                    Back to Settings
+                    {settingsCopy.dataExport.backToSettings}
                 </Link>
 
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-8">
@@ -47,22 +48,21 @@ export default function DataExportPage() {
                         <div className="bg-indigo-600/20 p-3 rounded-full">
                             <FileJson className="w-8 h-8 text-indigo-500" />
                         </div>
-                        <h1 className="text-2xl font-bold">Export Your Data</h1>
+                        <h1 className="text-2xl font-bold">{settingsCopy.dataExport.title}</h1>
                     </div>
 
                     <p className="text-gray-300 mb-6">
-                        You have the right to access your personal data. Click the button below to download a copy of your data in JSON format.
-                        This includes your profile information, messages, and settings.
+                        {settingsCopy.dataExport.intro}
                     </p>
 
                     <div className="bg-gray-800/50 p-4 rounded-lg mb-8 text-sm text-gray-400">
-                        <p className="mb-2 font-semibold text-gray-300">What&apos;s included:</p>
+                        <p className="mb-2 font-semibold text-gray-300">{settingsCopy.dataExport.includedTitle}</p>
                         <ul className="list-disc list-inside space-y-1">
-                            <li>Profile details (Name, Bio, Location)</li>
-                            <li>Account information (Email, ID)</li>
-                            <li>Your Passions and Languages</li>
-                            <li>Message history (Sent and Received)</li>
-                            <li>Blocked users list</li>
+                            <li>{settingsCopy.dataExport.includedProfileDetails}</li>
+                            <li>{settingsCopy.dataExport.includedAccountInfo}</li>
+                            <li>{settingsCopy.dataExport.includedPassionsLanguages}</li>
+                            <li>{settingsCopy.dataExport.includedMessages}</li>
+                            <li>{settingsCopy.dataExport.includedBlockedUsers}</li>
                         </ul>
                     </div>
 
@@ -74,12 +74,12 @@ export default function DataExportPage() {
                         {loading ? (
                             <>
                                 <Loader2 className="animate-spin" size={20} />
-                                Preparing Download...
+                                {settingsCopy.dataExport.preparing}
                             </>
                         ) : (
                             <>
                                 <Download size={20} />
-                                Download My Data
+                                {settingsCopy.dataExport.downloadButton}
                             </>
                         )}
                     </button>

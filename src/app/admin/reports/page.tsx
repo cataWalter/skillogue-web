@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { adminCopy } from '../../../lib/app-copy';
 
 interface Report {
     id: number;
@@ -46,21 +47,21 @@ export default function AdminReports() {
         }
     };
 
-    if (loading) return <div className="text-white">Loading...</div>;
+    if (loading) return <div className="text-white">{adminCopy.reports.loading}</div>;
 
     return (
         <div className="text-white">
-            <h1 className="text-3xl font-bold mb-6">User Reports</h1>
+            <h1 className="text-3xl font-bold mb-6">{adminCopy.reports.title}</h1>
             <div className="space-y-4">
                 {reports.length === 0 ? (
-                    <div className="text-gray-500">No reports found.</div>
+                    <div className="text-gray-500">{adminCopy.reports.empty}</div>
                 ) : (
                     reports.map((report) => (
                         <div key={report.id} className="bg-gray-900 border border-gray-800 p-6 rounded-xl">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-2 text-red-400 font-semibold">
                                     <AlertTriangle size={20} />
-                                    Report against {report.reported?.first_name} {report.reported?.last_name}
+                                    {adminCopy.reports.reportAgainstPrefix} {report.reported?.first_name} {report.reported?.last_name}
                                 </div>
                                 <span className="text-sm text-gray-500">
                                     {new Date(report.created_at).toLocaleDateString()}
@@ -73,7 +74,7 @@ export default function AdminReports() {
 
                             <div className="flex justify-between items-center text-sm text-gray-500">
                                 <div>
-                                    Reported by: {report.reporter?.first_name} {report.reporter?.last_name}
+                                    {adminCopy.reports.reportedByPrefix} {report.reporter?.first_name} {report.reporter?.last_name}
                                 </div>
                                 <div className="flex gap-2">
                                     <select
@@ -81,9 +82,9 @@ export default function AdminReports() {
                                         onChange={(e) => updateReportStatus(report.id, e.target.value)}
                                         className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
                                     >
-                                        <option value="pending">Pending</option>
-                                        <option value="reviewed">Reviewed</option>
-                                        <option value="resolved">Resolved</option>
+                                        {adminCopy.reports.statusOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>

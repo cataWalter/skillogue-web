@@ -3,19 +3,23 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Shield, Users, FileText, LayoutDashboard } from 'lucide-react';
+import { Shield, FileText, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { adminCopy } from '../../lib/app-copy';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [isAdmin, setIsAdmin] = useState(false);
-    const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        const checkAdmin = async () => {
+        if (authLoading) {
+            return;
+        }
+
+        const checkAdmin = () => {
             if (!user) {
-                router.push('/login');
+                router.replace('/login');
                 return;
             }
 
@@ -27,39 +31,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const isAdminUser = user.email?.endsWith('@admin.com') || user.email?.includes('admin');
             
             if (!isAdminUser) {
-                router.push('/');
+                router.replace('/');
                 return;
             }
 
             setIsAdmin(true);
-            setLoading(false);
         };
 
         checkAdmin();
-    }, [user, router]);
+    }, [authLoading, user, router]);
 
-    if (loading) return <div>Loading...</div>;
+    if (authLoading) return <div>{adminCopy.layout.loading}</div>;
     if (!isAdmin) return null;
 
     return (
         <div className="flex">
             <aside className="w-64 bg-gray-800 text-white p-4">
                 <nav className="space-y-2">
-                    <Link href="/admin/dashboard" className="block py-2 px-3 rounded hover:bg-gray-700">
+                    <Link href="/admin" className="block py-2 px-3 rounded hover:bg-gray-700">
                         <LayoutDashboard size={18} className="inline-block mr-2" />
-                        Dashboard
-                    </Link>
-                    <Link href="/admin/users" className="block py-2 px-3 rounded hover:bg-gray-700">
-                        <Users size={18} className="inline-block mr-2" />
-                        Users
+                        {adminCopy.layout.dashboard}
                     </Link>
                     <Link href="/admin/reports" className="block py-2 px-3 rounded hover:bg-gray-700">
                         <FileText size={18} className="inline-block mr-2" />
-                        Reports
+                        {adminCopy.layout.reports}
                     </Link>
                     <Link href="/admin/verification" className="block py-2 px-3 rounded hover:bg-gray-700">
                         <Shield size={18} className="inline-block mr-2" />
-                        Verification
+                        {adminCopy.layout.verification}
                     </Link>
                 </nav>
             </aside>

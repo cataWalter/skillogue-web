@@ -1,5 +1,6 @@
 import React from 'react';
 import Avatar from './Avatar';
+import { getDisplayFullName, getDisplayMessagePreview } from '@/lib/profile-display';
 
 interface ConversationItemProps {
     userId: string;
@@ -12,6 +13,9 @@ interface ConversationItemProps {
 }
 
 const ConversationItem: React.FC<ConversationItemProps> = React.memo(({ userId, fullName, lastMessage, unread, isSelected, isOnline, onClick }) => {
+    const displayName = getDisplayFullName(fullName);
+    const messagePreview = getDisplayMessagePreview(lastMessage);
+
     return (
         <div
             onClick={() => onClick(userId)}
@@ -29,7 +33,7 @@ const ConversationItem: React.FC<ConversationItemProps> = React.memo(({ userId, 
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline">
                         <h3 className={`font-semibold truncate ${unread > 0 ? 'text-white' : 'text-gray-200'}`}>
-                            {fullName}
+                            {displayName}
                         </h3>
                         {unread > 0 && (
                             <span className="bg-gradient-to-r from-indigo-600 to-purple-600 text-xs px-2.5 py-0.5 rounded-full text-white font-medium">
@@ -38,7 +42,7 @@ const ConversationItem: React.FC<ConversationItemProps> = React.memo(({ userId, 
                         )}
                     </div>
                     <p className={`text-sm truncate ${unread > 0 ? 'text-gray-300 font-medium' : 'text-gray-500'}`}>
-                        {lastMessage || 'No messages yet'}
+                        {messagePreview}
                     </p>
                 </div>
             </div>

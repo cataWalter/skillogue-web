@@ -1,34 +1,152 @@
-import { test as base, Page } from '@playwright/test';
-import { appClient } from '../../../src/lib/appClient';
+import { randomUUID } from 'crypto';
+import dotenv from 'dotenv';
+import { Client as AppwriteClient, Databases, Query, Users } from 'node-appwrite';
+import { test as base, expect, Page } from '@playwright/test';
+
+dotenv.config({ path: '.env', quiet: true });
+dotenv.config({ path: '.env.local', quiet: true });
+
+const getEnvValue = (...keys: string[]) => {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return '';
+};
+
+const toEnvKeySegment = (value: string) => value.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+
+const getCollectionId = (name: string) =>
+  getEnvValue(`APPWRITE_COLLECTION_${toEnvKeySegment(name)}_ID`) || name;
+
+const appwriteEndpoint = getEnvValue('NEXT_PUBLIC_APPWRITE_ENDPOINT');
+const appwriteProjectId = getEnvValue('NEXT_PUBLIC_APPWRITE_PROJECT_ID');
+const appwriteDatabaseId = getEnvValue('NEXT_PUBLIC_APPWRITE_DATABASE_ID', 'APPWRITE_DATABASE_ID');
+const appwriteApiKey = getEnvValue('APPWRITE_API_KEY');
+const profilesCollectionId = getCollectionId('profiles');
+
+const getAdminClients = () => {
+  if (!appwriteEndpoint || !appwriteProjectId || !appwriteDatabaseId || !appwriteApiKey) {
+    throw new Error(
+      'Missing one or more required env vars: NEXT_PUBLIC_APPWRITE_ENDPOINT, NEXT_PUBLIC_APPWRITE_PROJECT_ID, NEXT_PUBLIC_APPWRITE_DATABASE_ID, APPWRITE_API_KEY'
+    );
+  }
+
+  const client = new AppwriteClient()
+    .setEndpoint(appwriteEndpoint)
+    .setProject(appwriteProjectId)
+    .setKey(appwriteApiKey);
+
+  return {
+    users: new Users(client),
+    databases: new Databases(client),
+  };
+};
+
+const findUserByEmail = async (email: string) => {
+  const { users } = getAdminClients();
+  const result = await users.list({
+    queries: [Query.equal('email', email)],
+    total: false,
+  });
+
+  return result.users[0] || null;
+};
+
+const deleteExistingProfiles = async (userId: string) => {
+  const { databases } = getAdminClients();
+  const documentIds = new Set<string>();
+
+  try {
+    const profile = await databases.getDocument(appwriteDatabaseId, profilesCollectionId, userId);
+    documentIds.add(profile.$id);
+  } catch (error) {
+    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 404) {
+      throw error;
+    }
+  }
+
+  const matchingProfiles = await databases.listDocuments(appwriteDatabaseId, profilesCollectionId, [
+    Query.equal('id', [userId]),
+    Query.limit(100),
+  ]);
+
+  for (const profile of matchingProfiles.documents) {
+    documentIds.add(profile.$id);
+  }
+
+  for (const documentId of documentIds) {
+    await databases.deleteDocument(appwriteDatabaseId, profilesCollectionId, documentId);
+  }
+};
+
+const ensureIncompleteProfileUser = async () => {
+  const email = 'e2e.incomplete@example.com';
+  const password = 'TestPassword123!';
+  const { users } = getAdminClients();
+
+  let user = await findUserByEmail(email);
+
+  if (!user) {
+    try {
+      user = await users.create({
+        userId: randomUUID(),
+        email,
+        password,
+        name: 'E2E Incomplete Profile',
+      });
+    } catch (error) {
+      if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 409) {
+        throw error;
+      }
+
+      user = await findUserByEmail(email);
+      if (!user) {
+        throw error;
+      }
+    }
+  }
+
+  await deleteExistingProfiles(user.$id);
+
+  return {
+    id: user.$id,
+    email,
+    password,
+  };
+};
+
+const signInThroughBrowserContext = async (page: Page, credentials: { email: string; password: string }) => {
+  await page.request.post('/api/auth/sign-out').catch(() => undefined);
+
+  const response = await page.request.post('/api/auth/sign-in/email', {
+    data: credentials,
+  });
+
+  expect(response.ok()).toBeTruthy();
+};
 
 /**
  * Custom test fixture that provides authenticated user functionality
  */
 export const test = base.extend<{
   authenticatedPage: Page;
+  incompleteProfilePage: Page;
   createTestUser: () => Promise<{ email: string; password: string; id: string }>;
 }>({
   authenticatedPage: async ({ page }, providePage) => {
-    // Sign in with test user credentials
-    const testEmail = 'testuser@example.com';
-    const testPassword = 'TestPassword123!';
-    
+    const testEmail = 'alice@example.com';
+    const testPassword = 'Test1234!';
+
     try {
-      const { error } = await appClient.auth.signInWithPassword({
+      await signInThroughBrowserContext(page, {
         email: testEmail,
         password: testPassword,
       });
-
-      if (error) {
-        console.log('Auth error (may need test user setup):', error.message);
-        // Continue without auth - tests will handle redirect
-      }
-
-      // Navigate to the page
       await page.goto('/');
-      
-      // Wait a bit for any auth state changes
-      await page.waitForTimeout(1000);
     } catch (e) {
       console.log('Could not authenticate:', e);
     }
@@ -36,26 +154,38 @@ export const test = base.extend<{
     await providePage(page);
   },
 
+  incompleteProfilePage: async ({ page }, providePage) => {
+    try {
+      const user = await ensureIncompleteProfileUser();
+      await signInThroughBrowserContext(page, {
+        email: user.email,
+        password: user.password,
+      });
+    } catch (e) {
+      console.log('Could not authenticate incomplete profile user:', e);
+      throw e;
+    }
+
+    await providePage(page);
+  },
+
   createTestUser: async () => {
-    // Create a test user in Appwrite
     const testEmail = `test_${Date.now()}@example.com`;
     const testPassword = 'TestPassword123!';
-    
+
     try {
-      const { data, error } = await appClient.auth.signUp({
+      const { users } = getAdminClients();
+      const user = await users.create({
+        userId: randomUUID(),
         email: testEmail,
         password: testPassword,
+        name: testEmail.split('@')[0],
       });
-
-      if (error) {
-        console.log('User creation error:', error.message);
-        throw error;
-      }
 
       return {
         email: testEmail,
         password: testPassword,
-        id: data.user?.id || '',
+        id: user.$id,
       };
     } catch (e) {
       console.log('Error creating test user:', e);
@@ -64,4 +194,4 @@ export const test = base.extend<{
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect };

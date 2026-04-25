@@ -152,7 +152,9 @@ describe('useAuth Hook', () => {
             expect(result.current.loading).toBe(false);
         });
 
-        await result.current.signIn('test@example.com', 'password123');
+        await act(async () => {
+            await result.current.signIn('test@example.com', 'password123');
+        });
 
         expect(mockFetch).toHaveBeenCalledWith('/api/auth/sign-in/email', expect.objectContaining({
             method: 'POST',

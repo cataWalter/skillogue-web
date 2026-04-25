@@ -30,6 +30,12 @@ next-env.d.ts
 .jest-full.json
 .lint-agent.log
 .playwright-mcp/
+playwright-report/
+test-results/
+.swc/
+.neon
+.jest-migration-results.json
+test_results.json
 brevo-login-snapshot.md
 lighthouse-live-desktop.json
 lighthouse-live-mobile.json

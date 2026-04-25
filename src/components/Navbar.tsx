@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, User, Settings, LogOut, Heart, MessageCircle, Bell, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { componentCopy } from '../lib/app-copy';
 
 const Navbar = () => {
   const { user, signOut, refresh } = useAuth();
@@ -26,12 +27,12 @@ const Navbar = () => {
   };
 
   const navItems = user ? [
-    { href: '/dashboard', icon: Search, label: 'Search' },
-    { href: '/favorites', icon: Heart, label: 'Favorites' },
-    { href: '/messages', icon: MessageCircle, label: 'Messages' },
-    { href: '/notifications', icon: Bell, label: 'Notifications' },
-    { href: '/profile', icon: User, label: 'Profile' },
-    { href: '/settings', icon: Settings, label: 'Settings' },
+    { href: '/dashboard', icon: Search, label: componentCopy.navbar.search },
+    { href: '/favorites', icon: Heart, label: componentCopy.navbar.favorites },
+    { href: '/messages', icon: MessageCircle, label: componentCopy.navbar.messages },
+    { href: '/notifications', icon: Bell, label: componentCopy.navbar.notifications },
+    { href: '/profile', icon: User, label: componentCopy.navbar.profile },
+    { href: '/settings', icon: Settings, label: componentCopy.navbar.settings },
   ] : [];
 
   return (
@@ -65,7 +66,7 @@ const Navbar = () => {
                 className="flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
               >
                 <LogOut size={18} />
-                <span className="text-sm">Sign Out</span>
+                <span className="text-sm">{componentCopy.navbar.signOut}</span>
               </button>
             </div>
           )}
@@ -76,7 +77,7 @@ const Navbar = () => {
                 href="/login"
                 className="inline-flex items-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-indigo-500/25"
               >
-                Log In
+                {componentCopy.navbar.logIn}
               </Link>
             </div>
           )}
@@ -84,7 +85,7 @@ const Navbar = () => {
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-label={mobileMenuOpen ? componentCopy.navbar.closeNavigationMenu : componentCopy.navbar.openNavigationMenu}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation"
             className="md:hidden p-2 text-gray-400 hover:text-white"
@@ -120,7 +121,7 @@ const Navbar = () => {
                   className="flex items-center gap-3 w-full px-3 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
                 >
                   <LogOut size={18} />
-                  <span>Sign Out</span>
+                  <span>{componentCopy.navbar.signOut}</span>
                 </button>
               </>
             ) : (
@@ -130,14 +131,14 @@ const Navbar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
                 >
-                  Sign In
+                  {componentCopy.navbar.signIn}
                 </Link>
                 <Link
                   href="/signup"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-3 text-indigo-400 hover:text-indigo-300 hover:bg-gray-800 rounded-lg transition"
                 >
-                  Sign Up
+                  {componentCopy.navbar.signUp}
                 </Link>
               </>
             )}

@@ -6,7 +6,7 @@
  import { getCurrentUserFromCookies } from '@/lib/server/current-user';
  import { AppDataService } from '@/lib/server/app-data-service';
  
- export async function updateProfile(data: z.infer<typeof profileSchema>) {
+export async function updateProfile(data: z.input<typeof profileSchema>) {
    try {
      const validatedData = profileSchema.parse(data);
  

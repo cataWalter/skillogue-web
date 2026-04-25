@@ -5,12 +5,10 @@ const mockGetRegistration = jest.fn();
 const mockRegister = jest.fn();
 const mockGetSubscription = jest.fn();
 const mockSubscribe = jest.fn();
-
-jest.mock('../../src/hooks/useAuth', () => ({
-  useAuth: () => ({ user: null }),
-}));
+const mockFetch = jest.fn();
 
 describe('usePushNotifications Hook', () => {
+  const originalFetch = global.fetch;
   const originalNotification = global.Notification;
   const originalPushManager = window.PushManager;
   const originalServiceWorker = navigator.serviceWorker;
@@ -35,6 +33,7 @@ describe('usePushNotifications Hook', () => {
     mockRegister.mockResolvedValue(registration);
     mockGetSubscription.mockResolvedValue(null);
     mockSubscribe.mockResolvedValue(mockSubscription);
+    mockFetch.mockResolvedValue({ ok: true });
 
     Object.defineProperty(global, 'Notification', {
       configurable: true,
@@ -59,6 +58,11 @@ describe('usePushNotifications Hook', () => {
       },
     });
 
+    Object.defineProperty(global, 'fetch', {
+      configurable: true,
+      value: mockFetch,
+    });
+
     process.env.NEXT_PUBLIC_VAPID_KEY = 'SGVsbG8';
   });
 
@@ -78,6 +82,11 @@ describe('usePushNotifications Hook', () => {
       value: originalServiceWorker,
     });
 
+    Object.defineProperty(global, 'fetch', {
+      configurable: true,
+      value: originalFetch,
+    });
+
     process.env.NEXT_PUBLIC_VAPID_KEY = originalVapidKey;
   });
 
@@ -94,6 +103,13 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(mockRegister).toHaveBeenCalledWith('/sw.js');
+      expect(mockFetch).toHaveBeenCalledWith('/api/push-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: 'https://example.com/push',
+        }),
+      });
       expect(mockSubscribe).toHaveBeenCalledTimes(1);
       expect(result.current.loading).toBe(false);
       expect(result.current.subscription).not.toBeNull();
@@ -106,5 +122,33 @@ describe('usePushNotifications Hook', () => {
 
     expect(subscribeOptions.userVisibleOnly).toBe(true);
     expect(Array.from(subscribeOptions.applicationServerKey)).toEqual([72, 101, 108, 108, 111]);
+  });
+
+  it('does not keep the subscription enabled when the server save fails', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockFetch.mockResolvedValue({ ok: false });
+
+    const { result } = renderHook(() => usePushNotifications());
+
+    await waitFor(() => {
+      expect(result.current.isSupported).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.subscribe();
+    });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(result.current.loading).toBe(false);
+      expect(result.current.subscription).toBeNull();
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error subscribing to push notifications:',
+      expect.any(Error)
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 });

@@ -20,6 +20,14 @@ import {
 } from 'lucide-react';
 import Avatar from '../../components/Avatar';
 import SearchSkeleton from '../../components/SearchSkeleton';
+import {
+    getDisplayBio,
+    getDisplayGender,
+    getDisplayLocation,
+    getDisplayName,
+} from '@/lib/profile-display';
+import { GENDER_OPTIONS, normalizeGender } from '@/lib/gender';
+import { commonLabels, searchCopy } from '@/lib/app-copy';
 
 // --- Type Definitions ---
 interface Passion {
@@ -87,6 +95,8 @@ const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value?: strin
 };
 
 const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
+    const displayName = getDisplayName(user.first_name, user.last_name);
+
     if (user.is_private) {
         return (
             <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 hover:border-indigo-600/50 transition-all duration-300 transform hover:-translate-y-1 card-hover-lift">
@@ -101,18 +111,18 @@ const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                             <h3 className="text-2xl font-bold">
                                 <Link href={`/user/${user.id}`} className="hover:text-indigo-400 transition">
-                                    {user.first_name} {user.last_name}
+                                    {displayName}
                                 </Link>
                             </h3>
                             <Link
                                 href={`/messages?conversation=${user.id}`}
                                 className="mt-2 sm:mt-0 flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-lg transition-all duration-300 transform hover:scale-105 text-sm text-white shadow-lg hover:shadow-xl"
                             >
-                                <MessageSquare size={16} /> Message
+                                <MessageSquare size={16} /> {commonLabels.message}
                             </Link>
                         </div>
                         <p className="text-gray-500 mt-2 text-sm italic flex items-center justify-center sm:justify-start gap-2">
-                            <Lock size={14} /> Private Profile
+                            <Lock size={14} /> {searchCopy.privateProfile}
                         </p>
                     </div>
                 </div>
@@ -125,35 +135,35 @@ const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
             <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="relative">
                     <Avatar seed={user.id} className="w-24 h-24 rounded-full object-cover border-4 border-gray-700 flex-shrink-0" />
-                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-gray-900" title="Online" />
+                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-gray-900" title={searchCopy.onlineTitle} />
                 </div>
                 <div className="flex-grow text-center sm:text-left">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <h3 className="text-2xl font-bold">
                             <Link href={`/user/${user.id}`} className="hover:text-indigo-400 transition">
-                                {user.first_name} {user.last_name}
+                                {displayName}
                             </Link>
                         </h3>
                         <Link
                             href={`/messages?conversation=${user.id}`}
                             className="mt-2 sm:mt-0 flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-lg transition-all duration-300 transform hover:scale-105 text-sm text-white shadow-lg hover:shadow-xl"
                         >
-                            <MessageSquare size={16} /> Message
+                            <MessageSquare size={16} /> {commonLabels.message}
                         </Link>
                     </div>
-                    {user.about_me && <p className="text-gray-400 mt-2 text-sm line-clamp-2">{user.about_me}</p>}
+                    <p className="text-gray-400 mt-2 text-sm line-clamp-2">{getDisplayBio(user.about_me)}</p>
                 </div>
             </div>
 
             <div className="border-t border-gray-800 my-4"></div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(user.show_location !== false) && <DetailItem icon={<MapPin size={18} />} label="Location" value={user.location} />}
-                {(user.show_age !== false) && <DetailItem icon={<Calendar size={18} />} label="Age" value={user.age} />}
-                <DetailItem icon={<User size={18} />} label="Gender" value={user.gender} />
+                {(user.show_location !== false) && <DetailItem icon={<MapPin size={18} />} label={commonLabels.location} value={getDisplayLocation(user.location)} />}
+                {(user.show_age !== false) && <DetailItem icon={<Calendar size={18} />} label={commonLabels.age} value={user.age} />}
+                <DetailItem icon={<User size={18} />} label={commonLabels.gender} value={getDisplayGender(user.gender)} />
 
                 {user.profile_languages && user.profile_languages.length > 0 && (
-                    <DetailItem icon={<Languages size={18} />} label="Languages">
+                    <DetailItem icon={<Languages size={18} />} label={commonLabels.languages}>
                         <div className="flex flex-wrap gap-2 mt-1">
                             {user.profile_languages.map((lang) => (
                                 <span key={lang} className="px-2 py-1 bg-gray-800 text-indigo-200 rounded-full text-xs">
@@ -169,7 +179,7 @@ const SearchResultCard: React.FC<{ user: SearchResult }> = ({ user }) => {
                 <div className="mt-4">
                     <div className="flex items-center gap-2 mb-2">
                         <Heart size={18} className="text-pink-400" />
-                        <h4 className="font-medium text-gray-400 text-sm">Passions</h4>
+                        <h4 className="font-medium text-gray-400 text-sm">{commonLabels.passions}</h4>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {user.profilepassions.map((passion) => (
@@ -257,7 +267,7 @@ const Search: React.FC = () => {
 
             if (error) {
                 console.error('Search error:', error);
-                setError('Failed to search profiles. Please try again.');
+                setError(searchCopy.failedToSearchProfiles);
                 return;
             }
 
@@ -275,7 +285,7 @@ const Search: React.FC = () => {
             setHasMore(newResults.length === PAGE_SIZE);
         } catch (err) {
             console.error('Search error:', err);
-            setError('An unexpected error occurred. Please try again.');
+            setError(searchCopy.unexpectedError);
         } finally {
             setLoading(false);
         }
@@ -321,7 +331,7 @@ const Search: React.FC = () => {
 
         if (error) {
             console.error('Error saving search:', error);
-            alert('Failed to save search');
+            alert(searchCopy.failedToSaveSearch);
         } else {
             setSavedSearches([...savedSearches, data]);
             setIsSaveModalOpen(false);
@@ -335,7 +345,7 @@ const Search: React.FC = () => {
         setMinAge(search.min_age?.toString() || '');
         setMaxAge(search.max_age?.toString() || '');
         setLanguage(search.language || '');
-        setGender(search.gender || '');
+        setGender(normalizeGender(search.gender) || '');
 
         if (search.passion_ids) {
             const names = search.passion_ids.map(id =>
@@ -389,32 +399,32 @@ const Search: React.FC = () => {
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
                         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <Zap className="text-indigo-400" /> Filters
+                            <Zap className="text-indigo-400" /> {searchCopy.filtersTitle}
                         </h2>
                         <form onSubmit={handleSearch} className="space-y-4">
                             <div>
-                                <label htmlFor="search-query" className="block text-sm font-medium text-gray-400 mb-1">Keywords</label>
+                                <label htmlFor="search-query" className="block text-sm font-medium text-gray-400 mb-1">{searchCopy.keywordsLabel}</label>
                                 <input
                                     id="search-query"
                                     name="query"
                                     type="text"
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="Name, bio, etc."
+                                    placeholder={searchCopy.keywordsPlaceholder}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     autoComplete="off"
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="search-location" className="block text-sm font-medium text-gray-400 mb-1">Location</label>
+                                <label htmlFor="search-location" className="block text-sm font-medium text-gray-400 mb-1">{commonLabels.location}</label>
                                 <input
                                     id="search-location"
                                     name="location"
                                     type="text"
                                     value={location}
                                     onChange={(e) => setLocation(e.target.value)}
-                                    placeholder="City, Country"
+                                    placeholder={searchCopy.locationPlaceholder}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     autoComplete="off"
                                 />
@@ -422,7 +432,7 @@ const Search: React.FC = () => {
 
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label htmlFor="search-min-age" className="block text-sm font-medium text-gray-400 mb-1">Min Age</label>
+                                    <label htmlFor="search-min-age" className="block text-sm font-medium text-gray-400 mb-1">{searchCopy.minAgeLabel}</label>
                                     <input
                                         id="search-min-age"
                                         name="minAge"
@@ -434,7 +444,7 @@ const Search: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="search-max-age" className="block text-sm font-medium text-gray-400 mb-1">Max Age</label>
+                                    <label htmlFor="search-max-age" className="block text-sm font-medium text-gray-400 mb-1">{searchCopy.maxAgeLabel}</label>
                                     <input
                                         id="search-max-age"
                                         name="maxAge"
@@ -448,7 +458,7 @@ const Search: React.FC = () => {
                             </div>
 
                             <div>
-                                <label htmlFor="search-gender" className="block text-sm font-medium text-gray-400 mb-1">Gender</label>
+                                <label htmlFor="search-gender" className="block text-sm font-medium text-gray-400 mb-1">{commonLabels.gender}</label>
                                 <select
                                     id="search-gender"
                                     name="gender"
@@ -456,23 +466,22 @@ const Search: React.FC = () => {
                                     onChange={(e) => setGender(e.target.value)}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 >
-                                    <option value="">Any</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Non-binary">Non-binary</option>
-                                    <option value="Other">Other</option>
+                                    <option value="">{searchCopy.any}</option>
+                                    {GENDER_OPTIONS.map((genderOption) => (
+                                        <option key={genderOption} value={genderOption}>{genderOption}</option>
+                                    ))}
                                 </select>
                             </div>
 
                             <div>
-                                <label htmlFor="search-language" className="block text-sm font-medium text-gray-400 mb-1">Language</label>
+                                <label htmlFor="search-language" className="block text-sm font-medium text-gray-400 mb-1">{searchCopy.languageLabel}</label>
                                 <input
                                     id="search-language"
                                     name="language"
                                     type="text"
                                     value={language}
                                     onChange={(e) => setLanguage(e.target.value)}
-                                    placeholder="English, Spanish..."
+                                    placeholder={searchCopy.languagePlaceholder}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     autoComplete="off"
                                 />
@@ -480,11 +489,11 @@ const Search: React.FC = () => {
 
                             <div>
                                 <MultiSelect
-                                    label="Passions"
+                                    label={commonLabels.passions}
                                     options={availablePassions}
                                     selected={selectedPassions}
                                     onChange={setSelectedPassions}
-                                    placeholder="Select passions..."
+                                    placeholder={searchCopy.selectPassionsPlaceholder}
                                     id="search-passions"
                                     name="passions"
                                 />
@@ -501,10 +510,10 @@ const Search: React.FC = () => {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        Searching...
+                                        {searchCopy.searching}
                                     </>
                                 ) : (
-                                    'Search'
+                                    commonLabels.search
                                 )}
                             </button>
 
@@ -514,7 +523,7 @@ const Search: React.FC = () => {
                                     onClick={() => setIsSaveModalOpen(true)}
                                     className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition flex items-center justify-center gap-2"
                                 >
-                                    <Save size={16} /> Save Search
+                                    <Save size={16} /> {searchCopy.saveSearchButton}
                                 </button>
                             )}
                         </form>
@@ -523,7 +532,7 @@ const Search: React.FC = () => {
                     {/* Saved Searches */}
                     {savedSearches.length > 0 && (
                         <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
-                            <h3 className="font-bold mb-4 text-gray-300">Saved Searches</h3>
+                            <h3 className="font-bold mb-4 text-gray-300">{searchCopy.savedSearchesTitle}</h3>
                             <div className="space-y-2">
                                 {savedSearches.map(search => (
                                     <div key={search.id} className="flex items-center justify-between bg-gray-800 p-2 rounded-lg">
@@ -536,7 +545,7 @@ const Search: React.FC = () => {
                                         <button
                                             onClick={() => deleteSavedSearch(search.id)}
                                             className="text-gray-500 hover:text-red-400 ml-2"
-                                            title="Delete Search"
+                                            title={searchCopy.deleteSearchTitle}
                                         >
                                             <Trash2 size={14} />
                                         </button>
@@ -551,15 +560,15 @@ const Search: React.FC = () => {
                 <div className="lg:col-span-3">
                     <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold">Discover People</h1>
-                            <p className="text-gray-400">Find others who share your passions.</p>
+                            <h1 className="text-3xl font-bold">{searchCopy.discoverPeopleTitle}</h1>
+                            <p className="text-gray-400">{searchCopy.discoverPeopleSubtitle}</p>
                         </div>
                         {results.length > 0 && (
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-gray-400">
-                                    {totalResults} {totalResults === 1 ? 'result' : 'results'}
+                                    {searchCopy.results(totalResults)}
                                 </span>
-                                <label htmlFor="search-sort" className="sr-only">Sort results</label>
+                                <label htmlFor="search-sort" className="sr-only">{searchCopy.sortResultsLabel}</label>
                                 <select
                                     id="search-sort"
                                     name="sortBy"
@@ -567,8 +576,8 @@ const Search: React.FC = () => {
                                     onChange={(e) => setSortBy(e.target.value as 'recent' | 'passions')}
                                     className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 >
-                                    <option value="recent">Most Recent</option>
-                                    <option value="passions">Most Shared Passions</option>
+                                    <option value="recent">{searchCopy.sortOptions.recent}</option>
+                                    <option value="passions">{searchCopy.sortOptions.passions}</option>
                                 </select>
                             </div>
                         )}
@@ -587,7 +596,7 @@ const Search: React.FC = () => {
                                 onClick={() => { setError(null); performSearch(1); }}
                                 className="mt-2 px-4 py-2 text-indigo-400 hover:text-indigo-300 border border-indigo-400 hover:border-indigo-300 rounded-lg transition-colors"
                             >
-                                Try Again
+                                {searchCopy.tryAgain}
                             </button>
                         </div>
                     )}
@@ -596,18 +605,18 @@ const Search: React.FC = () => {
                     {hasActiveFilters && !error && (
                         <div className="mb-6 bg-gray-900/50 rounded-xl p-4 border border-gray-800 animate-fade-in-up">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-sm font-medium text-gray-300">Active Filters</span>
+                                <span className="text-sm font-medium text-gray-300">{searchCopy.activeFilters}</span>
                                 <button
                                     onClick={clearAllFilters}
                                     className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                                 >
-                                    Clear all
+                                    {searchCopy.clearAll}
                                 </button>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {query && (
                                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-600/20 text-indigo-300 rounded-full text-sm border border-indigo-500/30">
-                                        Search: {query}
+                                        {searchCopy.queryFilterPrefix}: {query}
                                         <button onClick={() => clearFilter('query')} className="hover:text-white ml-1">
                                             ×
                                         </button>
@@ -623,7 +632,7 @@ const Search: React.FC = () => {
                                 )}
                                 {(minAge || maxAge) && (
                                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-600/20 text-green-300 rounded-full text-sm border border-green-500/30">
-                                        Age: {minAge && maxAge ? `${minAge}-${maxAge}` : minAge || maxAge}
+                                        {searchCopy.ageFilterPrefix}: {minAge && maxAge ? `${minAge}-${maxAge}` : minAge || maxAge}
                                         <button onClick={() => { clearFilter('minAge'); clearFilter('maxAge'); }} className="hover:text-white ml-1">
                                             ×
                                         </button>
@@ -674,13 +683,13 @@ const Search: React.FC = () => {
                             <div className="bg-gray-800 p-4 rounded-full mb-4">
                                 <User className="w-8 h-8 text-gray-500" />
                             </div>
-                            <p className="text-gray-400 text-lg mb-2">No profiles found matching your criteria.</p>
-                            <p className="text-gray-500 text-sm mb-6">Try adjusting your filters or search for something else.</p>
+                            <p className="text-gray-400 text-lg mb-2">{searchCopy.noProfilesFoundTitle}</p>
+                            <p className="text-gray-500 text-sm mb-6">{searchCopy.noProfilesFoundDescription}</p>
                             <button
                                 onClick={clearAllFilters}
                                 className="mt-2 px-4 py-2 text-indigo-400 hover:text-indigo-300 border border-indigo-400 hover:border-indigo-300 rounded-lg transition-colors"
                             >
-                                Clear all filters
+                                {searchCopy.clearAllFilters}
                             </button>
                         </div>
                     )}
@@ -693,7 +702,7 @@ const Search: React.FC = () => {
                                 disabled={loading}
                                 className="px-6 py-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white transition disabled:opacity-50"
                             >
-                                {loading ? 'Loading...' : 'Load More'}
+                                {loading ? searchCopy.loading : searchCopy.loadMore}
                             </button>
                         </div>
                     )}
@@ -704,15 +713,15 @@ const Search: React.FC = () => {
             {isSaveModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75">
                     <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full border border-gray-700">
-                        <h3 className="text-xl font-bold mb-4">Save Search</h3>
-                        <label htmlFor="save-search-name" className="block text-sm font-medium text-gray-400 mb-2">Search name</label>
+                        <h3 className="text-xl font-bold mb-4">{searchCopy.saveSearchTitle}</h3>
+                        <label htmlFor="save-search-name" className="block text-sm font-medium text-gray-400 mb-2">{searchCopy.saveSearchNameLabel}</label>
                         <input
                             id="save-search-name"
                             name="saveSearchName"
                             type="text"
                             value={saveSearchName}
                             onChange={(e) => setSaveSearchName(e.target.value)}
-                            placeholder="Give this search a name..."
+                            placeholder={searchCopy.giveSearchNamePlaceholder}
                             className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             autoComplete="off"
                         />
@@ -721,13 +730,13 @@ const Search: React.FC = () => {
                                 onClick={() => setIsSaveModalOpen(false)}
                                 className="px-4 py-2 text-gray-400 hover:text-white"
                             >
-                                Cancel
+                                {searchCopy.cancel}
                             </button>
                             <button
                                 onClick={saveSearch}
                                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white"
                             >
-                                Save
+                                {searchCopy.save}
                             </button>
                         </div>
                     </div>

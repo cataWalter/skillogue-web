@@ -11,6 +11,7 @@ import { MessageSquare, ShieldAlert, UserX, Flag, Ghost, Lock, Heart } from 'luc
 import { appClient } from '../../../lib/appClient';
 import ReportModal from '../../../components/ReportModal';
 import toast from 'react-hot-toast';
+import { profilePageCopy } from '../../../lib/app-copy';
 
 type Session = {
     user: {
@@ -55,7 +56,7 @@ const UserProfile: React.FC = () => {
             setSession(currentSession);
 
             if (!id || !currentSession?.user) {
-                setError(!id ? 'No user ID provided.' : 'You must be logged in to view profiles.');
+                setError(!id ? profilePageCopy.user.noUserId : profilePageCopy.user.mustBeLoggedIn);
                 setLoading(false);
                 if (!currentSession?.user) router.push('/login');
                 return;
@@ -78,13 +79,13 @@ const UserProfile: React.FC = () => {
 
             const { data: profileData, error: profileError } = await appClient
                 .from('profiles')
-                .select(`*, locations(*)`)
+                .select('id, created_at, first_name, last_name, about_me, age, gender, verified, is_private, show_age, show_location, locations(*)')
                 .eq('id', id)
                 .single();
 
             if (profileError || !profileData) {
                 console.error('Error loading user profile:', profileError);
-                setError('Could not find this user.');
+                setError(profilePageCopy.user.couldNotFindUser);
                 setLoading(false);
                 return;
             }
@@ -112,33 +113,33 @@ const UserProfile: React.FC = () => {
 
     const handleBlock = async () => {
         if (!session?.user || !profile) return;
-        if (!confirm(`Are you sure you want to block ${profile.first_name}? You won't see them in search or messages.`)) return;
+        if (!confirm(profilePageCopy.user.blockConfirm(profile.first_name))) return;
 
         try {
             const { error } = await appClient.rpc('block_user', { target_id: profile.id });
 
             if (error) throw error;
             setIsBlocked(true);
-            toast.success('User blocked successfully');
+            toast.success(profilePageCopy.user.blockedSuccess);
             router.push('/dashboard');
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'Error blocking user';
+            const message = error instanceof Error ? error.message : profilePageCopy.user.blockError;
             toast.error(message);
         }
     };
 
     const handleUnblock = async () => {
         if (!session?.user || !profile) return;
-        if (!confirm(`Unblock ${profile.first_name}?`)) return;
+        if (!confirm(profilePageCopy.user.unblockConfirm(profile.first_name))) return;
 
         try {
             const { error } = await appClient.rpc('unblock_user', { target_id: profile.id });
 
             if (error) throw error;
             setIsBlocked(false);
-            toast.success('User unblocked');
+            toast.success(profilePageCopy.user.unblockSuccess);
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'Error unblocking user';
+            const message = error instanceof Error ? error.message : profilePageCopy.user.unblockError;
             toast.error(message);
         }
     };
@@ -150,17 +151,17 @@ const UserProfile: React.FC = () => {
             const { error } = await appClient.rpc('unsave_profile', { target_id: profile.id });
             if (!error) {
                 setIsSaved(false);
-                toast.success('Removed from favorites');
+                toast.success(profilePageCopy.user.removedFromFavorites);
             } else {
-                toast.error('Failed to remove favorite');
+                toast.error(profilePageCopy.user.removeFavoriteError);
             }
         } else {
             const { error } = await appClient.rpc('save_profile', { target_id: profile.id });
             if (!error) {
                 setIsSaved(true);
-                toast.success('Saved to favorites');
+                toast.success(profilePageCopy.user.savedToFavorites);
             } else {
-                toast.error('Failed to save favorite');
+                toast.error(profilePageCopy.user.saveFavoriteError);
             }
         }
     };
@@ -179,10 +180,10 @@ const UserProfile: React.FC = () => {
         return (
             <div className="flex-grow flex flex-col items-center justify-center p-10 text-center">
                 <Ghost size={64} className="text-gray-600 mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">Profile Unavailable</h2>
-                <p className="text-gray-400">You cannot view this profile.</p>
+                <h2 className="text-2xl font-bold text-white mb-2">{profilePageCopy.user.profileUnavailable}</h2>
+                <p className="text-gray-400">{profilePageCopy.user.cannotViewProfile}</p>
                 <Link href="/dashboard" className="mt-6 text-indigo-400 hover:text-indigo-300">
-                    Return to Dashboard
+                    {profilePageCopy.user.returnToDashboard}
                 </Link>
             </div>
         );
@@ -191,8 +192,8 @@ const UserProfile: React.FC = () => {
     if (error || !profile) {
         return (
             <div className="text-center p-10 text-white">
-                <p className="text-xl text-red-400 mb-4">{error || 'Profile not found'}</p>
-                <Link href="/dashboard" className="text-indigo-400 hover:underline">Return to Dashboard</Link>
+                <p className="text-xl text-red-400 mb-4">{error || profilePageCopy.user.profileNotFound}</p>
+                <Link href="/dashboard" className="text-indigo-400 hover:underline">{profilePageCopy.user.returnToDashboard}</Link>
             </div>
         );
     }
@@ -206,26 +207,26 @@ const UserProfile: React.FC = () => {
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all duration-300 transform hover:scale-105 text-white"
                     >
                         <MessageSquare size={18} />
-                        <span>Message</span>
+                        <span>{profilePageCopy.user.message}</span>
                     </Link>
                     <button
                         onClick={handleToggleSave}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${isSaved ? 'bg-pink-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
-                        title={isSaved ? "Remove from Favorites" : "Add to Favorites"}
+                        title={isSaved ? profilePageCopy.user.removeFromFavorites : profilePageCopy.user.addToFavorites}
                     >
-                        <Heart size={18} fill={isSaved ? "currentColor" : "none"} />
+                        <Heart size={18} fill={isSaved ? 'currentColor' : 'none'} />
                     </button>
                     <button
                         onClick={() => setReportModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-white"
-                        title="Report User"
+                        title={profilePageCopy.user.reportUser}
                     >
                         <Flag size={18} />
                     </button>
                     <button
                         onClick={handleBlock}
                         className="flex items-center gap-2 px-4 py-2 bg-red-900/50 hover:bg-red-900/80 text-red-200 rounded-lg transition"
-                        title="Block User"
+                        title={profilePageCopy.user.blockUser}
                     >
                         <ShieldAlert size={18} />
                     </button>
@@ -234,10 +235,10 @@ const UserProfile: React.FC = () => {
                 <button
                     onClick={handleUnblock}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
-                    title="Unblock User"
+                    title={profilePageCopy.user.unblockUser}
                 >
                     <UserX size={18} />
-                    <span>Unblock</span>
+                    <span>{profilePageCopy.user.unblock}</span>
                 </button>
             )}
         </div>
@@ -257,9 +258,9 @@ const UserProfile: React.FC = () => {
                 </div>
                 <div className="bg-gray-900/50 p-6 rounded-xl border border-gray-800 max-w-md w-full card-hover-lift">
                     <Lock size={48} className="text-gray-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">This profile is private</h2>
+                    <h2 className="text-xl font-semibold mb-2">{profilePageCopy.user.privateTitle}</h2>
                     <p className="text-gray-400 mb-6">
-                        {profile.first_name} has limited who can see their profile details.
+                        {profilePageCopy.user.privateDescription(profile.first_name)}
                     </p>
                     {actionButton}
                 </div>

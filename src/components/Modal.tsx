@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { componentCopy } from '../lib/app-copy';
 
 interface ModalProps {
     isOpen: boolean;
@@ -63,7 +64,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer 
                     <button
                         onClick={onClose}
                         className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800 transition"
-                        aria-label="Close modal"
+                        aria-label={componentCopy.modal.closeAriaLabel}
                     >
                         <X size={24} />
                     </button>

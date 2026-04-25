@@ -7,7 +7,7 @@ test.describe('Profile Pages', () => {
       await expectLoginRedirect(page, '/profile');
     });
 
-    test('should display profile page elements when authenticated', async ({ page }) => {
+    test('should keep the profile page protected until authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/profile');
     });
   });
@@ -17,7 +17,7 @@ test.describe('Profile Pages', () => {
       await expectLoginRedirect(page, '/edit-profile');
     });
 
-    test('should display edit profile form elements when authenticated', async ({ page }) => {
+    test('should keep edit-profile protected until authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/edit-profile');
     });
   });
@@ -27,11 +27,11 @@ test.describe('Profile Pages', () => {
       await expectLoginRedirect(page, '/user/some-user-id');
     });
 
-    test('should display user profile elements when authenticated', async ({ page }) => {
+    test('should keep user profile routes protected until authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/user/some-user-id');
     });
 
-    test('should show 404 for invalid user id when authenticated', async ({ page }) => {
+    test('should redirect invalid user profile routes to login when unauthenticated', async ({ page }) => {
       await expectLoginRedirect(page, '/user/invalid-user-id-123');
     });
   });
@@ -52,7 +52,7 @@ test.describe('Onboarding', () => {
     await expectLoginRedirect(page, '/onboarding');
   });
 
-  test('should display onboarding elements when authenticated', async ({ page }) => {
+  test('should keep onboarding behind authentication before profile completion checks', async ({ page }) => {
     await expectLoginRedirect(page, '/onboarding');
   });
 });

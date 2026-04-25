@@ -4,6 +4,7 @@
 import React from 'react';
 import { Github, Linkedin, Twitter, Heart } from 'lucide-react';
 import Link from 'next/link';
+import { componentCopy } from '../lib/app-copy';
 
 const Footer: React.FC = () => {
     const currentYear = new Date().getFullYear();
@@ -18,7 +19,7 @@ const Footer: React.FC = () => {
                             Skill<span className="text-indigo-400">ogue</span>
                         </h2>
                         <p className="text-gray-400 text-base">
-                            Connect through passions, not pictures
+                            {componentCopy.footer.tagline}
                         </p>
                         <div className="flex space-x-4">
                             <a
@@ -26,7 +27,7 @@ const Footer: React.FC = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-2 bg-gray-700/50 hover:bg-gray-600/50 rounded-full text-gray-400 hover:text-white transition-all duration-300 hover:scale-110"
-                                aria-label="GitHub"
+                                aria-label={componentCopy.footer.githubAriaLabel}
                             >
                                 <Github className="h-5 w-5" />
                             </a>
@@ -35,7 +36,7 @@ const Footer: React.FC = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-2 bg-gray-700/50 hover:bg-gray-600/50 rounded-full text-gray-400 hover:text-white transition-all duration-300 hover:scale-110"
-                                aria-label="Twitter"
+                                aria-label={componentCopy.footer.twitterAriaLabel}
                             >
                                 <Twitter className="h-5 w-5" />
                             </a>
@@ -44,7 +45,7 @@ const Footer: React.FC = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-2 bg-gray-700/50 hover:bg-gray-600/50 rounded-full text-gray-400 hover:text-white transition-all duration-300 hover:scale-110"
-                                aria-label="LinkedIn"
+                                aria-label={componentCopy.footer.linkedinAriaLabel}
                             >
                                 <Linkedin className="h-5 w-5" />
                             </a>
@@ -57,7 +58,7 @@ const Footer: React.FC = () => {
                             {/* Support */}
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                                    Support
+                                    {componentCopy.footer.support}
                                 </h3>
                                 <ul className="mt-4 space-y-4">
                                     <li>
@@ -65,7 +66,7 @@ const Footer: React.FC = () => {
                                             href="/contact"
                                             className="text-base text-gray-300 hover:text-white transition-colors"
                                         >
-                                            Contact Us
+                                            {componentCopy.footer.contactUs}
                                         </Link>
                                     </li>
                                     <li>
@@ -73,7 +74,7 @@ const Footer: React.FC = () => {
                                             href="/faq"
                                             className="text-base text-gray-300 hover:text-white transition-colors"
                                         >
-                                            FAQ
+                                            {componentCopy.footer.faq}
                                         </Link>
                                     </li>
                                 </ul>
@@ -82,7 +83,7 @@ const Footer: React.FC = () => {
                             {/* Legal */}
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                                    Legal
+                                    {componentCopy.footer.legal}
                                 </h3>
                                 <ul className="mt-4 space-y-4">
                                     <li>
@@ -90,7 +91,7 @@ const Footer: React.FC = () => {
                                             href="/terms-of-service"
                                             className="text-base text-gray-300 hover:text-white transition-colors"
                                         >
-                                            Terms of Service
+                                            {componentCopy.footer.termsOfService}
                                         </Link>
                                     </li>
                                     <li>
@@ -98,7 +99,7 @@ const Footer: React.FC = () => {
                                             href="/privacy-policy"
                                             className="text-base text-gray-300 hover:text-white transition-colors"
                                         >
-                                            Privacy Policy
+                                            {componentCopy.footer.privacyPolicy}
                                         </Link>
                                     </li>
                                     <li>
@@ -106,7 +107,7 @@ const Footer: React.FC = () => {
                                             href="/cookies"
                                             className="text-base text-gray-300 hover:text-white transition-colors"
                                         >
-                                            Cookie Policy
+                                            {componentCopy.footer.cookiePolicy}
                                         </Link>
                                     </li>
                                 </ul>
@@ -118,10 +119,10 @@ const Footer: React.FC = () => {
                 {/* Copyright */}
                 <div className="mt-12 border-t border-gray-800 pt-8">
                     <p className="text-base text-gray-400 text-center flex items-center justify-center gap-2">
-                        &copy; {currentYear} Skillogue, Inc. All rights reserved.
-                        <span className="text-pink-500">Made with</span>
+                        {componentCopy.footer.allRightsReserved(currentYear)}
+                        <span className="text-pink-500">{componentCopy.footer.madeWith}</span>
                         <Heart size={14} className="text-pink-500 fill-pink-500 animate-pulse" />
-                        <span className="text-indigo-400">for passion-driven people</span>
+                        <span className="text-indigo-400">{componentCopy.footer.passionDrivenPeople}</span>
                     </p>
                 </div>
             </div>

@@ -2,12 +2,6 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import PassionSpotlight from '../../src/components/PassionSpotlight';
 
-// Mock useMasterData hook
-const mockUseMasterData = jest.fn();
-jest.mock('../../src/hooks/useMasterData', () => ({
-  useMasterData: () => mockUseMasterData(),
-}));
-
 const hasExactParagraphText = (text: string) => (_content: string, element: Element | null) =>
   element?.tagName.toLowerCase() === 'p' && element.textContent === text;
 
@@ -17,33 +11,27 @@ describe('PassionSpotlight Component', () => {
   });
 
   it('renders loading skeleton when loading', () => {
-    mockUseMasterData.mockReturnValue({ passions: [], loading: true });
+    render(<PassionSpotlight loading />);
     
-    render(<PassionSpotlight />);
-    
-    // Should show loading skeleton
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
-  it('renders loading skeleton when no passions and not loading', async () => {
-    mockUseMasterData.mockReturnValue({ passions: [], loading: false });
-    
+  it('renders fallback content when no passions are available', async () => {
     render(<PassionSpotlight />);
     
-    // When no passions, featuredPassion is undefined, so it shows skeleton
     await waitFor(() => {
-      expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
+      expect(screen.getByText('Add a few passions to your profile to get more relevant suggestions on the dashboard.')).toBeInTheDocument();
+      expect(screen.getByText('Complete your passions →')).toBeInTheDocument();
     });
   });
 
   it('renders passion spotlight with passion name', async () => {
-    const mockPassions = [
-      { id: 1, name: 'Coding' },
-      { id: 2, name: 'Music' },
+    const userPassions = [
+      { passion_id: 1, passions: { name: 'Coding' } },
+      { passion_id: 2, passions: { name: 'Music' } },
     ];
-    mockUseMasterData.mockReturnValue({ passions: mockPassions, loading: false });
     
-    render(<PassionSpotlight />);
+    render(<PassionSpotlight userPassions={userPassions} />);
     
     await waitFor(() => {
       expect(screen.getByText('Passion Spotlight')).toBeInTheDocument();
@@ -51,10 +39,9 @@ describe('PassionSpotlight Component', () => {
   });
 
   it('renders the featured passion name', async () => {
-    const mockPassions = [{ id: 1, name: 'Coding' }];
-    mockUseMasterData.mockReturnValue({ passions: mockPassions, loading: false });
+    const userPassions = [{ passion_id: 1, passions: { name: 'Coding' } }];
     
-    render(<PassionSpotlight />);
+    render(<PassionSpotlight userPassions={userPassions} />);
     
     await waitFor(() => {
       expect(screen.getByText('Coding')).toBeInTheDocument();
@@ -62,10 +49,9 @@ describe('PassionSpotlight Component', () => {
   });
 
   it('renders the find people button', async () => {
-    const mockPassions = [{ id: 1, name: 'Coding' }];
-    mockUseMasterData.mockReturnValue({ passions: mockPassions, loading: false });
+    const userPassions = [{ passion_id: 1, passions: { name: 'Coding' } }];
 
-    render(<PassionSpotlight />);
+    render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
       expect(screen.getByText('Find people with this passion →')).toBeInTheDocument();
@@ -73,12 +59,7 @@ describe('PassionSpotlight Component', () => {
   });
 
   it('renders with user passions and userId', async () => {
-    const mockPassions = [
-      { id: 1, name: 'Coding' },
-      { id: 2, name: 'Music' },
-    ];
-    const userPassions = [{ passion_id: 1 }];
-    mockUseMasterData.mockReturnValue({ passions: mockPassions, loading: false });
+    const userPassions = [{ passion_id: 1, passions: { name: 'Coding' } }];
 
     render(<PassionSpotlight userPassions={userPassions} userId="user-123" />);
 
@@ -88,12 +69,7 @@ describe('PassionSpotlight Component', () => {
   });
 
   it('renders with user passions but no userId', async () => {
-    const mockPassions = [
-      { id: 1, name: 'Coding' },
-      { id: 2, name: 'Music' },
-    ];
-    const userPassions = [{ passion_id: 1 }];
-    mockUseMasterData.mockReturnValue({ passions: mockPassions, loading: false });
+    const userPassions = [{ passion_id: 1, passions: { name: 'Coding' } }];
 
     render(<PassionSpotlight userPassions={userPassions} />);
 
@@ -105,13 +81,10 @@ describe('PassionSpotlight Component', () => {
   });
 
   it('picks random passion when user has multiple passions', async () => {
-    const mockPassions = [
-      { id: 1, name: 'Coding' },
-      { id: 2, name: 'Music' },
-      { id: 3, name: 'Art' },
+    const userPassions = [
+      { passion_id: 1, passions: { name: 'Coding' } },
+      { passion_id: 2, passions: { name: 'Music' } },
     ];
-    const userPassions = [{ passion_id: 1 }, { passion_id: 2 }];
-    mockUseMasterData.mockReturnValue({ passions: mockPassions, loading: false });
 
     render(<PassionSpotlight userPassions={userPassions} />);
 
@@ -126,11 +99,7 @@ describe('PassionSpotlight Component', () => {
   });
 
   it('handles passion_id as string', async () => {
-    const mockPassions = [
-      { id: 1, name: 'Coding' },
-    ];
-    const userPassions = [{ passion_id: '1' }];
-    mockUseMasterData.mockReturnValue({ passions: mockPassions, loading: false });
+    const userPassions = [{ passion_id: '1', passions: { name: 'Coding' } }];
 
     render(<PassionSpotlight userPassions={userPassions} />);
 
@@ -141,24 +110,13 @@ describe('PassionSpotlight Component', () => {
     });
   });
 
-  it('falls back to random passion if user passion not found', async () => {
-    const mockPassions = [
-      { id: 1, name: 'Coding' },
-      { id: 2, name: 'Music' },
-    ];
-    const userPassions = [{ passion_id: 999 }]; // Non-existent
-    mockUseMasterData.mockReturnValue({ passions: mockPassions, loading: false });
+  it('falls back to the generic CTA if user passions have no names', async () => {
+    const userPassions = [{ passion_id: 999 }];
 
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          (_content, element) =>
-            element?.tagName.toLowerCase() === 'p' &&
-            /Connect with others who share your love for (Coding|Music)/.test(element.textContent ?? '')
-        )
-      ).toBeInTheDocument();
+      expect(screen.getByText('Add a few passions to your profile to get more relevant suggestions on the dashboard.')).toBeInTheDocument();
     });
   });
 });

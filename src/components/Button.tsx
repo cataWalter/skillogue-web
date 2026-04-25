@@ -2,6 +2,7 @@
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Loader2 } from 'lucide-react';
+import { componentCopy } from '../lib/app-copy';
 
 // Define button variants using theme-aware CSS variables from Tailwind config
 const buttonVariants = cva(
@@ -52,7 +53,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 {isLoading ? (
                     <>
                         <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
-                        <span>Loading...</span>
+                        <span>{componentCopy.button.loading}</span>
                     </>
                 ) : (
                     <>

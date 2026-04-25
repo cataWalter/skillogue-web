@@ -284,6 +284,7 @@ const collections = [
       varchar('last_name', 255),
       varchar('about_me', 4096),
       integer('age'),
+      datetime('birth_date'),
       varchar('gender', 64),
       varchar('avatar_url', 2048),
       boolean('verified', { default: false }),

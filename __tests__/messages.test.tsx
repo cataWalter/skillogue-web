@@ -3,6 +3,25 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import Messages from '../src/app/messages/page';
 import { appClient } from '../src/lib/appClient';
 import '@testing-library/jest-dom';
+const mockPush = jest.fn();
+const mockRouter = { push: mockPush };
+const mockSearchParams = { get: jest.fn() };
+const MESSAGES_PAGE_CACHE_KEY = 'skillogue:messages-page-cache';
+
+const flushAsyncEffects = async (cycles = 4) => {
+  for (let index = 0; index < cycles; index += 1) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+};
+
+const renderMessagesPage = async () => {
+  await act(async () => {
+    render(<Messages />);
+    await flushAsyncEffects();
+  });
+};
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -62,14 +81,21 @@ jest.mock('../src/lib/appClient', () => ({
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
-  useSearchParams: () => ({ get: jest.fn() }),
-  useRouter: () => ({ push: jest.fn() }),
+  useSearchParams: () => mockSearchParams,
+  useRouter: () => mockRouter,
+}));
+
+jest.mock('../src/components/Avatar', () => ({
+  __esModule: true,
+  default: ({ seed }: { seed: string }) => <div data-testid={`avatar-${seed}`} />,
 }));
 
 // Mock scrollIntoView
 window.HTMLElement.prototype.scrollIntoView = jest.fn();
 
 describe('Messages Page', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   const mockUser = { id: 'me-123', email: 'me@example.com' };
   const mockConversations = [
     { user_id: 'user-1', full_name: 'User One', last_message: 'Hello', unread: 0 },
@@ -86,6 +112,7 @@ describe('Messages Page', () => {
       receiver: { id: 'me-123', first_name: 'Me', last_name: 'Myself' },
     },
   ];
+  type PersistedMessage = (typeof mockMessages)[number];
 
   const buildRpcMock = (overrides: Record<string, { data?: unknown; error?: unknown }> = {}) => {
     return (fn: string) => {
@@ -100,8 +127,36 @@ describe('Messages Page', () => {
     };
   };
 
+  const createPersistedMessage = (overrides: Partial<PersistedMessage> = {}): PersistedMessage => ({
+    id: 999,
+    created_at: '2023-01-01T10:01:00Z',
+    sender_id: 'me-123',
+    receiver_id: 'user-1',
+    content: 'New message',
+    sender: { id: 'me-123', first_name: 'Me', last_name: 'Myself' },
+    receiver: { id: 'user-1', first_name: 'User', last_name: 'One' },
+    ...overrides,
+  });
+
+  const createInsertMock = ({ data, error }: { data?: PersistedMessage | null; error?: unknown } = {}) => {
+    const singleMock = jest.fn().mockResolvedValue({
+      data: data ?? createPersistedMessage(),
+      error: error ?? null,
+    });
+    const selectMock = jest.fn(() => ({ single: singleMock }));
+
+    return jest.fn(() => ({ select: selectMock }));
+  };
+
+  beforeAll(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    window.sessionStorage.clear();
+    mockPush.mockReset();
+    mockSearchParams.get.mockReset();
     (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
     
     // Mock RPCs
@@ -118,7 +173,7 @@ describe('Messages Page', () => {
               })),
             })),
           })),
-          insert: jest.fn().mockResolvedValue({ error: null }),
+          insert: createInsertMock(),
         };
       }
       return {
@@ -131,16 +186,95 @@ describe('Messages Page', () => {
     });
   });
 
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it('renders conversation list', async () => {
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => {
       expect(screen.getByText('User One')).toBeInTheDocument();
       expect(screen.getByText('User Two')).toBeInTheDocument();
     });
   });
 
-  it('selects a conversation and loads messages', async () => {
+  it('shows a loading state while conversations are being fetched', async () => {
+    let resolveConversations: ((value: { data: typeof mockConversations; error: null }) => void) | undefined;
+    const conversationsPromise = new Promise<{ data: typeof mockConversations; error: null }>((resolve) => {
+      resolveConversations = resolve;
+    });
+
+    (appClient.rpc as jest.Mock).mockImplementation((fn: string) => {
+      if (fn === 'get_conversations') {
+        return conversationsPromise;
+      }
+
+      if (fn === 'mark_messages_as_read') return Promise.resolve({ error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+      return Promise.resolve({ data: null, error: null });
+    });
+
     render(<Messages />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Loading conversations...')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('No conversations yet')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveConversations?.({ data: mockConversations, error: null });
+      await flushAsyncEffects();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('User One')).toBeInTheDocument();
+    });
+  });
+
+  it('hydrates cached conversations before the network refresh completes', async () => {
+    window.sessionStorage.setItem(MESSAGES_PAGE_CACHE_KEY, JSON.stringify({
+      userId: mockUser.id,
+      conversations: [
+        { user_id: 'cached-user', full_name: 'Cached User', last_message: 'Cached hello', unread: 1 },
+      ],
+      messagesByConversation: {},
+      updatedAt: Date.now(),
+    }));
+
+    let resolveConversations: ((value: { data: typeof mockConversations; error: null }) => void) | undefined;
+    const conversationsPromise = new Promise<{ data: typeof mockConversations; error: null }>((resolve) => {
+      resolveConversations = resolve;
+    });
+
+    (appClient.rpc as jest.Mock).mockImplementation((fn: string) => {
+      if (fn === 'get_conversations') {
+        return conversationsPromise;
+      }
+
+      if (fn === 'mark_messages_as_read') return Promise.resolve({ error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    render(<Messages />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Cached User')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Loading conversations...')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveConversations?.({ data: mockConversations, error: null });
+      await flushAsyncEffects();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('User One')).toBeInTheDocument();
+    });
+  });
+
+  it('selects a conversation and loads messages', async () => {
+    await renderMessagesPage();
     await waitFor(() => {
       expect(screen.getByText('User One')).toBeInTheDocument();
     });
@@ -152,8 +286,100 @@ describe('Messages Page', () => {
     });
   });
 
+  it('shows the selected profile name when opening a new chat from the URL', async () => {
+    mockSearchParams.get.mockImplementation((key: string) => (key === 'conversation' ? 'user-3' : null));
+
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'messages') {
+        return {
+          select: jest.fn(() => ({
+            or: jest.fn(() => ({
+              order: jest.fn(() => ({
+                range: jest.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
+          })),
+          insert: createInsertMock(),
+        };
+      }
+
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({
+                data: { first_name: 'Jane', last_name: 'Doe' },
+                error: null,
+              }),
+            })),
+          })),
+        };
+      }
+
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          })),
+        })),
+      };
+    });
+
+    await renderMessagesPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Jane Doe' })).toBeInTheDocument();
+    });
+  });
+
+  it('uses the shared fallback name when a new chat profile has no name', async () => {
+    mockSearchParams.get.mockImplementation((key: string) => (key === 'conversation' ? 'user-3' : null));
+
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'messages') {
+        return {
+          select: jest.fn(() => ({
+            or: jest.fn(() => ({
+              order: jest.fn(() => ({
+                range: jest.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
+          })),
+          insert: createInsertMock(),
+        };
+      }
+
+      if (table === 'profiles') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({
+                data: { first_name: null, last_name: null },
+                error: null,
+              }),
+            })),
+          })),
+        };
+      }
+
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          })),
+        })),
+      };
+    });
+
+    await renderMessagesPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Skillogue user' })).toBeInTheDocument();
+    });
+  });
+
   it('sends a message', async () => {
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
@@ -171,11 +397,91 @@ describe('Messages Page', () => {
     expect(screen.getByText('New message')).toBeInTheDocument(); // Optimistic update
   });
 
+  it('reconciles the optimistic message with the persisted message', async () => {
+    const intervalCallbacks: Array<() => void> = [];
+    const persistedMessage = createPersistedMessage();
+    const setIntervalSpy = jest.spyOn(window, 'setInterval').mockImplementation(((callback: TimerHandler) => {
+      if (typeof callback === 'function') {
+        intervalCallbacks.push(callback as () => void);
+      }
+
+      return 1 as unknown as number;
+    }) as typeof window.setInterval);
+    let rangeCallCount = 0;
+    const insertMock = createInsertMock({ data: persistedMessage });
+
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'messages') {
+        return {
+          select: jest.fn(() => ({
+            or: jest.fn(() => ({
+              order: jest.fn(() => ({
+                range: jest.fn().mockImplementation(() => {
+                  rangeCallCount += 1;
+
+                  if (rangeCallCount === 1) {
+                    return Promise.resolve({ data: mockMessages, error: null });
+                  }
+
+                  return Promise.resolve({ data: [...mockMessages, persistedMessage], error: null });
+                }),
+              })),
+            })),
+          })),
+          insert: insertMock,
+        };
+      }
+
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          })),
+        })),
+      };
+    });
+
+    await renderMessagesPage();
+    await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('User One'));
+    await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
+
+    const input = screen.getByPlaceholderText('Type a message...');
+    fireEvent.change(input, { target: { value: 'New message' } });
+
+    const form = input.closest('form');
+    await act(async () => {
+      fireEvent.submit(form!);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const optimisticNode = screen.getByText('New message');
+
+    await act(async () => {
+      intervalCallbacks.forEach((callback) => callback());
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('New message')).toHaveLength(1);
+      expect(screen.getByText('New message')).toBe(optimisticNode);
+      expect(insertMock).toHaveBeenCalledWith({
+        sender_id: 'me-123',
+        receiver_id: 'user-1',
+        content: 'New message',
+      });
+    });
+
+    setIntervalSpy.mockRestore();
+  });
+
   it('blocks a user', async () => {
     window.confirm = jest.fn(() => true);
     window.alert = jest.fn();
     
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
@@ -200,16 +506,15 @@ describe('Messages Page', () => {
                         })),
                     })),
                 })),
-                insert: jest.fn().mockResolvedValue({ error: { message: 'Send failed' } }),
+                insert: createInsertMock({ error: { message: 'Send failed' } }),
             };
         }
         return { select: jest.fn() };
     });
 
     window.alert = jest.fn();
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    render(<Messages />);
+  await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
@@ -223,8 +528,6 @@ describe('Messages Page', () => {
     await waitFor(() => {
         expect(window.alert).toHaveBeenCalledWith('Failed to send message');
     });
-    
-    consoleSpy.mockRestore();
   });
 
   it('loads more messages on scroll', async () => {
@@ -245,13 +548,13 @@ describe('Messages Page', () => {
                         })),
                     })),
                 })),
-                insert: jest.fn().mockResolvedValue({ error: null }),
+                insert: createInsertMock(),
             };
         }
         return { select: jest.fn() };
     });
 
-    render(<Messages />);
+      await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Message 0')).toBeInTheDocument());
@@ -299,7 +602,7 @@ describe('Messages Page', () => {
 
     (appClient.channel as jest.Mock).mockReturnValue(channelMock);
 
-    render(<Messages />);
+  await renderMessagesPage();
 
     await waitFor(() => {
         expect(appClient.channel).toHaveBeenCalledWith('online-users');
@@ -328,37 +631,32 @@ describe('Messages Page', () => {
   });
 
   it('handles loadConversations error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock({
       get_conversations: { data: null, error: { message: 'Conversations error' } },
     }));
 
-    render(<Messages />);
+    await renderMessagesPage();
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Error loading conversations:', { message: 'Conversations error' });
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading conversations:', { message: 'Conversations error' });
     });
-    consoleSpy.mockRestore();
   });
 
   it('handles markMessagesAsRead error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock({
       mark_messages_as_read: { error: { message: 'Mark read error' } },
     }));
 
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Error marking messages as read:', { message: 'Mark read error' });
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error marking messages as read:', { message: 'Mark read error' });
     });
-    consoleSpy.mockRestore();
   });
 
   it('handles loadMessages error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'messages') {
         return {
@@ -369,24 +667,22 @@ describe('Messages Page', () => {
               })),
             })),
           })),
-          insert: jest.fn().mockResolvedValue({ error: null }),
+          insert: createInsertMock(),
         };
       }
       return { select: jest.fn() };
     });
 
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Error loading messages:', { message: 'Messages error' });
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading messages:', { message: 'Messages error' });
     });
-    consoleSpy.mockRestore();
   });
 
   it('handles refreshActiveConversation error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const intervalCallbacks: Array<() => void> = [];
     const setIntervalSpy = jest.spyOn(window, 'setInterval').mockImplementation(((callback: TimerHandler) => {
       if (typeof callback === 'function') {
@@ -413,7 +709,7 @@ describe('Messages Page', () => {
           })),
         })),
       })),
-      insert: jest.fn().mockResolvedValue({ error: null }),
+      insert: createInsertMock(),
     };
 
     (appClient.from as jest.Mock).mockImplementation((table) => {
@@ -424,7 +720,7 @@ describe('Messages Page', () => {
       return { select: jest.fn() };
     });
 
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
@@ -436,10 +732,9 @@ describe('Messages Page', () => {
     });
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Error refreshing conversation:', { message: 'Refresh error' });
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error refreshing conversation:', { message: 'Refresh error' });
     });
     setIntervalSpy.mockRestore();
-    consoleSpy.mockRestore();
   });
 
   it('handles checkBlockedStatus error', async () => {
@@ -447,7 +742,7 @@ describe('Messages Page', () => {
       is_blocked: { data: null, error: { message: 'Blocked check error' } },
     }));
 
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
@@ -460,12 +755,11 @@ describe('Messages Page', () => {
   it('handles blockUser error', async () => {
     window.confirm = jest.fn(() => true);
     window.alert = jest.fn();
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock({
       block_user: { error: { message: 'Block error' } },
     }));
 
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
@@ -475,14 +769,12 @@ describe('Messages Page', () => {
 
     await waitFor(() => {
       expect(window.alert).toHaveBeenCalledWith('Failed to block user');
-      expect(consoleSpy).toHaveBeenCalledWith('Error blocking user:', { message: 'Block error' });
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error blocking user:', { message: 'Block error' });
     });
-    consoleSpy.mockRestore();
   });
 
   it('handles sendMessage error in push notification', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const insertMock = jest.fn().mockResolvedValue({ error: null });
+    const insertMock = createInsertMock();
 
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'messages') {
@@ -508,7 +800,7 @@ describe('Messages Page', () => {
     });
     (appClient.functions.invoke as jest.Mock).mockRejectedValue(new Error('Push error'));
 
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
@@ -545,13 +837,11 @@ describe('Messages Page', () => {
     });
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to send push:', expect.any(Error));
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to send push:', expect.any(Error));
     });
-    consoleSpy.mockRestore();
   });
 
   it('handles real-time message insert error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'messages') {
         return {
@@ -565,27 +855,25 @@ describe('Messages Page', () => {
               single: jest.fn().mockResolvedValue({ data: null, error: { message: 'Real-time error' } }),
             })),
           })),
-          insert: jest.fn().mockResolvedValue({ error: null }),
+          insert: createInsertMock(),
         };
       }
       return { select: jest.fn() };
     });
 
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
 
     // Trigger real-time insert
     // The channel on postgres_changes calls the select single
     // Since mocking the channel is complex, we can assume it's covered by the mock
-
-    consoleSpy.mockRestore();
   });
 
   it('handles user not logged in', async () => {
     (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: null, error: null });
 
-    render(<Messages />);
+    await renderMessagesPage();
 
     // Should redirect to login, but since router is mocked, check if getUser was called
     await waitFor(() => {
@@ -596,7 +884,7 @@ describe('Messages Page', () => {
   it('handles selectChat when user is null', async () => {
     (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: null, error: null });
 
-    render(<Messages />);
+    await renderMessagesPage();
 
     // selectChat is internal, hard to test directly
   });
@@ -604,7 +892,7 @@ describe('Messages Page', () => {
   it('handles confirm cancel for block', async () => {
     window.confirm = jest.fn(() => false);
 
-    render(<Messages />);
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());

@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { expectLoginRedirect } from './utils/navigation';
+import { test, expect } from './fixtures/auth';
+import { expectLoginRedirect, expectOnboardingRedirect } from './utils/navigation';
 
 test.describe('Messages', () => {
   test.describe('Unauthenticated Access', () => {
@@ -12,8 +12,18 @@ test.describe('Messages', () => {
     });
   });
 
+  test.describe('Incomplete Profile Access', () => {
+    test('should redirect incomplete profiles from messages to onboarding', async ({ incompleteProfilePage }) => {
+      await expectOnboardingRedirect(incompleteProfilePage, '/messages');
+    });
+
+    test('should redirect incomplete profiles from conversation URLs to onboarding', async ({ incompleteProfilePage }) => {
+      await expectOnboardingRedirect(incompleteProfilePage, '/messages?conversation=test-conversation-id');
+    });
+  });
+
   test.describe('Messages Page Structure', () => {
-    test('should display messages page heading when authenticated', async ({ page }) => {
+    test('should keep the messages page protected until authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/messages');
     });
 

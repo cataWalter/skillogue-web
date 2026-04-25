@@ -41,6 +41,12 @@ const collectionIds = {
   profileLanguages: getCollectionId('profile_languages'),
 };
 
+const getBirthDateFromAge = (age) => {
+  const today = new Date();
+  const birthDate = new Date(today.getFullYear() - age, today.getMonth(), today.getDate());
+  return birthDate.toISOString();
+};
+
 const appwriteClient = new AppwriteClient()
   .setEndpoint(appwriteEndpoint)
   .setProject(appwriteProjectId)
@@ -311,6 +317,7 @@ const upsertProfile = async (userId, demoUser) => {
     last_name: demoUser.lastName,
     about_me: demoUser.aboutMe,
     age: demoUser.age,
+    birth_date: demoUser.birthDate || getBirthDateFromAge(demoUser.age),
     gender: demoUser.gender,
     verified: true,
     location_id: demoUser.locationId,

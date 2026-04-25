@@ -7,6 +7,7 @@ import { ArrowLeft, ShieldCheck, Clock, XCircle, CheckCircle } from 'lucide-reac
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { Button } from '../../../components/Button';
+import { settingsCopy } from '../../../lib/app-copy';
 
 export default function VerificationPage() {
     const [status, setStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
@@ -59,7 +60,7 @@ export default function VerificationPage() {
         setLoading(true);
         try {
             const { data: { user } } = await appClient.auth.getUser();
-            if (!user) throw new Error('Not authenticated');
+            if (!user) throw new Error(settingsCopy.verification.notAuthenticated);
 
             const { error } = await appClient
                 .from('verification_requests')
@@ -68,10 +69,10 @@ export default function VerificationPage() {
             if (error) throw error;
 
             setStatus('pending');
-            toast.success('Verification request submitted!');
+            toast.success(settingsCopy.verification.requestSubmitted);
         } catch (error: unknown) {
             console.error('Error requesting verification:', error);
-            const message = error instanceof Error ? error.message : 'Failed to submit request';
+            const message = error instanceof Error ? error.message : settingsCopy.verification.submitError;
             toast.error(message);
         } finally {
             setLoading(false);
@@ -83,7 +84,7 @@ export default function VerificationPage() {
             <div className="max-w-2xl mx-auto">
                 <Link href="/settings" className="text-gray-400 hover:text-white transition flex items-center gap-2 mb-8">
                     <ArrowLeft size={20} />
-                    Back to Settings
+                    {settingsCopy.verification.backToSettings}
                 </Link>
 
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-8">
@@ -91,21 +92,20 @@ export default function VerificationPage() {
                         <div className="bg-indigo-600/20 p-3 rounded-full">
                             <ShieldCheck className="w-8 h-8 text-indigo-500" />
                         </div>
-                        <h1 className="text-2xl font-bold">Profile Verification</h1>
+                        <h1 className="text-2xl font-bold">{settingsCopy.verification.title}</h1>
                     </div>
 
                     {loading ? (
-                        <div className="text-center py-8 text-gray-400">Loading...</div>
+                        <div className="text-center py-8 text-gray-400">{settingsCopy.verification.loading}</div>
                     ) : (
                         <div className="space-y-6">
                             {status === 'none' && (
                                 <>
                                     <p className="text-gray-300">
-                                        Get a verified badge on your profile to build trust with other users. 
-                                        Verified users are more likely to get responses and make connections.
+                                        {settingsCopy.verification.intro}
                                     </p>
                                     <Button onClick={handleRequestVerification} className="w-full sm:w-auto">
-                                        Request Verification
+                                        {settingsCopy.verification.requestButton}
                                     </Button>
                                 </>
                             )}
@@ -114,9 +114,9 @@ export default function VerificationPage() {
                                 <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 flex items-start gap-3">
                                     <Clock className="text-yellow-500 shrink-0 mt-1" />
                                     <div>
-                                        <h3 className="font-semibold text-yellow-500">Verification Pending</h3>
+                                        <h3 className="font-semibold text-yellow-500">{settingsCopy.verification.pendingTitle}</h3>
                                         <p className="text-gray-400 text-sm mt-1">
-                                            Your request is being reviewed by our team. This usually takes 24-48 hours.
+                                            {settingsCopy.verification.pendingDescription}
                                         </p>
                                     </div>
                                 </div>
@@ -126,9 +126,9 @@ export default function VerificationPage() {
                                 <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4 flex items-start gap-3">
                                     <CheckCircle className="text-green-500 shrink-0 mt-1" />
                                     <div>
-                                        <h3 className="font-semibold text-green-500">You are Verified!</h3>
+                                        <h3 className="font-semibold text-green-500">{settingsCopy.verification.approvedTitle}</h3>
                                         <p className="text-gray-400 text-sm mt-1">
-                                            Your profile now displays the verified badge.
+                                            {settingsCopy.verification.approvedDescription}
                                         </p>
                                     </div>
                                 </div>
@@ -138,12 +138,12 @@ export default function VerificationPage() {
                                 <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4 flex items-start gap-3">
                                     <XCircle className="text-red-500 shrink-0 mt-1" />
                                     <div>
-                                        <h3 className="font-semibold text-red-500">Verification Rejected</h3>
+                                        <h3 className="font-semibold text-red-500">{settingsCopy.verification.rejectedTitle}</h3>
                                         <p className="text-gray-400 text-sm mt-1">
-                                            Unfortunately, we couldn&apos;t verify your profile at this time. You can try again later.
+                                            {settingsCopy.verification.rejectedDescription}
                                         </p>
                                         <Button onClick={handleRequestVerification} variant="outline" className="mt-3">
-                                            Try Again
+                                            {settingsCopy.verification.tryAgain}
                                         </Button>
                                     </div>
                                 </div>

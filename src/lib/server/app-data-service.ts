@@ -5,6 +5,7 @@ import {
   createAppwriteSessionAccount,
   getAppwriteErrorMessage,
 } from '@/lib/appwrite/server';
+import { calculateProfileAge, normalizeBirthDate } from '@/lib/profile-age';
 import { AppwriteRepository } from './appwrite-repo';
 
 type CurrentUser = {
@@ -71,6 +72,16 @@ const splitTopLevel = (value: string) => {
   }
 
   return parts;
+};
+
+const hasSelectedField = (selectSpec: string | null | undefined, field: string) => {
+  if (!selectSpec || !selectSpec.trim()) {
+    return true;
+  }
+
+  const tokens = splitTopLevel(selectSpec.replace(/\s+/g, ' '));
+
+  return tokens.includes('*') || tokens.includes(field);
 };
 
 const normalizeDocument = (value: any): any => {
@@ -560,6 +571,14 @@ export class AppDataService {
     return profiles.map((profile) => {
       const result = this.pickSelectedFields(profile, selectSpec);
 
+      if (hasSelectedField(selectSpec, 'age')) {
+        result.age = calculateProfileAge(profile);
+      }
+
+      if (hasSelectedField(selectSpec, 'birth_date')) {
+        result.birth_date = normalizeBirthDate(profile.birth_date);
+      }
+
       if (selectSpec?.includes('locations(')) {
         const location = profile.location_id ? locationsById.get(String(profile.location_id)) || null : null;
         result.locations = location ? this.pickSelectedFields(location, '*, city, region, country, id') : null;
@@ -953,7 +972,8 @@ export class AppDataService {
       action: 'select',
       filters: [{ type: 'eq', column: 'id', value: id }],
       single: true,
-      select: '*, locations(*)',
+      select:
+        'id, created_at, first_name, last_name, about_me, age, gender, verified, is_private, show_age, show_location, location_id, locations(*)',
     });
 
     if (response.error || !response.data) {
@@ -1216,7 +1236,8 @@ export class AppDataService {
       first_name: data.first_name,
       last_name: data.last_name,
       about_me: data.about_me ?? '',
-      age: data.age ?? null,
+      age: data.birth_date ? null : data.age ?? null,
+      birth_date: normalizeBirthDate(data.birth_date),
       gender: data.gender ?? null,
       location_id: locationId,
       updated_at: new Date().toISOString(),
@@ -2134,13 +2155,13 @@ export class AppDataService {
           return false;
         }
 
-        const profileAge = typeof profile.age === 'number' ? profile.age : Number(profile.age);
+        const profileAge = calculateProfileAge(profile);
 
-        if (minAge !== null && (!Number.isFinite(profileAge) || profileAge < minAge)) {
+        if (minAge !== null && (profileAge === null || profileAge < minAge)) {
           return false;
         }
 
-        if (maxAge !== null && (!Number.isFinite(profileAge) || profileAge > maxAge)) {
+        if (maxAge !== null && (profileAge === null || profileAge > maxAge)) {
           return false;
         }
 
@@ -2219,7 +2240,7 @@ export class AppDataService {
               last_name: profile.last_name ?? null,
               about_me: profile.about_me ?? null,
               location: location ? [location.city, location.region, location.country].filter(Boolean).join(', ') : null,
-              age: profile.age ?? null,
+              age: profile.show_age === false ? null : calculateProfileAge(profile),
               gender: profile.gender ?? null,
               profile_languages: languagesByProfile.get(String(profile.id)) ?? [],
               created_at: profile.created_at,

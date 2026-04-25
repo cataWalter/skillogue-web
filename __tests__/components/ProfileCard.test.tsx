@@ -77,7 +77,7 @@ describe('ProfileCard', () => {
             />
         );
 
-        expect(screen.getByText('Not specified')).toBeInTheDocument();
+        expect(screen.getAllByText('Not specified')).toHaveLength(2);
     });
 
     it('does not render DetailItem if value is missing', () => {
@@ -94,5 +94,29 @@ describe('ProfileCard', () => {
         // Icons should not be present if the detail item is not rendered
         expect(screen.queryByTestId('icon-heart')).not.toBeInTheDocument();
         expect(screen.queryByTestId('icon-languages')).not.toBeInTheDocument();
+    });
+
+    it('renders fallback values for missing profile fields', () => {
+        const incompleteProfile = {
+            ...mockProfile,
+            first_name: null,
+            last_name: null,
+            about_me: null,
+            gender: null,
+            locations: null,
+        } as FullProfile;
+
+        render(
+            <ProfileCard
+                profile={incompleteProfile}
+                passions={[]}
+                languages={[]}
+                actionSlot={null}
+            />
+        );
+
+        expect(screen.getByText('Skillogue user')).toBeInTheDocument();
+        expect(screen.getByText('This user has not added a bio yet.')).toBeInTheDocument();
+        expect(screen.getAllByText('Not specified')).toHaveLength(2);
     });
 });

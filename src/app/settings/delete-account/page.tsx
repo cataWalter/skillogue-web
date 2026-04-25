@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '../../../components/Button';
+import { settingsCopy } from '../../../lib/app-copy';
 
 /**
  * Renders the account deletion page.
@@ -22,8 +23,8 @@ const DeleteAccount: React.FC = () => {
      * removes the Appwrite account on the backend, and redirects them.
      */
     const handleDeleteAccount = async () => {
-        if (confirmationText !== 'DELETE') {
-            setErrorMessage('To confirm, you must type "DELETE" in the box.');
+        if (confirmationText !== settingsCopy.deleteAccount.confirmPlaceholder) {
+            setErrorMessage(settingsCopy.deleteAccount.confirmError);
             return;
         }
 
@@ -37,7 +38,7 @@ const DeleteAccount: React.FC = () => {
 
             if (!response.ok) {
                 const payload = await response.json().catch(() => null);
-                throw new Error(payload?.message || 'Failed to delete account');
+                throw new Error(payload?.message || settingsCopy.deleteAccount.deleteFailed);
             }
 
             // Redirect to the home page.
@@ -47,8 +48,8 @@ const DeleteAccount: React.FC = () => {
 
         } catch (err: unknown) {
             console.error('Account deletion error:', err);
-            const message = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again later.';
-            setErrorMessage(`Failed to delete account: ${message}`);
+            const message = err instanceof Error ? err.message : settingsCopy.deleteAccount.unexpectedError;
+            setErrorMessage(`${settingsCopy.deleteAccount.deleteFailed}: ${message}`);
         } finally {
             setIsLoading(false);
         }
@@ -61,16 +62,16 @@ const DeleteAccount: React.FC = () => {
                     <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-500/20 mb-4">
                         <AlertTriangle className="h-6 w-6 text-red-400" aria-hidden="true" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white">Delete Account</h2>
+                    <h2 className="text-2xl font-bold text-white">{settingsCopy.deleteAccount.title}</h2>
                     <p className="mt-2 text-gray-400">
-                        This is a permanent action and cannot be undone. All your data, including your profile, messages, and connections, will be permanently removed.
+                        {settingsCopy.deleteAccount.intro}
                     </p>
                 </div>
 
                 <div className="mt-8 space-y-6">
                     <div>
                         <label htmlFor="confirmation" className="block text-sm font-medium text-gray-300 mb-2">
-                            To confirm, please type &quot;<strong>DELETE</strong>&quot; below:
+                            {settingsCopy.deleteAccount.confirmLabel}
                         </label>
                         <input
                             id="confirmation"
@@ -78,7 +79,7 @@ const DeleteAccount: React.FC = () => {
                             value={confirmationText}
                             onChange={(e) => setConfirmationText(e.target.value)}
                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-white placeholder-gray-500"
-                            placeholder="DELETE"
+                            placeholder={settingsCopy.deleteAccount.confirmPlaceholder}
                             disabled={isLoading}
                         />
                     </div>
@@ -96,7 +97,7 @@ const DeleteAccount: React.FC = () => {
                         onClick={handleDeleteAccount}
                         className="w-full"
                     >
-                        Permanently Delete Account
+                        {settingsCopy.deleteAccount.submit}
                     </Button>
                 </div>
             </div>

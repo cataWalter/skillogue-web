@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { createAppwriteBrowserAccount } from '@/lib/appwrite/browser';
+import { authCopy } from '../../lib/app-copy';
 
 const VerifyEmailPage = () => {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Verifying your email address...');
+  const [message, setMessage] = useState<string>(authCopy.verifyEmail.loadingMessage);
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -18,7 +19,7 @@ const VerifyEmailPage = () => {
 
       if (!userId || !secret) {
         setStatus('error');
-        setMessage('Invalid or expired verification link.');
+        setMessage(authCopy.verifyEmail.invalidLink);
         return;
       }
 
@@ -27,11 +28,11 @@ const VerifyEmailPage = () => {
         await account.updateEmailVerification({ userId, secret });
 
         setStatus('success');
-        setMessage('Your email has been verified. You can sign in now.');
+        setMessage(authCopy.verifyEmail.successMessage);
       } catch (error) {
         setStatus('error');
         setMessage(
-          error instanceof Error ? error.message : 'Failed to verify email.'
+          error instanceof Error ? error.message : authCopy.verifyEmail.failure
         );
       }
     };
@@ -60,7 +61,7 @@ const VerifyEmailPage = () => {
           </div>
         )}
 
-        <h1 className="text-2xl font-bold text-white mb-3">Email Verification</h1>
+        <h1 className="text-2xl font-bold text-white mb-3">{authCopy.verifyEmail.title}</h1>
         <p className="text-gray-300 mb-6">{message}</p>
 
         <div className="flex items-center justify-center gap-3">
@@ -68,13 +69,13 @@ const VerifyEmailPage = () => {
             href="/login"
             className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
           >
-            Go to Login
+            {authCopy.verifyEmail.backToLogin}
           </Link>
           <Link
             href="/signup"
             className="px-5 py-3 border border-gray-700 hover:border-gray-600 text-gray-200 rounded-lg transition-colors"
           >
-            Back to Sign Up
+            {authCopy.verifyEmail.backToSignUp}
           </Link>
         </div>
       </div>

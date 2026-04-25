@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { expectLoginRedirect } from './utils/navigation';
+import { test, expect } from './fixtures/auth';
+import { expectLoginRedirect, expectOnboardingRedirect } from './utils/navigation';
 
 test.describe('Settings', () => {
   test.describe('Unauthenticated Access', () => {
@@ -8,8 +8,14 @@ test.describe('Settings', () => {
     });
   });
 
+  test.describe('Incomplete Profile Access', () => {
+    test('should redirect incomplete profiles from settings to onboarding', async ({ incompleteProfilePage }) => {
+      await expectOnboardingRedirect(incompleteProfilePage, '/settings');
+    });
+  });
+
   test.describe('Main Settings Page', () => {
-    test('should display settings page when authenticated', async ({ page }) => {
+    test('should keep settings protected until authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/settings');
     });
 
@@ -158,8 +164,14 @@ test.describe('Notifications', () => {
     });
   });
 
+  test.describe('Incomplete Profile Access', () => {
+    test('should redirect incomplete profiles from notifications to onboarding', async ({ incompleteProfilePage }) => {
+      await expectOnboardingRedirect(incompleteProfilePage, '/notifications');
+    });
+  });
+
   test.describe('Notifications Page', () => {
-    test('should display notifications page when authenticated', async ({ page }) => {
+    test('should keep notifications protected until authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/notifications');
     });
 

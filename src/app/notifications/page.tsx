@@ -6,6 +6,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import Avatar from '../../components/Avatar';
 import { Bell, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { componentCopy } from '../../lib/app-copy';
 
 const NotificationsPage: React.FC = () => {
     const { notifications, unreadCount, markAsRead } = useNotifications();
@@ -20,16 +21,16 @@ const NotificationsPage: React.FC = () => {
 
     const getNotificationText = (notification: typeof notifications[number]): React.ReactNode => {
         // For now, we'll use a generic message since we don't have actor info
-        const actorName = notification.actorId || 'A user';
+        const actorName = notification.actorId || componentCopy.notificationCenter.genericActorName;
 
         switch (notification.type) {
             case 'new_message':
-                return <><strong>{actorName}</strong> sent you a new message.</>;
+                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.sentMessage}</>;
             // Future cases can be added here
             // case 'new_match':
             //     return <>You have a new match with <strong>{actorName}</strong>!</>;
             default:
-                return 'You have a new notification.';
+                return componentCopy.notificationCenter.defaultNotification;
         }
     };
 
@@ -38,7 +39,7 @@ const NotificationsPage: React.FC = () => {
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-4xl font-bold flex items-center gap-3">
                     <Bell className="text-indigo-400" />
-                    Notifications
+                    {componentCopy.notificationCenter.title}
                 </h1>
                 {unreadCount > 0 && (
                     <button
@@ -46,7 +47,7 @@ const NotificationsPage: React.FC = () => {
                         className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-semibold transition"
                     >
                         <CheckCheck size={16} />
-                        Mark All as Read
+                        {componentCopy.notificationCenter.markAllAsRead}
                     </button>
                 )}
             </div>
@@ -57,9 +58,9 @@ const NotificationsPage: React.FC = () => {
                         <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
                             <Bell className="w-8 h-8 text-gray-500" />
                         </div>
-                        <h3 className="text-xl font-semibold text-white mb-2">No notifications yet</h3>
+                        <h3 className="text-xl font-semibold text-white mb-2">{componentCopy.notificationCenter.emptyStatePageTitle}</h3>
                         <p className="text-gray-400">
-                            We&apos;ll let you know when something important happens.
+                            {componentCopy.notificationCenter.emptyStateSubtitle}
                         </p>
                     </div>
                 ) : (
@@ -80,11 +81,11 @@ const NotificationsPage: React.FC = () => {
                                     <div className="flex-1">
                                         <p className="text-gray-200">{getNotificationText(n)}</p>
                                         <p className="text-sm text-gray-400 mt-1">
-                                            {formatDistanceToNow(new Date(n.createdAt))} ago
+                                            {formatDistanceToNow(new Date(n.createdAt))} {componentCopy.notificationCenter.ago}
                                         </p>
                                     </div>
                                     {!n.read && (
-                                        <div className="w-3 h-3 bg-indigo-500 rounded-full mt-2 flex-shrink-0" title="Unread"></div>
+                                        <div className="w-3 h-3 bg-indigo-500 rounded-full mt-2 flex-shrink-0" title={componentCopy.notificationCenter.unreadTitle}></div>
                                     )}
                                 </Link>
                             </li>

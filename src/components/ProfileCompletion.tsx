@@ -2,6 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Edit } from 'lucide-react';
+import { componentCopy } from '../lib/app-copy';
 
 interface ProfileCompletionProps {
     profile: {
@@ -14,13 +15,13 @@ interface ProfileCompletionProps {
 const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
     const suggestions: Array<{ id: string; text: string }> = [];
     if (!profile.about_me) {
-        suggestions.push({ id: 'about-me', text: 'Add a bio to tell people about yourself.' });
+        suggestions.push({ id: 'about-me', text: componentCopy.profileCompletion.addBio });
     }
     if (profile.passions_count < 3) {
-        suggestions.push({ id: 'passions', text: 'Add more passions to find better connections.' });
+        suggestions.push({ id: 'passions', text: componentCopy.profileCompletion.addPassions });
     }
     if (profile.languages_count === 0) {
-        suggestions.push({ id: 'languages', text: 'Add the languages you speak.' });
+        suggestions.push({ id: 'languages', text: componentCopy.profileCompletion.addLanguages });
     }
 
     if (suggestions.length === 0) {
@@ -31,7 +32,7 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
 
     return (
         <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
-            <h3 className="text-xl font-bold mb-3">Complete Your Profile</h3>
+            <h3 className="text-xl font-bold mb-3">{componentCopy.profileCompletion.title}</h3>
             <div className="w-full bg-gray-700 rounded-full h-2.5 mb-4">
                 <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
             </div>

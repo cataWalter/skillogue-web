@@ -575,6 +575,14 @@ describe('AppDataService coverage', () => {
 			passions: ['Music'],
 			languages: ['English'],
 		});
+		expect(executeCollectionOperationSpy).toHaveBeenNthCalledWith(
+			1,
+			'profiles',
+			expect.objectContaining({
+				select:
+					'id, created_at, first_name, last_name, about_me, age, gender, verified, is_private, show_age, show_location, location_id, locations(*)',
+			})
+		);
 		const getProfileSpy = jest.spyOn(service, 'getProfile').mockResolvedValueOnce({ id: 'profile-1' } as never);
 		await expect(service.saveProfile('profile-1', { first_name: 'Ada' })).resolves.toEqual({
 			id: 'profile-1',
@@ -861,6 +869,63 @@ describe('AppDataService coverage', () => {
 			service.saveProfileData('profile-3', { first_name: 'Broken', location: null })
 		).rejects.toThrow('profile failed');
 		expect(getProfileSpy).toHaveBeenCalled();
+	});
+
+	it('stores birth_date and derives age at read time for profiles', async () => {
+		const service = createService();
+		const executeCollectionOperationSpy = jest.spyOn(service, 'executeCollectionOperation');
+		const getProfileSpy = jest.spyOn(service, 'getProfile').mockResolvedValue({ id: 'profile-birth-date' } as never);
+
+		executeCollectionOperationSpy
+			.mockResolvedValueOnce({ data: { id: 'location-9' }, error: null })
+			.mockResolvedValueOnce({ data: null, error: null })
+			.mockResolvedValueOnce({ data: null, error: null });
+
+		await expect(
+			service.saveProfileData('profile-birth-date', {
+				first_name: 'Katherine',
+				last_name: 'Johnson',
+				birth_date: '1990-04-25',
+				gender: 'Female',
+				location: { city: 'White Sulphur Springs', country: 'USA' },
+				languages: [],
+				passions: [],
+			})
+		).resolves.toEqual({ id: 'profile-birth-date' });
+
+		expect(executeCollectionOperationSpy).toHaveBeenCalledWith('profiles', {
+			action: 'upsert',
+			payload: expect.objectContaining({
+				id: 'profile-birth-date',
+				birth_date: '1990-04-25',
+				age: null,
+			}),
+		});
+		expect(getProfileSpy).toHaveBeenCalledWith('profile-birth-date');
+
+		const selectResult = await (service as any).transformSelectedDocuments(
+			'profiles',
+			[
+				{
+					id: 'profile-birth-date',
+					first_name: 'Katherine',
+					birth_date: '2000-04-25',
+					age: 99,
+					show_age: true,
+					location_id: null,
+				},
+			],
+			'id, first_name, age'
+		);
+
+		expect(selectResult).toEqual([
+			expect.objectContaining({
+				id: 'profile-birth-date',
+				first_name: 'Katherine',
+				age: expect.any(Number),
+			}),
+		]);
+		expect(selectResult[0].age).not.toBe(99);
 	});
 
 	it('cascades profile deletions and maps notifications, reports, verification requests, push subscriptions, analytics, and contact requests', async () => {

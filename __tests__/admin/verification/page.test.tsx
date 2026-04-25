@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AdminVerification from '../../../src/app/admin/verification/page';
 
 // Mock fetch
@@ -39,8 +39,14 @@ describe('AdminVerification', () => {
     mockFetch.mockReset();
   });
 
+  const renderVerificationPage = async () => {
+    await act(async () => {
+      render(<AdminVerification />);
+    });
+  };
+
   it('shows loading state initially', () => {
-    mockFetch.mockResolvedValue({ ok: false });
+    mockFetch.mockImplementation(() => new Promise(() => {}));
     render(<AdminVerification />);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -51,7 +57,7 @@ describe('AdminVerification', () => {
       json: () => Promise.resolve(mockRequests),
     });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -63,7 +69,7 @@ describe('AdminVerification', () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     mockFetch.mockRejectedValue(new Error('Network error'));
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
@@ -79,7 +85,7 @@ describe('AdminVerification', () => {
       json: () => Promise.resolve([]),
     });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('No pending requests')).toBeInTheDocument();
@@ -92,9 +98,13 @@ describe('AdminVerification', () => {
         ok: true,
         json: () => Promise.resolve(mockRequests),
       })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockRequests.slice(1)),
+      });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -120,7 +130,7 @@ describe('AdminVerification', () => {
       })
       .mockResolvedValueOnce({ ok: false });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -140,9 +150,13 @@ describe('AdminVerification', () => {
         ok: true,
         json: () => Promise.resolve(mockRequests),
       })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockRequests.slice(1)),
+      });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -168,7 +182,7 @@ describe('AdminVerification', () => {
       })
       .mockResolvedValueOnce({ ok: false });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -188,7 +202,7 @@ describe('AdminVerification', () => {
       json: () => Promise.resolve(mockRequests),
     });
 
-    render(<AdminVerification />);
+    await renderVerificationPage();
 
     await waitFor(() => {
       // Dates should be formatted as locale date strings

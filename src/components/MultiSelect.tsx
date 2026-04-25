@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, ChevronDown, Check } from 'lucide-react';
+import { componentCopy } from '../lib/app-copy';
 
 interface Option {
     name: string;
@@ -56,7 +57,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                 <label htmlFor={inputId} className="block text-sm font-medium text-gray-300">{label}</label>
                 {selected.length > 0 && (
                     <span className="text-xs text-indigo-400 bg-indigo-900/30 px-2 py-0.5 rounded-full">
-                        {selected.length} selected
+                        {componentCopy.multiSelect.selectedCount(selected.length)}
                     </span>
                 )}
             </div>
@@ -71,7 +72,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                                 handleRemove(item);
                             }}
                             className="text-white hover:text-gray-200 focus:outline-none"
-                            aria-label={`Remove ${item}`}
+                            aria-label={componentCopy.multiSelect.removeSelectedItem(item)}
                         >
                             <X size={14} />
                         </button>
@@ -84,7 +85,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                     role="combobox"
                     aria-controls={`${inputId}-listbox`}
                     className="flex-grow bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 min-w-[100px]"
-                    placeholder={selected.length === 0 ? (placeholder || "Select...") : ""}
+                    placeholder={selected.length === 0 ? (placeholder || componentCopy.multiSelect.defaultPlaceholder) : ''}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onFocus={() => setIsOpen(true)}
@@ -112,7 +113,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                             </div>
                         ))
                     ) : (
-                        <div className="px-4 py-2 text-gray-500">No options found</div>
+                        <div className="px-4 py-2 text-gray-500">{componentCopy.multiSelect.noOptionsFound}</div>
                     )}
                 </div>
             )}

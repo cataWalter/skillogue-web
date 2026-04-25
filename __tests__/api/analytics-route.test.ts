@@ -17,10 +17,15 @@ describe('/api/analytics route', () => {
   const trackAnalyticsEvent = jest.fn();
   let routeHandlers: typeof import('../../src/app/api/analytics/route');
 
-  const createRequest = (body: unknown, shouldReject = false) =>
+  const createRequest = (body: unknown) =>
     ({
-      json: shouldReject ? jest.fn().mockRejectedValue(body) : jest.fn().mockResolvedValue(body),
-    }) as Request;
+      json: jest.fn().mockResolvedValue(body),
+    }) as unknown as Request;
+
+  const createInvalidJsonRequest = () =>
+    ({
+      json: jest.fn().mockRejectedValue(new Error('Invalid JSON body')),
+    }) as unknown as Request;
 
   beforeAll(async () => {
     routeHandlers = await import('../../src/app/api/analytics/route');
@@ -70,17 +75,25 @@ describe('/api/analytics route', () => {
   });
 
   it('returns 500 when parsing the request body fails', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const request = createRequest(new Error('Invalid JSON body'), true);
+    const request = createInvalidJsonRequest();
 
     const response = await routeHandlers.POST(request);
 
     expect(AppDataService).not.toHaveBeenCalled();
     expect(trackAnalyticsEvent).not.toHaveBeenCalled();
-    expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: 'Failed to track analytics' });
-    expect(errorSpy).toHaveBeenCalledWith('Error tracking analytics:', expect.any(Error));
-    errorSpy.mockRestore();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: 'Invalid analytics payload.' });
+  });
+
+  it('returns 400 when required analytics fields are missing', async () => {
+    const request = createRequest({ properties: { source: 'test' } });
+
+    const response = await routeHandlers.POST(request);
+
+    expect(AppDataService).not.toHaveBeenCalled();
+    expect(trackAnalyticsEvent).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: 'Invalid analytics payload.' });
   });
 
   it('returns 500 when the analytics service throws', async () => {

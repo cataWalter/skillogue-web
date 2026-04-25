@@ -6,12 +6,15 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { appClient } from '../../lib/appClient';
 import MultiSelect from '../../components/MultiSelect';
 import { updateProfile } from '../actions/profile';
+import { normalizeGender } from '@/lib/gender';
+import { getBirthDateRange, isBirthDateWithinAgeRange } from '@/lib/profile-age';
+import { onboardingCopy } from '../../lib/app-copy';
 
 interface ProfileState {
     first_name: string;
     last_name: string;
     about_me: string;
-    age: string;
+    birth_date: string;
     gender: string;
 }
 
@@ -38,7 +41,7 @@ const Onboarding: React.FC = () => {
         first_name: '',
         last_name: '',
         about_me: '',
-        age: '',
+        birth_date: '',
         gender: '',
     });
     const [location, setLocation] = useState<LocationState>({
@@ -55,6 +58,8 @@ const Onboarding: React.FC = () => {
     const [cities, setCities] = useState<string[]>([]);
     const [error, setError] = useState('');
     const router = useRouter();
+    const birthDateRange = getBirthDateRange();
+    const totalSteps = 3;
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -71,7 +76,7 @@ const Onboarding: React.FC = () => {
             setAvailablePassions(allPassions || []);
 
             const { data: countryData } = await appClient.rpc('get_distinct_countries');
-            setCountries(countryData?.map((c: { country: string }) => c.country) || []);
+            setCountries(countryData?.map((country: { country: string }) => country.country) || []);
 
             setLoading(false);
         };
@@ -83,8 +88,11 @@ const Onboarding: React.FC = () => {
         if (location.country) {
             const fetchRegions = async () => {
                 const { data, error } = await appClient.rpc('get_distinct_regions', { p_country: location.country });
-                if (error) console.error("Error fetching regions:", error);
-                else setRegions(data.map((r: { region: string }) => r.region).filter(Boolean));
+                if (error) {
+                    console.error('Error fetching regions:', error);
+                } else {
+                    setRegions(data.map((region: { region: string }) => region.region).filter(Boolean));
+                }
             };
             fetchRegions();
         } else {
@@ -97,10 +105,13 @@ const Onboarding: React.FC = () => {
             const fetchCities = async () => {
                 const { data, error } = await appClient.rpc('get_distinct_cities', {
                     p_country: location.country,
-                    p_region: location.region || null
+                    p_region: location.region || null,
                 });
-                if (error) console.error("Error fetching cities:", error);
-                else setCities(data.map((c: { city: string }) => c.city));
+                if (error) {
+                    console.error('Error fetching cities:', error);
+                } else {
+                    setCities(data.map((city: { city: string }) => city.city));
+                }
             };
             fetchCities();
         } else {
@@ -115,7 +126,7 @@ const Onboarding: React.FC = () => {
 
     const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setLocation(prev => {
+        setLocation((prev) => {
             const newState = { ...prev, [name]: value };
             if (name === 'country') {
                 newState.region = '';
@@ -127,56 +138,57 @@ const Onboarding: React.FC = () => {
 
     const nextStep = () => {
         if (step === 1) {
-            if (!profile.first_name || !profile.last_name || !profile.age || !profile.gender) {
-                setError('Please fill in all required fields.');
+            if (!profile.first_name || !profile.last_name || !profile.birth_date || !profile.gender) {
+                setError(onboardingCopy.validation.missingBasics);
                 return;
             }
-            // Validate age
-            const ageNum = parseInt(profile.age);
-            if (isNaN(ageNum) || ageNum < 18 || ageNum > 120) {
-                setError('Please enter a valid age (18-120).');
+
+            if (!isBirthDateWithinAgeRange(profile.birth_date)) {
+                setError(onboardingCopy.validation.invalidBirthDate);
                 return;
             }
-            // Validate name length
+
             if (profile.first_name.length < 2 || profile.last_name.length < 2) {
-                setError('Names must be at least 2 characters long.');
+                setError(onboardingCopy.validation.shortNames);
                 return;
             }
         } else if (step === 2) {
             if (!location.country || !location.city) {
-                setError('Please select your location.');
+                setError(onboardingCopy.validation.missingLocation);
                 return;
             }
         }
+
         setError('');
-        setStep(prev => prev + 1);
+        setStep((prev) => prev + 1);
     };
 
     const prevStep = () => {
         setError('');
-        setStep(prev => prev - 1);
+        setStep((prev) => prev - 1);
     };
 
     const handleSubmit = async () => {
-        // Final validation
         if (selectedPassions.length < 3) {
-            setError('Please select at least 3 passions to help us find your tribe.');
+            setError(onboardingCopy.validation.minPassions);
             return;
         }
 
         if (selectedPassions.length > 10) {
-            setError('Please select no more than 10 passions.');
+            setError(onboardingCopy.validation.maxPassions);
             return;
         }
 
         setLoading(true);
         try {
+            const normalizedGender = normalizeGender(profile.gender);
+
             const result = await updateProfile({
                 first_name: profile.first_name,
                 last_name: profile.last_name,
                 about_me: profile.about_me,
-                age: profile.age ? parseInt(profile.age, 10) : null,
-                gender: profile.gender,
+                birth_date: profile.birth_date,
+                gender: normalizedGender,
                 location: {
                     city: location.city || null,
                     region: location.region || null,
@@ -198,58 +210,58 @@ const Onboarding: React.FC = () => {
             router.push('/dashboard');
         } catch (err: unknown) {
             console.error('Error completing onboarding:', err);
-            const message = err instanceof Error ? err.message : 'Failed to save profile';
+            const message = err instanceof Error ? err.message : onboardingCopy.validation.saveFailed;
             setError(message);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
+    if (loading) {
+        return <div className="min-h-screen bg-black text-white flex items-center justify-center">{onboardingCopy.loading}</div>;
+    }
 
     return (
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-2xl bg-gray-900 p-8 rounded-2xl border border-gray-800 shadow-2xl">
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                        Welcome to Skillogue!
+                        {onboardingCopy.title}
                     </h1>
-                    <p className="text-gray-400 mt-2">Let&apos;s set up your profile to find your tribe.</p>
+                    <p className="text-gray-400 mt-2">{onboardingCopy.subtitle}</p>
                 </div>
 
-                {/* Progress Indicator */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Step {step} of 3</span>
-                        <span className="text-sm text-indigo-400 font-medium">{Math.round((step / 3) * 100)}% complete</span>
+                        <span className="text-sm text-gray-400">{onboardingCopy.stepCounter(step, totalSteps)}</span>
+                        <span className="text-sm text-indigo-400 font-medium">{onboardingCopy.progressComplete(step, totalSteps)}</span>
                     </div>
                     <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                        <div 
+                        <div
                             className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 h-2 rounded-full transition-all duration-500 ease-out"
-                            style={{ width: `${(step / 3) * 100}%` }}
+                            style={{ width: `${(step / totalSteps) * 100}%` }}
                         />
                     </div>
                     <div className="flex justify-between mt-3 text-xs">
                         <span className={`flex items-center gap-1.5 ${step >= 1 ? 'text-indigo-400 font-medium' : 'text-gray-500'}`}>
                             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}>1</span>
-                            Basic Info
+                            {onboardingCopy.basicInfoStep}
                         </span>
                         <span className={`flex items-center gap-1.5 ${step >= 2 ? 'text-indigo-400 font-medium' : 'text-gray-500'}`}>
                             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}>2</span>
-                            Location
+                            {onboardingCopy.locationStep}
                         </span>
                         <span className={`flex items-center gap-1.5 ${step >= 3 ? 'text-indigo-400 font-medium' : 'text-gray-500'}`}>
                             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}>3</span>
-                            Passions
+                            {onboardingCopy.passionsStep}
                         </span>
                     </div>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="w-full bg-gray-800 h-2 rounded-full mb-8">
                     <div
                         className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${(step / 3) * 100}%` }}
+                        style={{ width: `${(step / totalSteps) * 100}%` }}
                     ></div>
                 </div>
 
@@ -261,10 +273,10 @@ const Onboarding: React.FC = () => {
 
                 {step === 1 && (
                     <div className="space-y-6 animate-fadeIn">
-                        <h2 className="text-xl font-semibold text-white">Step 1: The Basics</h2>
+                        <h2 className="text-xl font-semibold text-white">{onboardingCopy.stepOneTitle}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label htmlFor="first_name" className="block text-sm font-medium text-gray-400 mb-2">First Name</label>
+                                <label htmlFor="first_name" className="block text-sm font-medium text-gray-400 mb-2">{onboardingCopy.firstName}</label>
                                 <input
                                     id="first_name"
                                     type="text"
@@ -272,12 +284,12 @@ const Onboarding: React.FC = () => {
                                     value={profile.first_name}
                                     onChange={handleProfileChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    placeholder="Jane"
+                                    placeholder={onboardingCopy.firstNamePlaceholder}
                                     autoComplete="given-name"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="last_name" className="block text-sm font-medium text-gray-400 mb-2">Last Name</label>
+                                <label htmlFor="last_name" className="block text-sm font-medium text-gray-400 mb-2">{onboardingCopy.lastName}</label>
                                 <input
                                     id="last_name"
                                     type="text"
@@ -285,28 +297,28 @@ const Onboarding: React.FC = () => {
                                     value={profile.last_name}
                                     onChange={handleProfileChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    placeholder="Doe"
+                                    placeholder={onboardingCopy.lastNamePlaceholder}
                                     autoComplete="family-name"
                                 />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label htmlFor="age" className="block text-sm font-medium text-gray-400 mb-2">Age</label>
+                                <label htmlFor="birth_date" className="block text-sm font-medium text-gray-400 mb-2">{onboardingCopy.birthDate}</label>
                                 <input
-                                    id="age"
-                                    type="number"
-                                    name="age"
-                                    value={profile.age}
+                                    id="birth_date"
+                                    type="date"
+                                    name="birth_date"
+                                    value={profile.birth_date}
                                     onChange={handleProfileChange}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    placeholder="25"
-                                    min="18"
-                                    inputMode="numeric"
+                                    className="date-input-light-icon w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    min={birthDateRange.min}
+                                    max={birthDateRange.max}
+                                    autoComplete="bday"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="gender" className="block text-sm font-medium text-gray-400 mb-2">Gender</label>
+                                <label htmlFor="gender" className="block text-sm font-medium text-gray-400 mb-2">{onboardingCopy.gender}</label>
                                 <select
                                     id="gender"
                                     name="gender"
@@ -314,17 +326,15 @@ const Onboarding: React.FC = () => {
                                     onChange={handleProfileChange}
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 >
-                                    <option value="">Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Non-binary">Non-binary</option>
-                                    <option value="Other">Other</option>
-                                    <option value="Prefer not to say">Prefer not to say</option>
+                                    <option value="">{onboardingCopy.selectGender}</option>
+                                    {onboardingCopy.genderOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
                         <div>
-                            <label htmlFor="about_me" className="block text-sm font-medium text-gray-400 mb-2">About Me</label>
+                            <label htmlFor="about_me" className="block text-sm font-medium text-gray-400 mb-2">{onboardingCopy.aboutMe}</label>
                             <textarea
                                 id="about_me"
                                 name="about_me"
@@ -332,7 +342,7 @@ const Onboarding: React.FC = () => {
                                 onChange={handleProfileChange}
                                 rows={3}
                                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                placeholder="I love hiking and coding..."
+                                placeholder={onboardingCopy.aboutPlaceholder}
                             />
                         </div>
                     </div>
@@ -340,10 +350,10 @@ const Onboarding: React.FC = () => {
 
                 {step === 2 && (
                     <div className="space-y-6 animate-fadeIn">
-                        <h2 className="text-xl font-semibold text-white">Step 2: Location</h2>
+                        <h2 className="text-xl font-semibold text-white">{onboardingCopy.locationStepTitle}</h2>
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="country" className="block text-sm font-medium text-gray-400 mb-2">Country</label>
+                                <label htmlFor="country" className="block text-sm font-medium text-gray-400 mb-2">{onboardingCopy.country}</label>
                                 <select
                                     id="country"
                                     name="country"
@@ -352,12 +362,12 @@ const Onboarding: React.FC = () => {
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     autoComplete="country-name"
                                 >
-                                    <option value="">Select Country</option>
-                                    {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="">{onboardingCopy.selectCountry}</option>
+                                    {countries.map((country) => <option key={country} value={country}>{country}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="region" className="block text-sm font-medium text-gray-400 mb-2">Region/State</label>
+                                <label htmlFor="region" className="block text-sm font-medium text-gray-400 mb-2">{onboardingCopy.regionState}</label>
                                 <select
                                     id="region"
                                     name="region"
@@ -367,12 +377,12 @@ const Onboarding: React.FC = () => {
                                     disabled={!location.country}
                                     autoComplete="address-level1"
                                 >
-                                    <option value="">Select Region</option>
-                                    {regions.map(r => <option key={r} value={r}>{r}</option>)}
+                                    <option value="">{onboardingCopy.selectRegion}</option>
+                                    {regions.map((region) => <option key={region} value={region}>{region}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="city" className="block text-sm font-medium text-gray-400 mb-2">City</label>
+                                <label htmlFor="city" className="block text-sm font-medium text-gray-400 mb-2">{onboardingCopy.city}</label>
                                 <select
                                     id="city"
                                     name="city"
@@ -382,8 +392,8 @@ const Onboarding: React.FC = () => {
                                     disabled={!location.region && !location.country}
                                     autoComplete="address-level2"
                                 >
-                                    <option value="">Select City</option>
-                                    {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="">{onboardingCopy.selectCity}</option>
+                                    {cities.map((city) => <option key={city} value={city}>{city}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -392,23 +402,23 @@ const Onboarding: React.FC = () => {
 
                 {step === 3 && (
                     <div className="space-y-6 animate-fadeIn">
-                        <h2 className="text-xl font-semibold text-white">Step 3: Interests & Languages</h2>
+                        <h2 className="text-xl font-semibold text-white">{onboardingCopy.interestsLanguagesStepTitle}</h2>
                         <div className="space-y-6">
                             <MultiSelect
-                                label="Passions (Select at least 3)"
+                                label={onboardingCopy.passionsWithMinimum}
                                 options={availablePassions}
                                 selected={selectedPassions}
                                 onChange={setSelectedPassions}
-                                placeholder="Select your passions..."
+                                placeholder={onboardingCopy.passionsPlaceholder}
                                 id="onboarding-passions"
                                 name="passions"
                             />
                             <MultiSelect
-                                label="Languages"
+                                label={onboardingCopy.languages}
                                 options={availableLanguages}
                                 selected={selectedLanguages}
                                 onChange={setSelectedLanguages}
-                                placeholder="Select languages you speak..."
+                                placeholder={onboardingCopy.languagesPlaceholder}
                                 id="onboarding-languages"
                                 name="languages"
                             />
@@ -422,25 +432,25 @@ const Onboarding: React.FC = () => {
                             onClick={prevStep}
                             className="flex items-center gap-2 px-6 py-2 text-gray-400 hover:text-white transition"
                         >
-                            <ArrowLeft size={20} /> Back
+                            <ArrowLeft size={20} /> {onboardingCopy.back}
                         </button>
                     ) : (
                         <div></div>
                     )}
 
-                    {step < 3 ? (
+                    {step < totalSteps ? (
                         <button
                             onClick={nextStep}
                             className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition"
                         >
-                            Next <ArrowRight size={20} />
+                            {onboardingCopy.next} <ArrowRight size={20} />
                         </button>
                     ) : (
                         <button
                             onClick={handleSubmit}
                             className="flex items-center gap-2 px-8 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-lg rounded-lg text-white font-bold transition transform hover:scale-105"
                         >
-                            Complete Profile
+                            {onboardingCopy.completeProfile}
                         </button>
                     )}
                 </div>

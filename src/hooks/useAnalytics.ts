@@ -1,9 +1,6 @@
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
-import { useAuth } from './useAuth';
 
 export const useAnalytics = () => {
-  const { user } = useAuth();
   const pathname = usePathname();
 
   const trackEvent = async (eventName: string, properties: Record<string, unknown> = {}) => {
@@ -21,12 +18,6 @@ export const useAnalytics = () => {
       console.error('Error tracking event:', error);
     }
   };
-
-  useEffect(() => {
-    if (pathname) {
-      trackEvent('page_view', { path: pathname });
-    }
-  }, [pathname]);
 
   return { trackEvent };
 };

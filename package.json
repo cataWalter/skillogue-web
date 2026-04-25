@@ -26,6 +26,7 @@
     "build": "next build",
     "appwrite:setup-db": "node scripts/setup-appwrite-db.mjs",
     "appwrite:seed-demo-data": "node scripts/seed-appwrite-demo-data.js",
+    "appwrite:normalize-profile-genders": "node scripts/normalize-profile-genders.js",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "test": "jest",

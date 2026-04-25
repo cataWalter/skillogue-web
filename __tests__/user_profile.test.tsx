@@ -2,10 +2,20 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import UserProfile from '../src/app/user/[id]/page';
 import { appClient } from '../src/lib/appClient';
-import toast from 'react-hot-toast';
 import '@testing-library/jest-dom';
 
+const originalConsoleError = console.error;
+
 const mockPush = jest.fn();
+const mockRouter = { push: mockPush };
+
+const flushAsyncEffects = async (cycles = 3) => {
+  for (let index = 0; index < cycles; index += 1) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+};
 
 const createProfileTableMock = (result: { data: unknown; error: unknown }) => ({
   select: jest.fn(() => ({
@@ -68,7 +78,7 @@ jest.mock('../src/lib/appClient', () => ({
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useParams: () => ({ id: 'user-123' }),
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => mockRouter,
 }));
 
 jest.mock('react-hot-toast', () => ({
@@ -82,7 +92,27 @@ jest.mock('react-hot-toast', () => ({
 // Import the mocked toast after jest.mock
 import toast from 'react-hot-toast';
 
+const renderUserProfilePage = async () => {
+  await act(async () => {
+    render(<UserProfile />);
+    await flushAsyncEffects(5);
+  });
+};
+
+const waitForUserProfileToSettle = async () => {
+  await waitFor(() => {
+    expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
+  });
+};
+
+const renderLoadedUserProfilePage = async () => {
+  await renderUserProfilePage();
+  await waitForUserProfileToSettle();
+};
+
 describe('UserProfile', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   const mockSession = {
     user: { id: 'me-123' },
   };
@@ -102,6 +132,15 @@ describe('UserProfile', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockReset();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      const stringArgs = args.filter((value): value is string => typeof value === 'string');
+
+      if (stringArgs.some((value) => value.includes('not wrapped in act'))) {
+        return;
+      }
+
+      originalConsoleError(...(args as Parameters<typeof console.error>));
+    });
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
     
     // Mock profile fetch
@@ -119,21 +158,22 @@ describe('UserProfile', () => {
     });
   });
 
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it('renders user profile', async () => {
-    render(<UserProfile />);
-    await waitFor(() => {
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-      expect(screen.getByText('About Jane')).toBeInTheDocument();
-    });
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    expect(screen.getByText('About Jane')).toBeInTheDocument();
   });
 
   it('handles blocking a user', async () => {
     window.confirm = jest.fn(() => true);
-    render(<UserProfile />);
-    
-    await waitFor(() => {
-      expect(screen.getByTitle('Block User')).toBeInTheDocument();
-    });
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByTitle('Block User')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('Block User'));
 
@@ -144,11 +184,9 @@ describe('UserProfile', () => {
   });
 
   it('handles saving a user', async () => {
-    render(<UserProfile />);
-    
-    await waitFor(() => {
-      expect(screen.getByTitle('Add to Favorites')).toBeInTheDocument();
-    });
+    await renderLoadedUserProfilePage();
+
+    expect(screen.getByTitle('Add to Favorites')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('Add to Favorites'));
 
@@ -167,8 +205,7 @@ describe('UserProfile', () => {
 
     window.confirm = jest.fn(() => true);
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+  await renderLoadedUserProfilePage();
 
     const blockButton = screen.getByTitle('Block User');
     fireEvent.click(blockButton);
@@ -188,8 +225,7 @@ describe('UserProfile', () => {
 
     window.confirm = jest.fn(() => true);
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+  await renderLoadedUserProfilePage();
 
     const unblockButton = screen.getByTitle('Unblock User');
     fireEvent.click(unblockButton);
@@ -208,8 +244,7 @@ describe('UserProfile', () => {
         return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+      await renderLoadedUserProfilePage();
 
     const unsaveButton = screen.getByTitle('Remove from Favorites');
     fireEvent.click(unsaveButton);
@@ -225,7 +260,7 @@ describe('UserProfile', () => {
         return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
+      await renderUserProfilePage();
 
     await waitFor(() => {
         expect(screen.getByText('Profile Unavailable')).toBeInTheDocument();
@@ -241,7 +276,7 @@ describe('UserProfile', () => {
       })
     );
 
-    render(<UserProfile />);
+    await renderUserProfilePage();
 
     await waitFor(() => {
         expect(screen.getByText('Could not find this user.')).toBeInTheDocument();
@@ -261,8 +296,7 @@ describe('UserProfile', () => {
         return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+      await renderLoadedUserProfilePage();
 
     const saveButton = screen.getByTitle('Add to Favorites');
     fireEvent.click(saveButton);
@@ -280,8 +314,7 @@ describe('UserProfile', () => {
         return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+      await renderLoadedUserProfilePage();
 
     const unsaveButton = screen.getByTitle('Remove from Favorites');
     fireEvent.click(unsaveButton);
@@ -301,8 +334,7 @@ describe('UserProfile', () => {
 
     window.confirm = jest.fn(() => true);
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+  await renderLoadedUserProfilePage();
 
     const unblockButton = screen.getByTitle('Unblock User');
     fireEvent.click(unblockButton);
@@ -328,11 +360,9 @@ describe('UserProfile', () => {
       })
     );
 
-    render(<UserProfile />);
+    await renderLoadedUserProfilePage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     // Should still render even if passions fail
   });
 
@@ -344,17 +374,15 @@ describe('UserProfile', () => {
       })
     );
 
-    render(<UserProfile />);
+    await renderLoadedUserProfilePage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
   });
 
   it('handles own profile redirect', async () => {
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-123' } } }, error: null });
 
-    render(<UserProfile />);
+    await renderUserProfilePage();
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/profile');
@@ -367,11 +395,9 @@ describe('UserProfile', () => {
       return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
+    await renderLoadedUserProfilePage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
   });
 
   it('handles is_saved rpc error', async () => {
@@ -380,11 +406,9 @@ describe('UserProfile', () => {
       return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
+    await renderLoadedUserProfilePage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
   });
 
   it('handles checkBlockStatus error', async () => {
@@ -393,11 +417,9 @@ describe('UserProfile', () => {
       return Promise.resolve({ data: null, error: null });
     });
 
-    render(<UserProfile />);
+    await renderLoadedUserProfilePage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
   });
 
   it('handles unblock user confirm cancel', async () => {
@@ -407,8 +429,7 @@ describe('UserProfile', () => {
     });
     window.confirm = jest.fn(() => false);
 
-    render(<UserProfile />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+    await renderLoadedUserProfilePage();
 
     const unblockButton = screen.getByTitle('Unblock User');
     fireEvent.click(unblockButton);

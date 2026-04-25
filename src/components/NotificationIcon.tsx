@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import NotificationsDropdown from './NotificationsDropdown';
+import { componentCopy } from '../lib/app-copy';
 
 const NotificationIcon: React.FC = () => {
     const { unreadCount } = useNotifications();
@@ -24,7 +25,7 @@ const NotificationIcon: React.FC = () => {
             <button
                 onClick={() => setDropdownOpen(!isDropdownOpen)}
                 className="relative p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-full transition"
-                aria-label="Notifications"
+                aria-label={componentCopy.notificationCenter.ariaLabel}
                 aria-expanded={isDropdownOpen}
                 aria-haspopup="true"
             >

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Lock, Eye, MapPin, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
+import { settingsCopy } from '../../../lib/app-copy';
 
 const PrivacySettings: React.FC = () => {
     const router = useRouter();
@@ -61,16 +62,16 @@ const PrivacySettings: React.FC = () => {
 
         if (error) {
             console.error(`Error updating ${key}:`, error);
-            toast.error('Failed to update setting');
+            toast.error(settingsCopy.privacy.updateError);
             // Rollback
             setSettings(prev => ({ ...prev, [key]: !value }));
         } else {
-            toast.success('Settings updated');
+            toast.success(settingsCopy.privacy.updateSuccess);
         }
     };
 
     if (loading) {
-        return <div className="p-8 text-center">Loading settings...</div>;
+        return <div className="p-8 text-center">{settingsCopy.privacy.loading}</div>;
     }
 
     return (
@@ -78,15 +79,15 @@ const PrivacySettings: React.FC = () => {
             <div className="flex items-center mb-8">
                 <Link href="/settings" className="text-gray-400 hover:text-white transition flex items-center gap-2">
                     <ArrowLeft size={20} />
-                    Back to Settings
+                    {settingsCopy.privacy.backToSettings}
                 </Link>
             </div>
 
             <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-                <Lock className="text-indigo-400" /> Privacy Settings
+                <Lock className="text-indigo-400" /> {settingsCopy.privacy.title}
             </h1>
             <p className="text-gray-400 mb-8">
-                Control who can see your profile and personal details.
+                {settingsCopy.privacy.subtitle}
             </p>
 
             <div className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
@@ -94,10 +95,10 @@ const PrivacySettings: React.FC = () => {
                 <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h3 className="text-lg font-semibold flex items-center gap-2">
-                            <Eye size={20} className="text-gray-400" /> Private Profile
+                            <Eye size={20} className="text-gray-400" /> {settingsCopy.privacy.privateProfileTitle}
                         </h3>
                         <p className="text-gray-400 text-sm mt-1">
-                            When enabled, only your name and avatar will be visible to others. Your detailed profile info will be hidden.
+                            {settingsCopy.privacy.privateProfileDescription}
                         </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -115,10 +116,10 @@ const PrivacySettings: React.FC = () => {
                 <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h3 className="text-lg font-semibold flex items-center gap-2">
-                            <Calendar size={20} className="text-gray-400" /> Show Age
+                            <Calendar size={20} className="text-gray-400" /> {settingsCopy.privacy.showAgeTitle}
                         </h3>
                         <p className="text-gray-400 text-sm mt-1">
-                            Display your age on your public profile.
+                            {settingsCopy.privacy.showAgeDescription}
                         </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -136,10 +137,10 @@ const PrivacySettings: React.FC = () => {
                 <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h3 className="text-lg font-semibold flex items-center gap-2">
-                            <MapPin size={20} className="text-gray-400" /> Show Location
+                            <MapPin size={20} className="text-gray-400" /> {settingsCopy.privacy.showLocationTitle}
                         </h3>
                         <p className="text-gray-400 text-sm mt-1">
-                            Display your city and country on your public profile.
+                            {settingsCopy.privacy.showLocationDescription}
                         </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">

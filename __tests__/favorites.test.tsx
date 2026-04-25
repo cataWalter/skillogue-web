@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import FavoritesPage from '../src/app/favorites/page';
 import { appClient } from '../src/lib/appClient';
-import * as toast from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import '@testing-library/jest-dom';
 
 // Mock App Client client
@@ -18,8 +18,11 @@ jest.mock('../src/lib/appClient', () => ({
 
 // Mock toast
 jest.mock('react-hot-toast', () => ({
-  success: jest.fn(),
-  error: jest.fn(),
+  __esModule: true,
+  default: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
 }));
 
 describe('FavoritesPage', () => {
@@ -264,6 +267,9 @@ describe('FavoritesPage', () => {
     await waitFor(() => {
       // Should still render something even with null data
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+      expect(screen.getByText('Skillogue user')).toBeInTheDocument();
+      expect(screen.getByText('This user has not added a bio yet.')).toBeInTheDocument();
+      expect(screen.getAllByText('Not specified')).toHaveLength(2);
     });
   });
 

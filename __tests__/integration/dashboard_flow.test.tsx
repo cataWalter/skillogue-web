@@ -106,12 +106,11 @@ describe('Dashboard Integration Flow', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument();
     });
 
-    // Verify conversations are loaded
-    expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
-    expect(screen.getByText('Hi')).toBeInTheDocument();
-
-    // Verify suggestions are loaded
-    expect(screen.getByText('Bob')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
+      expect(screen.getByText('Hi')).toBeInTheDocument();
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+    });
   });
 
   it('handles partial data fetch errors gracefully', async () => {
@@ -170,6 +169,44 @@ describe('Dashboard Integration Flow', () => {
     await waitFor(() => {
       expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
     });
+  });
+
+  it('renders shared fallback placeholders for incomplete dashboard cards', async () => {
+    (appClient.rpc as jest.Mock).mockImplementation((fn) => {
+      if (fn === 'get_recent_conversations') {
+        return Promise.resolve({
+          data: [
+            {
+              conversation_id: 'user-2',
+              user_id: 'user-2',
+              first_name: null,
+              last_name: null,
+              last_message: '',
+              last_message_time: null,
+              unread: 0,
+            },
+          ],
+          error: null,
+        });
+      }
+
+      if (fn === 'get_suggested_profiles') {
+        return Promise.resolve({
+          data: [{ id: 'user-3', first_name: null, last_name: null, shared_passions_count: 2 }],
+          error: null,
+        });
+      }
+
+      return Promise.resolve({ data: [], error: null });
+    });
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Skillogue user')).toHaveLength(2);
+    });
+
+    expect(screen.getByText('No messages yet')).toBeInTheDocument();
   });
 
   it('redirects to onboarding if profile is incomplete', async () => {

@@ -4,9 +4,9 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle, CheckCircle, Loader2, Mail } from 'lucide-react';
+import { authCopy } from '../../../lib/app-copy';
 
-const DEFAULT_MESSAGE =
-  "If you didn't receive the verification email, confirm your password and we'll send another one.";
+const DEFAULT_MESSAGE = authCopy.resendVerification.defaultMessage;
 
 const ResendVerificationPage = () => {
   const searchParams = useSearchParams();
@@ -14,14 +14,14 @@ const ResendVerificationPage = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [message, setMessage] = useState(DEFAULT_MESSAGE);
+  const [message, setMessage] = useState<string>(DEFAULT_MESSAGE);
 
   const handleResendVerification = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!email || !password) {
       setStatus('error');
-      setMessage('Email and password are required to send another verification email.');
+      setMessage(authCopy.resendVerification.emailPasswordRequired);
       return;
     }
 
@@ -40,16 +40,16 @@ const ResendVerificationPage = () => {
         | null;
 
       if (!response.ok) {
-        throw new Error(payload?.message || 'Failed to resend verification email.');
+        throw new Error(payload?.message || authCopy.resendVerification.failure);
       }
 
       setStatus('success');
-      setMessage(payload?.message || 'We sent you a new verification email. Please check your inbox.');
+      setMessage(payload?.message || authCopy.resendVerification.success);
       setPassword('');
     } catch (error) {
       setStatus('error');
       setMessage(
-        error instanceof Error ? error.message : 'Failed to resend verification email.'
+        error instanceof Error ? error.message : authCopy.resendVerification.failure
       );
     } finally {
       setLoading(false);
@@ -73,7 +73,7 @@ const ResendVerificationPage = () => {
           </div>
 
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-            Need Another Verification Email?
+            {authCopy.resendVerification.title}
           </h1>
           <p className="mt-3 text-gray-300">{message}</p>
         </div>
@@ -82,7 +82,7 @@ const ResendVerificationPage = () => {
           <form onSubmit={handleResendVerification} className="p-8 space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                Email
+                {authCopy.resendVerification.email}
               </label>
               <input
                 id="email"
@@ -91,7 +91,7 @@ const ResendVerificationPage = () => {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400 transition"
-                placeholder="you@example.com"
+                placeholder={authCopy.resendVerification.emailPlaceholder}
                 autoComplete="email"
                 disabled={loading}
               />
@@ -99,7 +99,7 @@ const ResendVerificationPage = () => {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                Password
+                {authCopy.resendVerification.password}
               </label>
               <input
                 id="password"
@@ -108,7 +108,7 @@ const ResendVerificationPage = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400 transition"
-                placeholder="••••••••"
+                placeholder={authCopy.resendVerification.passwordPlaceholder}
                 autoComplete="current-password"
                 disabled={loading}
               />
@@ -119,7 +119,7 @@ const ResendVerificationPage = () => {
               disabled={loading}
               className="w-full px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition disabled:opacity-70"
             >
-              {loading ? 'Sending...' : 'Send Another Verification Email'}
+              {loading ? authCopy.resendVerification.loading : authCopy.resendVerification.submit}
             </button>
           </form>
         )}
@@ -129,13 +129,13 @@ const ResendVerificationPage = () => {
             href="/login"
             className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
           >
-            Back to Login
+            {authCopy.resendVerification.backToLogin}
           </Link>
           <Link
             href="/signup"
             className="px-5 py-3 border border-gray-700 hover:border-gray-600 text-gray-200 rounded-lg transition-colors"
           >
-            Back to Sign Up
+            {authCopy.resendVerification.backToSignUp}
           </Link>
         </div>
       </div>

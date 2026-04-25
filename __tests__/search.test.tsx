@@ -1,8 +1,22 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Search from '../src/app/search/page';
 import { appClient } from '../src/lib/appClient';
 import '@testing-library/jest-dom';
+
+const originalConsoleError = console.error;
+
+const flushAsyncEffects = async (cycles = 3) => {
+  for (let index = 0; index < cycles; index += 1) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+};
+
+const mockSearchParams = {
+  get: jest.fn(),
+};
 
 // Mock App Client client
 jest.mock('../src/lib/appClient', () => ({
@@ -17,9 +31,7 @@ jest.mock('../src/lib/appClient', () => ({
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
-  useSearchParams: () => ({
-    get: jest.fn(),
-  }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 // Mock components
@@ -63,7 +75,35 @@ const createSavedSearchTableMock = ({
   })),
 });
 
+const renderSearchPage = async () => {
+  await act(async () => {
+    render(<Search />);
+    await flushAsyncEffects(5);
+  });
+
+  await waitFor(() => {
+    expect(screen.getByText('Discover People')).toBeInTheDocument();
+  });
+};
+
+const waitForInitialSearchToSettle = async () => {
+  await waitFor(() => {
+    expect(appClient.rpc).toHaveBeenCalled();
+  });
+
+  await act(async () => {
+    await flushAsyncEffects(2);
+  });
+};
+
+const renderLoadedSearchPage = async () => {
+  await renderSearchPage();
+  await waitForInitialSearchToSettle();
+};
+
 describe('Search Page', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   const mockSession = { user: { id: 'user-123' } };
   const mockPassions = [
     { id: 1, name: 'Coding' },
@@ -100,6 +140,20 @@ describe('Search Page', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSearchParams.get.mockReset();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      const stringArgs = args.filter((value): value is string => typeof value === 'string');
+
+      if (
+        stringArgs.some((value) => value.includes('not wrapped in act')) ||
+        stringArgs.some((value) => value.startsWith('Search error:')) ||
+        stringArgs.some((value) => value.startsWith('Error saving search:'))
+      ) {
+        return;
+      }
+
+      originalConsoleError(...(args as Parameters<typeof console.error>));
+    });
     window.alert = jest.fn();
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
     (appClient.from as jest.Mock).mockImplementation((table) => {
@@ -116,19 +170,21 @@ describe('Search Page', () => {
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: mockResults, error: null });
   });
 
-  it('renders search form and initial results', async () => {
-    render(<Search />);
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
 
-    await waitFor(() => {
-      expect(screen.getByText('Discover People')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Name, bio, etc.')).toBeInTheDocument();
-    });
+  it('renders search form and initial results', async () => {
+    await renderLoadedSearchPage();
+
+    expect(screen.getByText('Discover People')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Name, bio, etc.')).toBeInTheDocument();
   });
 
   it('handles performSearch error', async () => {
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Search error' } });
 
-    render(<Search />);
+    await renderLoadedSearchPage();
 
     await waitFor(() => {
       expect(screen.getByText('Failed to search profiles. Please try again.')).toBeInTheDocument();
@@ -138,7 +194,7 @@ describe('Search Page', () => {
   it('handles performSearch unexpected error', async () => {
     (appClient.rpc as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-    render(<Search />);
+    await renderLoadedSearchPage();
 
     await waitFor(() => {
       expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument();
@@ -150,11 +206,9 @@ describe('Search Page', () => {
       .mockResolvedValueOnce({ data: mockPagedResults, error: null })
       .mockResolvedValueOnce({ data: [], error: null });
 
-    render(<Search />);
+    await renderLoadedSearchPage();
 
-    await waitFor(() => {
-      expect(screen.getByText('User1 Doe')).toBeInTheDocument();
-    });
+    expect(screen.getByText('User1 Doe')).toBeInTheDocument();
 
     const loadMoreButton = screen.getByRole('button', { name: 'Load More' });
     fireEvent.click(loadMoreButton);
@@ -164,12 +218,37 @@ describe('Search Page', () => {
     });
   });
 
-  it('saves search', async () => {
-    render(<Search />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Save Search' })).toBeInTheDocument();
+  it('renders shared fallback placeholders for incomplete search results', async () => {
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'fallback-user',
+          first_name: null,
+          last_name: null,
+          about_me: null,
+          location: null,
+          age: null,
+          gender: null,
+          profile_languages: [],
+          created_at: '2023-01-01',
+          profilepassions: [],
+          is_private: false,
+        },
+      ],
+      error: null,
     });
+
+    await renderLoadedSearchPage();
+
+    expect(screen.getByText('Skillogue user')).toBeInTheDocument();
+    expect(screen.getByText('This user has not added a bio yet.')).toBeInTheDocument();
+    expect(screen.getAllByText('Not specified')).toHaveLength(2);
+  });
+
+  it('saves search', async () => {
+    await renderLoadedSearchPage();
+
+    expect(screen.getByRole('button', { name: 'Save Search' })).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: 'Save Search' });
     fireEvent.click(saveButton);
@@ -203,11 +282,9 @@ describe('Search Page', () => {
       return { select: jest.fn() };
     });
 
-    render(<Search />);
+    await renderLoadedSearchPage();
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Save Search' })).toBeInTheDocument();
-    });
+    expect(screen.getByRole('button', { name: 'Save Search' })).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: 'Save Search' });
     fireEvent.click(saveButton);
@@ -248,11 +325,9 @@ describe('Search Page', () => {
       return { select: jest.fn() };
     });
 
-    render(<Search />);
+    await renderLoadedSearchPage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Test Search')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Test Search')).toBeInTheDocument();
 
     const savedSearchButton = screen.getByText('Test Search');
     fireEvent.click(savedSearchButton);
@@ -287,11 +362,9 @@ describe('Search Page', () => {
       return { select: jest.fn() };
     });
 
-    render(<Search />);
+    await renderLoadedSearchPage();
 
-    await waitFor(() => {
-      expect(screen.getByTitle('Delete Search')).toBeInTheDocument();
-    });
+    expect(screen.getByTitle('Delete Search')).toBeInTheDocument();
 
     const deleteButton = screen.getByTitle('Delete Search');
     fireEvent.click(deleteButton);
@@ -302,24 +375,22 @@ describe('Search Page', () => {
   });
 
   it('clears filters', async () => {
-    render(<Search />);
+    await renderLoadedSearchPage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Clear all filters')).toBeInTheDocument();
-    });
+    const queryInput = screen.getByPlaceholderText('Name, bio, etc.');
+    fireEvent.change(queryInput, { target: { value: 'test query' } });
 
-    const clearButton = screen.getByText('Clear all filters');
+    const clearButton = await screen.findByRole('button', { name: 'Clear all' });
     fireEvent.click(clearButton);
 
     // Check if filters are cleared
-    const queryInput = screen.getByPlaceholderText('Name, bio, etc.');
     expect(queryInput).toHaveValue('');
   });
 
   it('handles no session for save', async () => {
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null }, error: null });
 
-    render(<Search />);
+    await renderLoadedSearchPage();
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Save Search' })).not.toBeInTheDocument();
@@ -339,7 +410,7 @@ describe('Search Page', () => {
       return { select: jest.fn() };
     });
 
-    render(<Search />);
+    await renderSearchPage();
 
     // Should still render, but no passions
     await waitFor(() => {

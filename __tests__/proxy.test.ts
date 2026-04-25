@@ -64,6 +64,29 @@ describe('proxy', () => {
     });
   });
 
+  it('redirects admin, favorites, and notifications routes to login when there is no session cookie', async () => {
+    const adminResponse = await proxy(createRequest('/admin/verification'));
+    const favoritesResponse = await proxy(createRequest('/favorites'));
+    const notificationsResponse = await proxy(createRequest('/notifications'));
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(adminResponse).toEqual({
+      kind: 'redirect',
+      status: 307,
+      url: 'https://skillogue.test/login',
+    });
+    expect(favoritesResponse).toEqual({
+      kind: 'redirect',
+      status: 307,
+      url: 'https://skillogue.test/login',
+    });
+    expect(notificationsResponse).toEqual({
+      kind: 'redirect',
+      status: 307,
+      url: 'https://skillogue.test/login',
+    });
+  });
+
   it('redirects protected routes to login when the session is unverified', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
@@ -101,16 +124,24 @@ describe('proxy', () => {
   });
 
   it('redirects auth routes away only for verified sessions', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        session: {
-          user: {
-            id: 'user-123',
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          session: {
+            user: {
+              id: 'user-123',
+            },
           },
-        },
-      }),
-    });
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 'user-123',
+          first_name: 'Ada',
+        }),
+      });
 
     const response = await proxy(createRequest('/login', 'session-secret'));
 
@@ -118,6 +149,139 @@ describe('proxy', () => {
       kind: 'redirect',
       status: 307,
       url: 'https://skillogue.test/dashboard',
+    });
+  });
+
+  it('redirects protected routes to onboarding when the logged-in profile is incomplete', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          session: {
+            user: {
+              id: 'user-123',
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'Profile not found' }),
+      });
+
+    const response = await proxy(createRequest('/messages', 'session-secret'));
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      new URL('/api/profile/user-123', 'https://skillogue.test/messages'),
+      {
+        headers: {
+          cookie: 'a_session_skillogue=session-secret',
+          'user-agent': 'jest-test',
+        },
+        cache: 'no-store',
+      }
+    );
+    expect(response).toEqual({
+      kind: 'redirect',
+      status: 307,
+      url: 'https://skillogue.test/onboarding',
+    });
+  });
+
+  it('redirects favorites to onboarding when the logged-in profile is incomplete', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          session: {
+            user: {
+              id: 'user-123',
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'Profile not found' }),
+      });
+
+    const response = await proxy(createRequest('/favorites', 'session-secret'));
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      new URL('/api/profile/user-123', 'https://skillogue.test/favorites'),
+      {
+        headers: {
+          cookie: 'a_session_skillogue=session-secret',
+          'user-agent': 'jest-test',
+        },
+        cache: 'no-store',
+      }
+    );
+    expect(response).toEqual({
+      kind: 'redirect',
+      status: 307,
+      url: 'https://skillogue.test/onboarding',
+    });
+  });
+
+  it('allows onboarding for logged-in users with incomplete profiles', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          session: {
+            user: {
+              id: 'user-123',
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 'user-123',
+          first_name: '',
+        }),
+      });
+
+    const response = await proxy(createRequest('/onboarding', 'session-secret'));
+
+    expect(response).toEqual({
+      kind: 'next',
+      status: 200,
+    });
+  });
+
+  it('redirects auth routes to onboarding when the logged-in profile is incomplete', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          session: {
+            user: {
+              id: 'user-123',
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 'user-123',
+          first_name: null,
+        }),
+      });
+
+    const response = await proxy(createRequest('/login', 'session-secret'));
+
+    expect(response).toEqual({
+      kind: 'redirect',
+      status: 307,
+      url: 'https://skillogue.test/onboarding',
     });
   });
 });

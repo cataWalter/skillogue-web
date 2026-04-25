@@ -9,6 +9,9 @@ import Avatar from '../../components/Avatar';
 import ReportModal from '../../components/ReportModal';
 import ConversationItem from '../../components/ConversationItem';
 import MessageItem from '../../components/MessageItem';
+import Skeleton from '../../components/Skeleton';
+import { getDisplayFullName, getDisplayName } from '@/lib/profile-display';
+import { commonLabels, messagesCopy } from '@/lib/app-copy';
 
 type AuthUser = {
     id: string;
@@ -30,6 +33,7 @@ interface Message {
     content: string;
     sender: Profile;
     receiver: Profile;
+    renderKey?: string;
 }
 
 interface Conversation {
@@ -39,7 +43,102 @@ interface Conversation {
     unread: number;
 }
 
+interface MessagesPageCache {
+    userId: string;
+    conversations: Conversation[];
+    messagesByConversation: Record<string, Message[]>;
+    updatedAt: number;
+}
+
 const PAGE_SIZE = 25;
+const MESSAGES_PAGE_CACHE_KEY = 'skillogue:messages-page-cache';
+const MESSAGES_PAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const getFullName = (profile?: Pick<Profile, 'first_name' | 'last_name'> | null) => {
+    const parts = [profile?.first_name?.trim(), profile?.last_name?.trim()].filter(
+        (part): part is string => Boolean(part)
+    );
+
+    return parts.join(' ');
+};
+
+const getMessageRenderKey = (message: Message) => message.renderKey ?? `message-${message.id}`;
+
+const readMessagesPageCache = (userId: string): MessagesPageCache | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const rawCache = window.sessionStorage.getItem(MESSAGES_PAGE_CACHE_KEY);
+
+        if (!rawCache) {
+            return null;
+        }
+
+        const parsedCache = JSON.parse(rawCache) as Partial<MessagesPageCache>;
+        const isFreshCache = parsedCache.userId === userId
+            && typeof parsedCache.updatedAt === 'number'
+            && Date.now() - parsedCache.updatedAt < MESSAGES_PAGE_CACHE_TTL_MS;
+
+        if (!isFreshCache) {
+            window.sessionStorage.removeItem(MESSAGES_PAGE_CACHE_KEY);
+            return null;
+        }
+
+        return {
+            userId,
+            conversations: Array.isArray(parsedCache.conversations) ? parsedCache.conversations as Conversation[] : [],
+            messagesByConversation: parsedCache.messagesByConversation && typeof parsedCache.messagesByConversation === 'object'
+                ? parsedCache.messagesByConversation as Record<string, Message[]>
+                : {},
+            updatedAt: parsedCache.updatedAt,
+        };
+    } catch {
+        window.sessionStorage.removeItem(MESSAGES_PAGE_CACHE_KEY);
+        return null;
+    }
+};
+
+const writeMessagesPageCache = (cache: MessagesPageCache) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        window.sessionStorage.setItem(MESSAGES_PAGE_CACHE_KEY, JSON.stringify(cache));
+    } catch (error) {
+        console.error('Error caching messages page state:', error);
+    }
+};
+
+const cacheConversations = (userId: string, conversations: Conversation[]) => {
+    const existingCache = readMessagesPageCache(userId);
+
+    writeMessagesPageCache({
+        userId,
+        conversations,
+        messagesByConversation: existingCache?.messagesByConversation ?? {},
+        updatedAt: Date.now(),
+    });
+};
+
+const cacheConversationMessages = (userId: string, conversationId: string, nextMessages: Message[]) => {
+    const existingCache = readMessagesPageCache(userId);
+
+    writeMessagesPageCache({
+        userId,
+        conversations: existingCache?.conversations ?? [],
+        messagesByConversation: {
+            ...(existingCache?.messagesByConversation ?? {}),
+            [conversationId]: nextMessages,
+        },
+        updatedAt: Date.now(),
+    });
+};
+
+const getCachedConversationMessages = (userId: string, conversationId: string) =>
+    readMessagesPageCache(userId)?.messagesByConversation[conversationId] ?? [];
 
 const mergeUniqueMessages = (existing: Message[], incoming: Message[]) => {
     const byId = new Map<number, Message>();
@@ -49,7 +148,13 @@ const mergeUniqueMessages = (existing: Message[], incoming: Message[]) => {
     }
 
     for (const message of incoming) {
-        byId.set(message.id, message);
+        const existingMessage = byId.get(message.id);
+
+        byId.set(message.id, {
+            ...existingMessage,
+            ...message,
+            renderKey: existingMessage?.renderKey ?? message.renderKey ?? getMessageRenderKey(message),
+        });
     }
 
     return Array.from(byId.values()).sort(
@@ -65,9 +170,11 @@ const Messages: React.FC = () => {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedChat, setSelectedChat] = useState<string | null>(chatWith || null);
+    const [selectedChatName, setSelectedChatName] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
 
+    const [conversationsLoading, setConversationsLoading] = useState(true);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(1);
@@ -98,11 +205,99 @@ const Messages: React.FC = () => {
         }
     }, [chatWith]);
 
-    const loadConversations = useCallback(async () => {
+    useEffect(() => {
+        setSelectedChatName('');
+    }, [selectedChat]);
+
+    useEffect(() => {
+        let isActive = true;
+
+        if (!selectedChat) {
+            return;
+        }
+
+        const conversationName = conversations.find((conversation) => conversation.user_id === selectedChat)?.full_name?.trim();
+        if (conversationName) {
+            setSelectedChatName(conversationName);
+            return;
+        }
+
+        const messageName = messages
+            .map((message) => {
+                if (message.sender_id === selectedChat) return getFullName(message.sender);
+                if (message.receiver_id === selectedChat) return getFullName(message.receiver);
+                return '';
+            })
+            .find((name) => name.length > 0);
+
+        if (messageName) {
+            setSelectedChatName(messageName);
+            return;
+        }
+
+        const loadSelectedChatProfile = async () => {
+            const { data, error } = await appClient
+                .from('profiles')
+                .select('first_name, last_name')
+                .eq('id', selectedChat)
+                .single();
+
+            if (error) {
+                console.error('Error loading selected chat profile:', error);
+                return;
+            }
+
+            if (isActive) {
+                const profile = data as Pick<Profile, 'first_name' | 'last_name'> | null;
+                setSelectedChatName(getDisplayName(profile?.first_name, profile?.last_name));
+            }
+        };
+
+        loadSelectedChatProfile();
+
+        return () => {
+            isActive = false;
+        };
+    }, [conversations, messages, selectedChat]);
+
+    const hydrateCachedConversation = useCallback((conversationId: string) => {
+        if (!user) {
+            return false;
+        }
+
+        const cachedMessages = getCachedConversationMessages(user.id, conversationId);
+
+        if (cachedMessages.length === 0) {
+            return false;
+        }
+
+        setMessages(cachedMessages);
+        setHasMore(cachedMessages.length >= PAGE_SIZE);
+        setLoading(false);
+
+        return true;
+    }, [user]);
+
+    const loadConversations = useCallback(async ({ showLoading = false }: { showLoading?: boolean } = {}) => {
         if (!user) return;
-        const { data, error } = await appClient.rpc('get_conversations', { current_user_id: user.id });
-        if (error) console.error('Error loading conversations:', error);
-        else setConversations(data || []);
+        if (showLoading) {
+            setConversationsLoading(true);
+        }
+
+        try {
+            const { data, error } = await appClient.rpc('get_conversations', { current_user_id: user.id });
+
+            if (error) {
+                console.error('Error loading conversations:', error);
+                return;
+            }
+
+            const nextConversations = data || [];
+            setConversations(nextConversations);
+            cacheConversations(user.id, nextConversations);
+        } finally {
+            setConversationsLoading(false);
+        }
     }, [user]);
 
     const refreshActiveConversation = useCallback(async () => {
@@ -130,7 +325,11 @@ const Messages: React.FC = () => {
         }
 
         const latestMessages = ((data as Message[]) || []).reverse();
-        setMessages(prev => mergeUniqueMessages(prev, latestMessages));
+        setMessages(prev => {
+            const mergedMessages = mergeUniqueMessages(prev, latestMessages);
+            cacheConversationMessages(user.id, selectedChat, mergedMessages);
+            return mergedMessages;
+        });
     }, [messages.length, selectedChat, user]);
 
     const markMessagesAsRead = useCallback(async () => {
@@ -144,8 +343,26 @@ const Messages: React.FC = () => {
     }, [selectedChat, user, loadConversations]);
 
     useEffect(() => {
+        if (!user) {
+            return;
+        }
+
+        const cachedState = readMessagesPageCache(user.id);
+
+        if (cachedState?.conversations.length) {
+            setConversations(cachedState.conversations);
+            setConversationsLoading(false);
+        }
+
+        if (selectedChat) {
+            hydrateCachedConversation(selectedChat);
+        }
+    }, [hydrateCachedConversation, selectedChat, user]);
+
+    useEffect(() => {
         if (user) {
-            loadConversations();
+            const cachedState = readMessagesPageCache(user.id);
+            loadConversations({ showLoading: !cachedState?.conversations.length });
             const intervalId = window.setInterval(() => {
                 loadConversations();
             }, 10000);
@@ -190,7 +407,18 @@ const Messages: React.FC = () => {
             if (isLoadingRef.current) return;
             isLoadingRef.current = true;
 
-            if (page === 1) setLoading(true); else setLoadingMore(true);
+            const cachedMessages = page === 1 ? getCachedConversationMessages(user.id, selectedChat) : [];
+
+            if (page === 1) {
+                if (cachedMessages.length === 0) {
+                    setLoading(true);
+                } else {
+                    setHasMore(cachedMessages.length >= PAGE_SIZE);
+                    setLoading(false);
+                }
+            } else {
+                setLoadingMore(true);
+            }
 
             const from = (page - 1) * PAGE_SIZE;
             const to = from + PAGE_SIZE - 1;
@@ -213,11 +441,17 @@ const Messages: React.FC = () => {
             if (error) {
                 console.error('Error loading messages:', error);
             } else {
-                const newMessages = data as unknown as Message[];
+                const newMessages = ((data as unknown as Message[]) || []).reverse();
                 if (page === 1) {
-                    setMessages(newMessages.reverse());
+                    const nextMessages = mergeUniqueMessages([], newMessages);
+                    setMessages(nextMessages);
+                    cacheConversationMessages(user.id, selectedChat, nextMessages);
                 } else {
-                    setMessages(prev => [...newMessages.reverse(), ...prev]);
+                    setMessages(prev => {
+                        const mergedMessages = mergeUniqueMessages(prev, newMessages);
+                        cacheConversationMessages(user.id, selectedChat, mergedMessages);
+                        return mergedMessages;
+                    });
                 }
                 setHasMore(newMessages.length === PAGE_SIZE);
             }
@@ -300,7 +534,11 @@ const Messages: React.FC = () => {
                         .single()
                         .then(({ data }) => {
                             if (data) {
-                                setMessages(prev => [...prev, data as unknown as Message]);
+                                setMessages(prev => {
+                                    const mergedMessages = mergeUniqueMessages(prev, [data as unknown as Message]);
+                                    cacheConversationMessages(user.id, selectedChat, mergedMessages);
+                                    return mergedMessages;
+                                });
                                 markMessagesAsRead();
                             }
                         });
@@ -353,15 +591,15 @@ const Messages: React.FC = () => {
 
     const blockUser = async () => {
         if (!selectedChat || !user) return;
-        if (!confirm('Are you sure you want to block this user? They will not be able to message you.')) return;
+        if (!confirm(messagesCopy.blockConfirm)) return;
 
         const { error } = await appClient.rpc('block_user', { target_id: selectedChat });
         if (error) {
             console.error('Error blocking user:', error);
-            alert('Failed to block user');
+            alert(messagesCopy.blockFailed);
         } else {
             setIsBlocking(true);
-            alert('User blocked');
+            alert(messagesCopy.userBlocked);
             setSelectedChat(null);
             loadConversations();
             router.push('/messages');
@@ -377,6 +615,7 @@ const Messages: React.FC = () => {
 
         // Optimistic update
         const tempId = Date.now();
+        const renderKey = `optimistic-${tempId}`;
         const optimisticMessage: Message = {
             id: tempId,
             created_at: new Date().toISOString(),
@@ -384,22 +623,57 @@ const Messages: React.FC = () => {
             receiver_id: selectedChat,
             content,
             sender: { id: user.id, first_name: 'You', last_name: '' },
-            receiver: { id: selectedChat, first_name: '', last_name: '' }
+            receiver: { id: selectedChat, first_name: '', last_name: '' },
+            renderKey,
         };
-        setMessages(prev => [...prev, optimisticMessage]);
+        setMessages(prev => {
+            const nextMessages = [...prev, optimisticMessage];
+            cacheConversationMessages(user.id, selectedChat, nextMessages);
+            return nextMessages;
+        });
 
-        const { error } = await appClient.from('messages').insert({
+        const { data: insertedMessage, error } = await appClient.from('messages').insert({
             sender_id: user.id,
             receiver_id: selectedChat,
             content
-        });
+        }).select(`
+            id,
+            created_at,
+            sender_id,
+            receiver_id,
+            content,
+            sender:profiles!sender_id(id, first_name, last_name),
+            receiver:profiles!receiver_id(id, first_name, last_name)
+        `).single();
 
         if (error) {
             console.error('Error sending message:', error);
             // Rollback
-            setMessages(prev => prev.filter(m => m.id !== tempId));
-            alert('Failed to send message');
+            setMessages(prev => {
+                const nextMessages = prev.filter(message => message.id !== tempId);
+                cacheConversationMessages(user.id, selectedChat, nextMessages);
+                return nextMessages;
+            });
+            alert(messagesCopy.sendFailed);
         } else {
+            if (insertedMessage) {
+                setMessages(prev => {
+                    const reconciledMessages = mergeUniqueMessages(
+                        prev.filter(message => message.id !== tempId),
+                        [{ ...(insertedMessage as unknown as Message), renderKey }]
+                    );
+                    cacheConversationMessages(user.id, selectedChat, reconciledMessages);
+                    return reconciledMessages;
+                });
+            } else {
+                setMessages(prev => {
+                    const nextMessages = prev.filter(message => message.id !== tempId);
+                    cacheConversationMessages(user.id, selectedChat, nextMessages);
+                    return nextMessages;
+                });
+                await refreshActiveConversation();
+            }
+
             loadConversations();
             
             // Send Push Notification
@@ -417,12 +691,14 @@ const Messages: React.FC = () => {
     const selectChat = useCallback((id: string) => {
         setSelectedChat(id);
         setPage(1);
-        setMessages([]);
+        if (!hydrateCachedConversation(id)) {
+            setMessages([]);
+        }
         setHasMore(true);
         userScrolledUp.current = false;
         // Update URL without reload
         router.push(`/messages?conversation=${id}`);
-    }, [router]);
+    }, [hydrateCachedConversation, router]);
 
     const currentChatUser = conversations.find(c => c.user_id === selectedChat);
 
@@ -431,16 +707,37 @@ const Messages: React.FC = () => {
             {/* Sidebar - Conversations List */}
             <div className={`w-full md:w-1/3 lg:w-1/4 border-r border-gray-800 flex flex-col ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-gray-800">
-                    <h2 className="text-xl font-bold">Messages</h2>
+                    <h2 className="text-xl font-bold">{commonLabels.messages}</h2>
                 </div>
                 <div className="flex-grow overflow-y-auto">
-                    {conversations.length === 0 ? (
+                    {conversationsLoading ? (
+                        <div className="flex flex-col h-full p-6 text-gray-400" role="status" aria-live="polite">
+                            <div className="flex items-center gap-3 mb-6">
+                                <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                                <div>
+                                    <p className="text-base font-medium text-white">{messagesCopy.loadingConversations}</p>
+                                    <p className="text-sm text-gray-400">{messagesCopy.checkingLatestChats}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                {Array.from({ length: 4 }, (_, index) => (
+                                    <div key={index} className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-900/60 p-3">
+                                        <Skeleton className="h-12 w-12 rounded-full bg-gray-800" />
+                                        <div className="flex-1 space-y-2">
+                                            <Skeleton className="h-4 w-1/3 bg-gray-800" />
+                                            <Skeleton className="h-3 w-2/3 bg-gray-800" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : conversations.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-64 p-6 text-center text-gray-400">
                             <MessageSquare className="w-12 h-12 mb-4 text-gray-600" />
-                            <p className="text-lg font-medium text-white">No conversations yet</p>
-                            <p className="text-sm mt-2">Start connecting with people who share your passions!</p>
+                            <p className="text-lg font-medium text-white">{messagesCopy.emptyStateTitle}</p>
+                            <p className="text-sm mt-2">{messagesCopy.emptyStateSubtitle}</p>
                             <Link href="/search" className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition">
-                                Find People
+                                {messagesCopy.findPeople}
                             </Link>
                         </div>
                     ) : (
@@ -475,7 +772,7 @@ const Messages: React.FC = () => {
                                 </Link>
                                 <Link href={`/user/${selectedChat}`} className="hover:underline">
                                     <h2 className="font-bold text-base sm:text-lg truncate max-w-[150px] sm:max-w-xs">
-                                        {currentChatUser?.full_name || 'Chat'}
+                                        {getDisplayFullName(currentChatUser?.full_name || selectedChatName)}
                                     </h2>
                                 </Link>
                             </div>
@@ -483,14 +780,14 @@ const Messages: React.FC = () => {
                                 <button
                                     onClick={blockUser}
                                     className="text-gray-400 hover:text-red-400 transition p-2"
-                                    title="Block User"
+                                    title={messagesCopy.blockUserTitle}
                                 >
                                     <Ban size={18} className="sm:w-5 sm:h-5" />
                                 </button>
                                 <button
                                     onClick={() => setReportModalOpen(true)}
                                     className="text-gray-400 hover:text-yellow-400 transition p-2"
-                                    title="Report User"
+                                    title={messagesCopy.reportUserTitle}
                                 >
                                     <Flag size={18} className="sm:w-5 sm:h-5" />
                                 </button>
@@ -514,7 +811,7 @@ const Messages: React.FC = () => {
                                 const showAvatar = !isMe && (index === 0 || messages[index - 1].sender_id !== msg.sender_id);
                                 return (
                                     <MessageItem
-                                        key={msg.id}
+                                        key={getMessageRenderKey(msg)}
                                         content={msg.content}
                                         createdAt={msg.created_at}
                                         isMe={isMe}
@@ -536,12 +833,12 @@ const Messages: React.FC = () => {
                                 {isBlocking ? (
                                     <p className="flex items-center justify-center gap-2">
                                         <ShieldAlert size={18} />
-                                        You have blocked this user. You cannot send messages.
+                                        {messagesCopy.youBlockedThisUser}
                                     </p>
                                 ) : (
                                     <p className="flex items-center justify-center gap-2">
                                         <ShieldAlert size={18} />
-                                        You cannot send messages to this user.
+                                        {messagesCopy.youCannotMessageThisUser}
                                     </p>
                                 )}
                             </div>
@@ -554,8 +851,8 @@ const Messages: React.FC = () => {
                                         type="text"
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
-                                        placeholder="Type a message..."
-                                        aria-label="Type a message"
+                                        placeholder={messagesCopy.typeMessagePlaceholder}
+                                        aria-label={messagesCopy.typeMessageAriaLabel}
                                         className="flex-grow bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                     />
                                     <button
@@ -582,7 +879,7 @@ const Messages: React.FC = () => {
                         <div className="bg-gray-900 p-6 rounded-full mb-4">
                             <Send size={48} className="text-gray-700" />
                         </div>
-                        <p className="text-xl font-medium">Select a conversation to start chatting</p>
+                        <p className="text-xl font-medium">{messagesCopy.emptyPrompt}</p>
                     </div>
                 )}
             </div>
