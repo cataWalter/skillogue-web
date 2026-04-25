@@ -64,14 +64,14 @@ describe('/api/auth/account route', () => {
     }));
   });
 
-  it('handles account deletion via DELETE', async () => {
+  it('deletes the profile and Appwrite user via POST', async () => {
     const request = {
       headers: {
         get: jest.fn((name: string) => (name === 'user-agent' ? 'jest-test' : null)),
       },
     };
 
-    const response = await routeHandlers.DELETE(request as never);
+    const response = await routeHandlers.POST(request as never);
 
     expect(getAppwriteSessionSecret).toHaveBeenCalledWith(request);
     expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', 'jest-test');
@@ -83,26 +83,25 @@ describe('/api/auth/account route', () => {
     await expect(response.json()).resolves.toEqual({ success: true });
   });
 
-  it('returns 401 when no session cookie is present', async () => {
-    (getAppwriteSessionSecret as jest.Mock).mockReturnValue(undefined);
+  it('skips profile cleanup when the current user id is missing', async () => {
+    (createAppwriteSessionAccount as jest.Mock).mockReturnValue({
+      get: jest.fn().mockResolvedValue({ $id: '' }),
+    });
 
     const request = {
       headers: {
-        get: jest.fn(() => null),
+        get: jest.fn((name: string) => (name === 'user-agent' ? 'jest-test' : null)),
       },
     };
 
-    const response = await routeHandlers.DELETE(request as never);
+    const response = await routeHandlers.POST(request as never);
 
-    expect(createAppwriteSessionAccount).not.toHaveBeenCalled();
     expect(AppDataService).not.toHaveBeenCalled();
+    expect(deleteProfile).not.toHaveBeenCalled();
+    expect(deleteUser).toHaveBeenCalledWith('');
     expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ message: 'Not authenticated.' });
-  });
-
-  it('keeps POST mapped to the same deletion handler for compatibility', () => {
-    expect(routeHandlers.POST).toBe(routeHandlers.DELETE);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ success: true });
   });
 
   it('returns the mapped Appwrite error on failure', async () => {
@@ -115,7 +114,7 @@ describe('/api/auth/account route', () => {
       },
     };
 
-    const response = await routeHandlers.DELETE(request as never);
+    const response = await routeHandlers.POST(request as never);
 
     expect(getAppwriteErrorStatus).toHaveBeenCalledWith(failure, 500);
     expect(getAppwriteErrorMessage).toHaveBeenCalledWith(failure, 'Failed to delete account.');

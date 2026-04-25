@@ -70,6 +70,17 @@ const Navbar = () => {
             </div>
           )}
 
+          {!user && (
+            <div className="hidden md:flex items-center">
+              <Link
+                href="/login"
+                className="inline-flex items-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-indigo-500/25"
+              >
+                Log In
+              </Link>
+            </div>
+          )}
+
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

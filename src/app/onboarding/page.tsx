@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { appClient } from '../../lib/appClient';
 import MultiSelect from '../../components/MultiSelect';
+import { updateProfile } from '../actions/profile';
 
 interface ProfileState {
     first_name: string;
@@ -132,8 +133,8 @@ const Onboarding: React.FC = () => {
             }
             // Validate age
             const ageNum = parseInt(profile.age);
-            if (isNaN(ageNum) || ageNum < 13 || ageNum > 120) {
-                setError('Please enter a valid age (13-120).');
+            if (isNaN(ageNum) || ageNum < 18 || ageNum > 120) {
+                setError('Please enter a valid age (18-120).');
                 return;
             }
             // Validate name length
@@ -170,68 +171,28 @@ const Onboarding: React.FC = () => {
 
         setLoading(true);
         try {
-            const { data: { user } } = await appClient.auth.getUser();
-            if (!user) throw new Error('No user found');
+            const result = await updateProfile({
+                first_name: profile.first_name,
+                last_name: profile.last_name,
+                about_me: profile.about_me,
+                age: profile.age ? parseInt(profile.age, 10) : null,
+                gender: profile.gender,
+                location: {
+                    city: location.city || null,
+                    region: location.region || null,
+                    country: location.country || null,
+                },
+                languages: selectedLanguages,
+                passions: selectedPassions,
+            });
 
-            // 1. Upsert Location
-            let locationId: number | null = null;
-            if (location.city && location.country) {
-                const { data: locData, error: locError } = await appClient
-                    .from('locations')
-                    .select('id')
-                    .eq('city', location.city)
-                    .eq('region', location.region || '')
-                    .eq('country', location.country)
-                    .maybeSingle();
-
-                if (locError) throw locError;
-
-                if (locData) {
-                    locationId = locData.id;
-                } else {
-                    const { data: newLoc, error: newLocError } = await appClient
-                        .from('locations')
-                        .insert({
-                            city: location.city,
-                            region: location.region || '',
-                            country: location.country
-                        })
-                        .select()
-                        .single();
-                    if (newLocError) throw newLocError;
-                    locationId = newLoc.id;
+            if (!result.success) {
+                if (result.details) {
+                    const message = Object.values(result.details).flat().join(', ');
+                    throw new Error(message);
                 }
-            }
 
-            // 2. Upsert Profile
-            const { error: updateError } = await appClient
-                .from('profiles')
-                .upsert({
-                    id: user.id,
-                    ...profile,
-                    age: parseInt(profile.age),
-                    location_id: locationId,
-                    updated_at: new Date().toISOString(),
-                });
-
-            if (updateError) throw updateError;
-
-            // 3. Update Languages
-            if (selectedLanguages.length > 0) {
-                const languageInserts = selectedLanguages.map(name => {
-                    const lang = availableLanguages.find(l => l.name === name);
-                    return lang ? { profile_id: user.id, language_id: lang.id } : null;
-                }).filter(Boolean);
-                await appClient.from('profile_languages').insert(languageInserts);
-            }
-
-            // 4. Update Passions
-            if (selectedPassions.length > 0) {
-                const passionInserts = selectedPassions.map(name => {
-                    const passion = availablePassions.find(p => p.name === name);
-                    return passion ? { profile_id: user.id, passion_id: passion.id } : null;
-                }).filter(Boolean);
-                await appClient.from('profile_passions').insert(passionInserts);
+                throw new Error(result.error);
             }
 
             router.push('/dashboard');

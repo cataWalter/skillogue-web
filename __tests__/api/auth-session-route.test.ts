@@ -26,7 +26,6 @@ jest.mock('next/server', () => ({
 describe('/api/auth/session route', () => {
   const getUser = jest.fn();
   const getSession = jest.fn();
-  const deleteSession = jest.fn();
   let routeHandlers: typeof import('../../src/app/api/auth/session/route');
 
   const createRequest = () =>
@@ -52,13 +51,11 @@ describe('/api/auth/session route', () => {
     getSession.mockResolvedValue({
       expire: '2026-12-31T00:00:00.000Z',
     });
-    deleteSession.mockResolvedValue(undefined);
 
     (getAppwriteSessionSecret as jest.Mock).mockReturnValue('session-secret');
     (createAppwriteSessionAccount as jest.Mock).mockReturnValue({
       get: getUser,
       getSession,
-      deleteSession,
     });
   });
 
@@ -76,7 +73,6 @@ describe('/api/auth/session route', () => {
     const response = await routeHandlers.GET(createRequest());
 
     expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', 'jest-test');
-    expect(deleteSession).not.toHaveBeenCalled();
     expect(clearAppwriteSessionCookie).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toEqual({
       session: {
@@ -90,17 +86,11 @@ describe('/api/auth/session route', () => {
     });
   });
 
-  it('signs out unverified users during session restoration', async () => {
-    getUser.mockResolvedValue({
-      $id: 'user-123',
-      email: 'user@example.com',
-      name: 'User',
-      emailVerification: false,
-    });
+  it('clears the local cookie when session restoration fails', async () => {
+    getUser.mockRejectedValueOnce(new Error('session expired'));
 
     const response = await routeHandlers.GET(createRequest());
 
-    expect(deleteSession).toHaveBeenCalledWith({ sessionId: 'current' });
     expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
     await expect(response.json()).resolves.toEqual({ session: null });
   });

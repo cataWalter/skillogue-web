@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { createAppwriteBrowserAccount } from '@/lib/appwrite/browser';
 
 const VerifyEmailPage = () => {
   const searchParams = useSearchParams();
@@ -22,16 +23,8 @@ const VerifyEmailPage = () => {
       }
 
       try {
-        const response = await fetch('/api/auth/verify-email', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, secret }),
-        });
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => null);
-          throw new Error(payload?.message || 'Failed to verify email.');
-        }
+        const account = createAppwriteBrowserAccount();
+        await account.updateEmailVerification({ userId, secret });
 
         setStatus('success');
         setMessage('Your email has been verified. You can sign in now.');

@@ -17,9 +17,9 @@ describe('/api/analytics route', () => {
   const trackAnalyticsEvent = jest.fn();
   let routeHandlers: typeof import('../../src/app/api/analytics/route');
 
-  const createRequest = (body: string) =>
+  const createRequest = (body: unknown, shouldReject = false) =>
     ({
-      text: jest.fn().mockResolvedValue(body),
+      json: shouldReject ? jest.fn().mockRejectedValue(body) : jest.fn().mockResolvedValue(body),
     }) as Request;
 
   beforeAll(async () => {
@@ -35,13 +35,11 @@ describe('/api/analytics route', () => {
   });
 
   it('tracks valid analytics events', async () => {
-    const request = createRequest(
-      JSON.stringify({
-        eventName: 'page_view',
-        properties: { source: 'test' },
-        path: '/dashboard',
-      })
-    );
+    const request = createRequest({
+      eventName: 'page_view',
+      properties: { source: 'test' },
+      path: '/dashboard',
+    });
 
     const response = await routeHandlers.POST(request);
 
@@ -54,31 +52,57 @@ describe('/api/analytics route', () => {
     await expect(response.json()).resolves.toEqual({ success: true });
   });
 
-  it('ignores empty request bodies without logging errors', async () => {
+  it('defaults properties to an empty object when they are omitted', async () => {
+    const request = createRequest({
+      eventName: 'page_view',
+      path: '/dashboard',
+    });
+
+    const response = await routeHandlers.POST(request);
+
+    expect(trackAnalyticsEvent).toHaveBeenCalledWith({
+      eventName: 'page_view',
+      properties: {},
+      path: '/dashboard',
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ success: true });
+  });
+
+  it('returns 500 when parsing the request body fails', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const request = createRequest('');
+    const request = createRequest(new Error('Invalid JSON body'), true);
 
     const response = await routeHandlers.POST(request);
 
     expect(AppDataService).not.toHaveBeenCalled();
     expect(trackAnalyticsEvent).not.toHaveBeenCalled();
-    expect(response.status).toBe(202);
-    await expect(response.json()).resolves.toEqual({ success: true, ignored: true });
-    expect(errorSpy).not.toHaveBeenCalled();
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: 'Failed to track analytics' });
+    expect(errorSpy).toHaveBeenCalledWith('Error tracking analytics:', expect.any(Error));
     errorSpy.mockRestore();
   });
 
-  it('returns 400 for invalid JSON payloads without invoking the service', async () => {
+  it('returns 500 when the analytics service throws', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const request = createRequest('{');
+    const failure = new Error('tracking failed');
+    const request = createRequest({
+      eventName: 'page_view',
+      properties: { source: 'test' },
+      path: '/dashboard',
+    });
+    trackAnalyticsEvent.mockRejectedValueOnce(failure);
 
     const response = await routeHandlers.POST(request);
 
-    expect(AppDataService).not.toHaveBeenCalled();
-    expect(trackAnalyticsEvent).not.toHaveBeenCalled();
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Invalid JSON body' });
-    expect(errorSpy).not.toHaveBeenCalled();
+    expect(trackAnalyticsEvent).toHaveBeenCalledWith({
+      eventName: 'page_view',
+      properties: { source: 'test' },
+      path: '/dashboard',
+    });
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: 'Failed to track analytics' });
+    expect(errorSpy).toHaveBeenCalledWith('Error tracking analytics:', failure);
     errorSpy.mockRestore();
   });
 });

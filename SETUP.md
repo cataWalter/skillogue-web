@@ -65,7 +65,6 @@ Create the collections your app needs inside the configured Appwrite database. B
 - `push_subscriptions`
 - `analytics_events`
 - `contact_requests`
-- `saved_searches`
 
 If your Appwrite IDs differ, set the matching `APPWRITE_COLLECTION_*_ID` overrides in your environment.
 

@@ -1,273 +1,469 @@
+import { randomUUID } from 'crypto';
 import {
-  buildAppUrl,
-  createAppwriteAdminAccount,
-  createAppwriteAdminUsers,
-  createAppwriteSessionAccount,
-  getAppwriteErrorMessage,
-  getAppwriteErrorStatus,
-  setAppwriteSessionCookie,
+	buildAppUrl,
+	clearAppwriteSessionCookie,
+	createAppwriteAdminAccount,
+	createAppwriteAdminUsers,
+	createAppwriteSessionAccount,
+	getAppwriteErrorMessage,
+	getAppwriteErrorStatus,
+	getAppwriteSessionSecret,
+	setAppwriteSessionCookie,
 } from '../../src/lib/appwrite/server';
 
+jest.mock('crypto', () => ({
+	randomUUID: jest.fn(() => 'generated-user-id'),
+}));
+
 jest.mock('../../src/lib/appwrite/server', () => ({
-  buildAppUrl: jest.fn((path: string) => `https://skillogue.test${path}`),
-  clearAppwriteSessionCookie: jest.fn(),
-  createAppwriteAdminAccount: jest.fn(),
-  createAppwriteAdminUsers: jest.fn(),
-  createAppwriteSessionAccount: jest.fn(),
-  getAppwriteErrorMessage: jest.fn((error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback
-  ),
-  getAppwriteErrorStatus: jest.fn((error: { code?: number } | undefined, fallback = 500) =>
-    typeof error?.code === 'number' ? error.code : fallback
-  ),
-  setAppwriteSessionCookie: jest.fn(),
+	buildAppUrl: jest.fn((path: string) => `https://skillogue.test${path}`),
+	clearAppwriteSessionCookie: jest.fn(),
+	createAppwriteAdminAccount: jest.fn(),
+	createAppwriteAdminUsers: jest.fn(),
+	createAppwriteSessionAccount: jest.fn(),
+	getAppwriteErrorMessage: jest.fn((error: unknown, fallback: string) =>
+		error instanceof Error ? error.message : fallback
+	),
+	getAppwriteErrorStatus: jest.fn((error: { code?: number } | undefined, fallback = 500) =>
+		typeof error?.code === 'number' ? error.code : fallback
+	),
+	getAppwriteSessionSecret: jest.fn(),
+	setAppwriteSessionCookie: jest.fn(),
 }));
 
 jest.mock('next/server', () => ({
-  NextRequest: class NextRequest {},
-  NextResponse: {
-    json: (body: unknown, init?: { status?: number }) => ({
-      status: init?.status ?? 200,
-      json: async () => body,
-      cookies: {
-        set: jest.fn(),
-      },
-    }),
-  },
+	NextRequest: class NextRequest {},
+	NextResponse: {
+		json: (body: unknown, init?: { status?: number }) => ({
+			status: init?.status ?? 200,
+			json: async () => body,
+			cookies: {
+				set: jest.fn(),
+			},
+		}),
+	},
 }));
 
 describe('/api/auth/[...all] route', () => {
-  const createEmailPasswordSession = jest.fn();
-  const getUser = jest.fn();
-  const getUserById = jest.fn();
-  const listUsers = jest.fn();
-  const updatePassword = jest.fn();
-  const deleteSession = jest.fn();
-  const fetchMock = jest.fn();
-  let routeHandlers: typeof import('../../src/app/api/auth/[...all]/route');
+	const createEmailPasswordSession = jest.fn();
+	const createRecovery = jest.fn();
+	const updateRecovery = jest.fn();
+	const updateEmailVerification = jest.fn();
+	const getUser = jest.fn();
+	const getSession = jest.fn();
+	const deleteSession = jest.fn();
+	const createUser = jest.fn();
+	const createEmailVerification = jest.fn();
+	let routeHandlers: typeof import('../../src/app/api/auth/[...all]/route');
 
-  const createRequest = (route: string, body: unknown) =>
-    ({
-      headers: {
-        get: jest.fn((name: string) => (name === 'user-agent' ? 'jest-test' : null)),
-      },
-      json: jest.fn().mockResolvedValue(body),
-      nextUrl: {
-        pathname: `/api/auth/${route}`,
-      },
-    }) as never;
+	const createRequest = (body?: unknown) =>
+		({
+			headers: {
+				get: jest.fn((name: string) => (name === 'user-agent' ? 'jest-test' : null)),
+			},
+			json: jest.fn().mockResolvedValue(body),
+		}) as never;
 
-  const routeParams = (route: string) => ({
-    params: Promise.resolve({ all: route.split('/') }),
-  });
+	const routeParams = (route: string) => ({
+		params: Promise.resolve({ all: route.split('/') }),
+	});
 
-  beforeAll(async () => {
-    routeHandlers = await import('../../src/app/api/auth/[...all]/route');
-  });
+	beforeAll(async () => {
+		routeHandlers = await import('../../src/app/api/auth/[...all]/route');
+	});
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    process.env.BREVO_API_KEY = 'brevo-test-key';
-    process.env.PASSWORD_RESET_TOKEN_SECRET = 'password-reset-secret';
-    global.fetch = fetchMock as typeof fetch;
+	beforeEach(() => {
+		jest.clearAllMocks();
 
-    createEmailPasswordSession.mockResolvedValue({
-      secret: 'session-secret',
-      expire: '2026-12-31T00:00:00.000Z',
-    });
-    getUser.mockResolvedValue({
-      $id: 'user-123',
-      email: 'user@example.com',
-      name: 'User',
-      emailVerification: true,
-    });
-    deleteSession.mockResolvedValue(undefined);
-    listUsers.mockResolvedValue({
-      users: [
-        {
-          $id: 'user-123',
-          email: 'user@example.com',
-          name: 'User',
-          passwordUpdate: '2024-01-01T00:00:00.000Z',
-        },
-      ],
-    });
-    getUserById.mockResolvedValue({
-      $id: 'user-123',
-      email: 'user@example.com',
-      name: 'User',
-      passwordUpdate: '2024-01-01T00:00:00.000Z',
-    });
-    updatePassword.mockResolvedValue({
-      $id: 'user-123',
-      email: 'user@example.com',
-    });
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({ messageId: 'email-123' }),
-      statusText: 'OK',
-    });
+		createEmailPasswordSession.mockResolvedValue({
+			secret: 'session-secret',
+			expire: '2026-12-31T00:00:00.000Z',
+		});
+		createRecovery.mockResolvedValue(undefined);
+		updateRecovery.mockResolvedValue(undefined);
+		updateEmailVerification.mockResolvedValue(undefined);
+		getUser.mockResolvedValue({
+			$id: 'user-123',
+			email: 'user@example.com',
+			name: 'User',
+		});
+		getSession.mockResolvedValue({
+			expire: '2026-12-31T00:00:00.000Z',
+		});
+		deleteSession.mockResolvedValue(undefined);
+		createUser.mockResolvedValue({
+			$id: 'user-123',
+			email: 'user@example.com',
+			name: 'user',
+		});
+		createEmailVerification.mockResolvedValue(undefined);
 
-    (createAppwriteAdminAccount as jest.Mock).mockReturnValue({
-      createEmailPasswordSession,
-    });
-    (createAppwriteAdminUsers as jest.Mock).mockReturnValue({
-      get: getUserById,
-      list: listUsers,
-      updatePassword,
-    });
-    (createAppwriteSessionAccount as jest.Mock).mockReturnValue({
-      get: getUser,
-      deleteSession,
-    });
-  });
+		(getAppwriteSessionSecret as jest.Mock).mockReturnValue('session-secret');
+		(createAppwriteAdminAccount as jest.Mock).mockReturnValue({
+			createEmailPasswordSession,
+			createRecovery,
+			updateRecovery,
+			updateEmailVerification,
+		});
+		(createAppwriteAdminUsers as jest.Mock).mockReturnValue({
+			create: createUser,
+		});
+		(createAppwriteSessionAccount as jest.Mock).mockReturnValue({
+			get: getUser,
+			getSession,
+			createEmailVerification,
+			deleteSession,
+		});
+	});
 
-  afterEach(() => {
-    delete process.env.BREVO_API_KEY;
-    delete process.env.PASSWORD_RESET_TOKEN_SECRET;
-  });
+	it('returns the current session payload from GET /session', async () => {
+		const response = await routeHandlers.GET(createRequest(), routeParams('session'));
 
-  it('signs in verified users and sets the session cookie', async () => {
-    const request = createRequest('sign-in/email', {
-      email: 'user@example.com',
-      password: 'Password123#',
-    });
+		expect(getAppwriteSessionSecret).toHaveBeenCalled();
+		expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', 'jest-test');
+		await expect(response.json()).resolves.toEqual({
+			session: {
+				user: {
+					id: 'user-123',
+					email: 'user@example.com',
+					name: 'User',
+				},
+				expires: '2026-12-31T00:00:00.000Z',
+			},
+		});
+	});
 
-    const response = await routeHandlers.POST(request, routeParams('sign-in/email'));
+	it('returns a signed-out payload from GET /session when there is no cookie', async () => {
+		(getAppwriteSessionSecret as jest.Mock).mockReturnValue(undefined);
 
-    expect(createAppwriteAdminAccount).toHaveBeenCalledWith('jest-test');
-    expect(createEmailPasswordSession).toHaveBeenCalledWith({
-      email: 'user@example.com',
-      password: 'Password123#',
-    });
-    expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', 'jest-test');
-    expect(deleteSession).not.toHaveBeenCalled();
-    expect(setAppwriteSessionCookie).toHaveBeenCalledWith(
-      response,
-      'session-secret',
-      '2026-12-31T00:00:00.000Z'
-    );
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      session: {
-        user: {
-          id: 'user-123',
-          email: 'user@example.com',
-          name: 'User',
-        },
-        expires: '2026-12-31T00:00:00.000Z',
-      },
-    });
-  });
+		const response = await routeHandlers.GET(createRequest(), routeParams('session'));
 
-  it('rejects sign in when the user email is not verified', async () => {
-    getUser.mockResolvedValue({
-      $id: 'user-123',
-      email: 'user@example.com',
-      name: 'User',
-      emailVerification: false,
-    });
+		expect(createAppwriteSessionAccount).not.toHaveBeenCalled();
+		expect(clearAppwriteSessionCookie).not.toHaveBeenCalled();
+		await expect(response.json()).resolves.toEqual({ session: null });
+	});
 
-    const request = createRequest('sign-in/email', {
-      email: 'user@example.com',
-      password: 'Password123#',
-    });
+	it('clears the cookie when GET /session restoration fails', async () => {
+		getUser.mockRejectedValueOnce(new Error('expired'));
 
-    const response = await routeHandlers.POST(request, routeParams('sign-in/email'));
+		const response = await routeHandlers.GET(createRequest(), routeParams('session'));
 
-    expect(deleteSession).toHaveBeenCalledWith({ sessionId: 'current' });
-    expect(setAppwriteSessionCookie).not.toHaveBeenCalled();
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({
-      message:
-        'Please verify your email before signing in. Check your inbox and wait to verify the email.',
-    });
-  });
+		expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
+		await expect(response.json()).resolves.toEqual({ session: null });
+	});
 
-  it('maps Appwrite sign-in failures to the API error response', async () => {
-    const failure = Object.assign(new Error('Invalid credentials'), { code: 401 });
-    createEmailPasswordSession.mockRejectedValue(failure);
+	it('returns 404 for unknown GET routes', async () => {
+		const response = await routeHandlers.GET(createRequest(), routeParams('missing'));
 
-    const request = createRequest('sign-in/email', {
-      email: 'user@example.com',
-      password: 'wrong-password',
-    });
+		expect(response.status).toBe(404);
+		await expect(response.json()).resolves.toEqual({ message: 'Not found.' });
+	});
 
-    const response = await routeHandlers.POST(request, routeParams('sign-in/email'));
+	it('signs in users and sets the session cookie', async () => {
+		const response = await routeHandlers.POST(
+			createRequest({ email: 'user@example.com', password: 'Password123#' }),
+			routeParams('sign-in/email')
+		);
 
-    expect(getAppwriteErrorMessage).toHaveBeenCalledWith(failure, 'Failed to sign in.');
-    expect(getAppwriteErrorStatus).toHaveBeenCalledWith(failure, 401);
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ message: 'Invalid credentials' });
-  });
+		expect(createAppwriteAdminAccount).toHaveBeenCalledWith('jest-test');
+		expect(createEmailPasswordSession).toHaveBeenCalledWith({
+			email: 'user@example.com',
+			password: 'Password123#',
+		});
+		expect(setAppwriteSessionCookie).toHaveBeenCalledWith(
+			response,
+			'session-secret',
+			'2026-12-31T00:00:00.000Z'
+		);
+		await expect(response.json()).resolves.toEqual({
+			session: {
+				user: {
+					id: 'user-123',
+					email: 'user@example.com',
+					name: 'User',
+				},
+				expires: '2026-12-31T00:00:00.000Z',
+			},
+		});
+	});
 
-  it('sends a branded password reset email with a signed reset link', async () => {
-    const request = createRequest('reset-password', {
-      email: 'user@example.com',
-    });
+	it('rejects sign-in requests without credentials', async () => {
+		const response = await routeHandlers.POST(
+			createRequest({ email: ' ', password: '' }),
+			routeParams('sign-in/email')
+		);
 
-    const response = await routeHandlers.POST(request, routeParams('reset-password'));
+		expect(createAppwriteAdminAccount).not.toHaveBeenCalled();
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toEqual({ message: 'Email and password are required.' });
+	});
 
-    expect(createAppwriteAdminUsers).toHaveBeenCalledWith('jest-test');
-    expect(listUsers).toHaveBeenCalledWith({ search: 'user@example.com' });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(buildAppUrl).toHaveBeenCalledWith('/reset-password');
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ success: true });
+	it('maps Appwrite sign-in failures', async () => {
+		const failure = Object.assign(new Error('Invalid credentials'), { code: 401 });
+		createEmailPasswordSession.mockRejectedValueOnce(failure);
 
-    const [, fetchOptions] = fetchMock.mock.calls[0] as [string, { body: string }];
-    const emailPayload = JSON.parse(fetchOptions.body);
-    const resetLinkMatch = emailPayload.textContent.match(/https:\/\/\S+/);
+		const response = await routeHandlers.POST(
+			createRequest({ email: 'user@example.com', password: 'wrong-password' }),
+			routeParams('sign-in/email')
+		);
 
-    expect(emailPayload.subject).toBe('Reset your Skillogue password');
-    expect(emailPayload.to).toEqual([{ email: 'user@example.com' }]);
-    expect(resetLinkMatch).not.toBeNull();
+		expect(getAppwriteErrorMessage).toHaveBeenCalledWith(failure, 'Failed to sign in.');
+		expect(getAppwriteErrorStatus).toHaveBeenCalledWith(failure, 401);
+		expect(response.status).toBe(401);
+		await expect(response.json()).resolves.toEqual({ message: 'Invalid credentials' });
+	});
 
-    const resetUrl = new URL(resetLinkMatch[0]);
+	it('signs up users and sends the verification email', async () => {
+		const response = await routeHandlers.POST(
+			createRequest({ email: 'user@example.com', password: 'Password123#' }),
+			routeParams('sign-up/email')
+		);
 
-    expect(resetUrl.pathname).toBe('/reset-password');
-    expect(resetUrl.searchParams.get('userId')).toBe('user-123');
-    expect(resetUrl.searchParams.get('secret')).toBeTruthy();
-  });
+		expect(createAppwriteAdminUsers).toHaveBeenCalledWith('jest-test');
+		expect(randomUUID).toHaveBeenCalled();
+		expect(createUser).toHaveBeenCalledWith({
+			userId: 'generated-user-id',
+			email: 'user@example.com',
+			password: 'Password123#',
+			name: 'user',
+		});
+		expect(createEmailPasswordSession).toHaveBeenCalledWith({
+			email: 'user@example.com',
+			password: 'Password123#',
+		});
+		expect(buildAppUrl).toHaveBeenCalledWith('/verify-email');
+		expect(createEmailVerification).toHaveBeenCalledWith({
+			url: 'https://skillogue.test/verify-email',
+		});
+		expect(deleteSession).toHaveBeenCalledWith({ sessionId: 'current' });
+		await expect(response.json()).resolves.toEqual({
+			user: {
+				id: 'user-123',
+				email: 'user@example.com',
+				name: 'user',
+			},
+			requiresEmailVerification: true,
+		});
+	});
 
-  it('resets the password when the signed token is valid', async () => {
-    const request = createRequest('reset-password', {
-      email: 'user@example.com',
-    });
+	it('continues sign-up when verification session cleanup fails', async () => {
+		deleteSession.mockRejectedValueOnce(new Error('cleanup failed'));
 
-    await routeHandlers.POST(request, routeParams('reset-password'));
+		const response = await routeHandlers.POST(
+			createRequest({ email: 'user@example.com', password: 'Password123#' }),
+			routeParams('sign-up/email')
+		);
 
-    const [, fetchOptions] = fetchMock.mock.calls[0] as [string, { body: string }];
-    const emailPayload = JSON.parse(fetchOptions.body);
-    const resetUrl = new URL(emailPayload.textContent.match(/https:\/\/\S+/)[0]);
-    const resetResponse = await routeHandlers.PUT(
-      createRequest('reset-password', {
-        userId: 'user-123',
-        secret: resetUrl.searchParams.get('secret'),
-        password: 'Password123#',
-      }),
-      routeParams('reset-password')
-    );
+		expect(createEmailVerification).toHaveBeenCalled();
+		await expect(response.json()).resolves.toEqual({
+			user: {
+				id: 'user-123',
+				email: 'user@example.com',
+				name: 'user',
+			},
+			requiresEmailVerification: true,
+		});
+	});
 
-    expect(getUserById).toHaveBeenCalledWith({ userId: 'user-123' });
-    expect(updatePassword).toHaveBeenCalledWith({
-      userId: 'user-123',
-      password: 'Password123#',
-    });
-    expect(resetResponse.status).toBe(200);
-    await expect(resetResponse.json()).resolves.toEqual({ success: true });
-  });
+	it('rejects sign-up requests without credentials', async () => {
+		const response = await routeHandlers.POST(
+			createRequest({ email: '', password: ' ' }),
+			routeParams('sign-up/email')
+		);
 
-  it('returns success without sending email when the address is unknown', async () => {
-    listUsers.mockResolvedValueOnce({ users: [] });
+		expect(createUser).not.toHaveBeenCalled();
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toEqual({ message: 'Email and password are required.' });
+	});
 
-    const response = await routeHandlers.POST(
-      createRequest('reset-password', { email: 'missing@example.com' }),
-      routeParams('reset-password')
-    );
+	it('maps sign-up failures', async () => {
+		const failure = Object.assign(new Error('Email already exists'), { code: 409 });
+		createUser.mockRejectedValueOnce(failure);
 
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ success: true });
-  });
+		const response = await routeHandlers.POST(
+			createRequest({ email: 'user@example.com', password: 'Password123#' }),
+			routeParams('sign-up/email')
+		);
+
+		expect(getAppwriteErrorMessage).toHaveBeenCalledWith(failure, 'Failed to sign up.');
+		expect(getAppwriteErrorStatus).toHaveBeenCalledWith(failure, 400);
+		expect(response.status).toBe(409);
+		await expect(response.json()).resolves.toEqual({ message: 'Email already exists' });
+	});
+
+	it('signs out locally when there is no remote session', async () => {
+		(getAppwriteSessionSecret as jest.Mock).mockReturnValue(undefined);
+
+		const response = await routeHandlers.POST(createRequest(), routeParams('sign-out'));
+
+		expect(createAppwriteSessionAccount).not.toHaveBeenCalled();
+		expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
+		await expect(response.json()).resolves.toEqual({ success: true });
+	});
+
+	it('deletes the remote session during sign-out when a cookie exists', async () => {
+		const response = await routeHandlers.POST(createRequest(), routeParams('sign-out'));
+
+		expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', 'jest-test');
+		expect(deleteSession).toHaveBeenCalledWith({ sessionId: 'current' });
+		expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
+		await expect(response.json()).resolves.toEqual({ success: true });
+	});
+
+	it('still clears the cookie when remote sign-out fails', async () => {
+		deleteSession.mockRejectedValueOnce(new Error('already gone'));
+
+		const response = await routeHandlers.POST(createRequest(), routeParams('sign-out'));
+
+		expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
+		await expect(response.json()).resolves.toEqual({ success: true });
+	});
+
+	it('starts password recovery requests', async () => {
+		const response = await routeHandlers.POST(
+			createRequest({ email: 'user@example.com' }),
+			routeParams('reset-password')
+		);
+
+		expect(buildAppUrl).toHaveBeenCalledWith('/reset-password');
+		expect(createRecovery).toHaveBeenCalledWith({
+			email: 'user@example.com',
+			url: 'https://skillogue.test/reset-password',
+		});
+		await expect(response.json()).resolves.toEqual({ success: true });
+	});
+
+	it('rejects password recovery requests without an email', async () => {
+		const response = await routeHandlers.POST(
+			createRequest({ email: ' ' }),
+			routeParams('reset-password')
+		);
+
+		expect(createRecovery).not.toHaveBeenCalled();
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toEqual({ message: 'Email is required.' });
+	});
+
+	it('maps password recovery request failures', async () => {
+		const failure = Object.assign(new Error('Recovery failed'), { code: 422 });
+		createRecovery.mockRejectedValueOnce(failure);
+
+		const response = await routeHandlers.POST(
+			createRequest({ email: 'user@example.com' }),
+			routeParams('reset-password')
+		);
+
+		expect(getAppwriteErrorMessage).toHaveBeenCalledWith(
+			failure,
+			'Failed to send password reset email.'
+		);
+		expect(getAppwriteErrorStatus).toHaveBeenCalledWith(failure, 400);
+		expect(response.status).toBe(422);
+		await expect(response.json()).resolves.toEqual({ message: 'Recovery failed' });
+	});
+
+	it('returns 404 for unknown POST routes', async () => {
+		const response = await routeHandlers.POST(createRequest(), routeParams('missing'));
+
+		expect(response.status).toBe(404);
+		await expect(response.json()).resolves.toEqual({ message: 'Not found.' });
+	});
+
+	it('completes password recovery', async () => {
+		const response = await routeHandlers.PUT(
+			createRequest({
+				userId: 'user-123',
+				secret: 'recovery-secret',
+				password: 'Password123#',
+			}),
+			routeParams('reset-password')
+		);
+
+		expect(updateRecovery).toHaveBeenCalledWith({
+			userId: 'user-123',
+			secret: 'recovery-secret',
+			password: 'Password123#',
+		});
+		await expect(response.json()).resolves.toEqual({ success: true });
+	});
+
+	it('rejects recovery completion without all required fields', async () => {
+		const response = await routeHandlers.PUT(
+			createRequest({ userId: 'user-123', secret: '', password: 'Password123#' }),
+			routeParams('reset-password')
+		);
+
+		expect(updateRecovery).not.toHaveBeenCalled();
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toEqual({
+			message: 'User ID, secret, and password are required.',
+		});
+	});
+
+	it('maps recovery completion failures', async () => {
+		const failure = Object.assign(new Error('Reset failed'), { code: 400 });
+		updateRecovery.mockRejectedValueOnce(failure);
+
+		const response = await routeHandlers.PUT(
+			createRequest({
+				userId: 'user-123',
+				secret: 'recovery-secret',
+				password: 'Password123#',
+			}),
+			routeParams('reset-password')
+		);
+
+		expect(getAppwriteErrorMessage).toHaveBeenCalledWith(failure, 'Failed to update password.');
+		expect(getAppwriteErrorStatus).toHaveBeenCalledWith(failure, 400);
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toEqual({ message: 'Reset failed' });
+	});
+
+	it('verifies email addresses', async () => {
+		const response = await routeHandlers.PUT(
+			createRequest({ userId: 'user-123', secret: 'verification-secret' }),
+			routeParams('verify-email')
+		);
+
+		expect(updateEmailVerification).toHaveBeenCalledWith({
+			userId: 'user-123',
+			secret: 'verification-secret',
+		});
+		await expect(response.json()).resolves.toEqual({ success: true });
+	});
+
+	it('rejects verify-email requests without all required fields', async () => {
+		const response = await routeHandlers.PUT(
+			createRequest({ userId: 'user-123', secret: '' }),
+			routeParams('verify-email')
+		);
+
+		expect(updateEmailVerification).not.toHaveBeenCalled();
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toEqual({
+			message: 'User ID and secret are required.',
+		});
+	});
+
+	it('maps verify-email failures', async () => {
+		const failure = Object.assign(new Error('Verification failed'), { code: 409 });
+		updateEmailVerification.mockRejectedValueOnce(failure);
+
+		const response = await routeHandlers.PUT(
+			createRequest({ userId: 'user-123', secret: 'verification-secret' }),
+			routeParams('verify-email')
+		);
+
+		expect(getAppwriteErrorMessage).toHaveBeenCalledWith(failure, 'Failed to verify email.');
+		expect(getAppwriteErrorStatus).toHaveBeenCalledWith(failure, 400);
+		expect(response.status).toBe(409);
+		await expect(response.json()).resolves.toEqual({ message: 'Verification failed' });
+	});
+
+	it('returns 404 for unknown PUT routes', async () => {
+		const response = await routeHandlers.PUT(createRequest(), routeParams('missing'));
+
+		expect(response.status).toBe(404);
+		await expect(response.json()).resolves.toEqual({ message: 'Not found.' });
+	});
 });

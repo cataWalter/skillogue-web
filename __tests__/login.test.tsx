@@ -53,16 +53,10 @@ describe('Login Page', () => {
 
     await waitFor(() => {
       expect(mockSignIn).toHaveBeenCalledWith('user@example.com', 'Password123#');
-      expect(toast.error).toHaveBeenCalledWith(
-        verificationMessage,
-        expect.objectContaining({
-          id: 'login-error',
-          duration: 6000,
-        })
-      );
+      expect(mockPush).toHaveBeenCalledWith('/verify-email/resend?email=user%40example.com');
     });
 
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
   });

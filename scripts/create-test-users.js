@@ -12,7 +12,7 @@ const getEnvValue = (...keys) => {
     }
   }
 
-  return '';
+  return ''; 
 };
 
 const toEnvKeySegment = (value) => value.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();

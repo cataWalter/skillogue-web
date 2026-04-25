@@ -9,6 +9,12 @@ import toast from 'react-hot-toast';
 
 const EMAIL_VERIFICATION_REQUIRED_FRAGMENT = 'Please verify your email before signing in';
 
+const buildResendVerificationUrl = (email: string) => {
+    const searchParams = new URLSearchParams({ email });
+
+    return `/verify-email/resend?${searchParams.toString()}`;
+};
+
 const Login: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [email, setEmail] = useState<string>('');
@@ -31,9 +37,15 @@ const Login: React.FC = () => {
         } catch (error: unknown) {
             console.error('Login error:', error);
             const message = error instanceof Error ? error.message : 'An error occurred';
+
+            if (message.includes(EMAIL_VERIFICATION_REQUIRED_FRAGMENT)) {
+                router.push(buildResendVerificationUrl(email));
+                return;
+            }
+
             toast.error(message, {
                 id: 'login-error',
-                duration: message.includes(EMAIL_VERIFICATION_REQUIRED_FRAGMENT) ? 6000 : 4000,
+                duration: 4000,
             });
         } finally {
             setLoading(false);

@@ -9,16 +9,9 @@ import {
 } from '@/lib/appwrite/server';
 import { AppDataService } from '@/lib/server/app-data-service';
 
-const deleteAccount = async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
     const sessionSecret = getAppwriteSessionSecret(request);
-
-    if (!sessionSecret) {
-      const response = NextResponse.json({ message: 'Not authenticated.' }, { status: 401 });
-      clearAppwriteSessionCookie(response);
-      return response;
-    }
-
     const userAgent = request.headers.get('user-agent') ?? undefined;
     const account = createAppwriteSessionAccount(sessionSecret, userAgent);
     const currentUser = await account.get();
@@ -44,7 +37,4 @@ const deleteAccount = async (request: NextRequest) => {
     clearAppwriteSessionCookie(response);
     return response;
   }
-};
-
-export const DELETE = deleteAccount;
-export const POST = deleteAccount;
+}

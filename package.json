@@ -29,6 +29,7 @@
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "test": "jest",
+    "test:all": "node scripts/run-all-tests.js",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test"
   },
