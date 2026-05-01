@@ -4,9 +4,9 @@ import {
   getAppwriteSessionSecret,
 } from '../../src/lib/appwrite/server';
 import {
-	E2E_AUTH_ADMIN_COOKIE_VALUE,
-	E2E_AUTH_COOKIE_NAME,
-	E2E_AUTH_HEADER_NAME,
+  E2E_AUTH_ADMIN_COOKIE_VALUE,
+  E2E_AUTH_COOKIE_NAME,
+  E2E_AUTH_HEADER_NAME,
 } from '../../src/lib/e2e-auth';
 
 jest.mock('../../src/lib/appwrite/server', () => ({
@@ -16,7 +16,7 @@ jest.mock('../../src/lib/appwrite/server', () => ({
 }));
 
 jest.mock('next/server', () => ({
-  NextRequest: class NextRequest {},
+  NextRequest: class NextRequest { },
   NextResponse: {
     json: (body: unknown, init?: { status?: number }) => ({
       status: init?.status ?? 200,

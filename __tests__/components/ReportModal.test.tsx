@@ -52,10 +52,10 @@ describe('ReportModal Component', () => {
 
   it('does not submit if reason is empty', async () => {
     render(<ReportModal {...defaultProps} />);
-    
+
     const submitButton = screen.getByText('Submit Report');
     fireEvent.click(submitButton);
-    
+
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -63,10 +63,10 @@ describe('ReportModal Component', () => {
     mockFetch.mockResolvedValue({ ok: true });
 
     render(<ReportModal {...defaultProps} />);
-    
+
     const textarea = screen.getByPlaceholderText('Please describe why you want to report this user...');
     fireEvent.change(textarea, { target: { value: 'Spam content' } });
-    
+
     const submitButton = screen.getByText('Submit Report');
     fireEvent.click(submitButton);
 
@@ -86,14 +86,14 @@ describe('ReportModal Component', () => {
   });
 
   it('handles submission error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockFetch.mockRejectedValue(new Error('Network error'));
 
     render(<ReportModal {...defaultProps} />);
-    
+
     const textarea = screen.getByPlaceholderText('Please describe why you want to report this user...');
     fireEvent.change(textarea, { target: { value: 'Spam content' } });
-    
+
     const submitButton = screen.getByText('Submit Report');
     fireEvent.click(submitButton);
 

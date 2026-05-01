@@ -31,8 +31,8 @@ describe('Button Component', () => {
         const button = screen.getByRole('button');
         expect(button).toBeDisabled();
         expect(screen.getByText('Loading...')).toBeInTheDocument();
-        // Should not show children text when loading if implementation hides it, 
-        // but current implementation appends loading text. 
+        // Should not show children text when loading if implementation hides it,
+        // but current implementation appends loading text.
         // Let's check if the loader icon is present.
         // The Loader2 component from lucide-react renders an svg.
         // We can check for the "Loading..." text which is explicit in the component.

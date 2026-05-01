@@ -26,7 +26,7 @@ jest.mock('../../src/lib/server/app-data-service', () => ({
 }));
 
 jest.mock('next/server', () => ({
-  NextRequest: class NextRequest {},
+  NextRequest: class NextRequest { },
   NextResponse: {
     json: (body: unknown, init?: { status?: number }) => ({
       status: init?.status ?? 200,

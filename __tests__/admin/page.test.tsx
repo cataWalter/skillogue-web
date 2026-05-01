@@ -237,18 +237,18 @@ describe('AdminDashboard', () => {
 
     const createFetchImplementation =
         (overrides?: (url: string, method: string, init?: RequestInit) => ReturnType<typeof buildJsonResponse> | undefined) =>
-        (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = String(input);
-            const method = init?.method ?? 'GET';
-            const overriddenResponse = overrides?.(url, method, init);
-            if (overriddenResponse) return overriddenResponse;
+            (input: RequestInfo | URL, init?: RequestInit) => {
+                const url = String(input);
+                const method = init?.method ?? 'GET';
+                const overriddenResponse = overrides?.(url, method, init);
+                if (overriddenResponse) return overriddenResponse;
 
-            if (method === 'GET' && url.startsWith('/api/admin/analytics')) {
-                return buildJsonResponse(dashboardPayload);
-            }
+                if (method === 'GET' && url.startsWith('/api/admin/analytics')) {
+                    return buildJsonResponse(dashboardPayload);
+                }
 
-            throw new Error(`Unhandled fetch for ${method} ${url}`);
-        };
+                throw new Error(`Unhandled fetch for ${method} ${url}`);
+            };
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -264,7 +264,7 @@ describe('AdminDashboard', () => {
     };
 
     it('shows a loading state initially', () => {
-        mockFetch.mockImplementation(() => new Promise(() => {}));
+        mockFetch.mockImplementation(() => new Promise(() => { }));
 
         render(<AdminDashboard />);
 
@@ -369,7 +369,7 @@ describe('AdminDashboard', () => {
     });
 
     it('renders the generic dashboard error when analytics loading rejects with a non-Error value', async () => {
-        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
         mockFetch.mockImplementation(
             createFetchImplementation((url, method) => {

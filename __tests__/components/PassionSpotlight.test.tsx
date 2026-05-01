@@ -11,13 +11,13 @@ describe('PassionSpotlight Component', () => {
 
   it('renders loading skeleton when loading', () => {
     render(<PassionSpotlight loading />);
-    
+
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
   it('renders fallback content when no passions are available', async () => {
     render(<PassionSpotlight />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Add a few passions to your profile to get more relevant suggestions on the dashboard.')).toBeInTheDocument();
       expect(screen.getByText('Complete your passions →')).toBeInTheDocument();
@@ -29,9 +29,9 @@ describe('PassionSpotlight Component', () => {
       { passion_id: 1, passions: { name: 'Coding' } },
       { passion_id: 2, passions: { name: 'Music' } },
     ];
-    
+
     render(<PassionSpotlight userPassions={userPassions} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Passion Spotlight')).toBeInTheDocument();
     });
@@ -39,9 +39,9 @@ describe('PassionSpotlight Component', () => {
 
   it('renders the featured passion name', async () => {
     const userPassions = [{ passion_id: 1, passions: { name: 'Coding' } }];
-    
+
     render(<PassionSpotlight userPassions={userPassions} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Coding')).toBeInTheDocument();
     });

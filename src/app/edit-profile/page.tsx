@@ -71,7 +71,7 @@ const EditProfile: React.FC = () => {
                 router.push('/login');
                 return;
             }
-            
+
             const [
                 profileRes,
                 languageRes,

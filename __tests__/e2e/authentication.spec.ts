@@ -65,15 +65,15 @@ test.describe('Authentication', () => {
     test('should display login form with all required elements', async ({ page }) => {
       // Check for heading
       await expect(page.getByRole('heading', { name: /welcome back/i })).toBeVisible({ timeout: 10000 });
-      
+
       // Check for email input
       const emailInput = page.locator('#email');
       await expect(emailInput).toBeVisible();
-      
+
       // Check for password input
       const passwordInput = page.locator('#password');
       await expect(passwordInput).toBeVisible();
-      
+
       // Check for submit button
       await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
     });
@@ -120,15 +120,15 @@ test.describe('Authentication', () => {
     test('should display signup form with all required elements', async ({ page }) => {
       // Check for heading
       await expect(page.getByRole('heading', { name: /create your account/i })).toBeVisible({ timeout: 10000 });
-      
+
       // Check for email input
       const emailInput = page.locator('#email');
       await expect(emailInput).toBeVisible();
-      
+
       // Check for password input
       const passwordInput = page.locator('#password');
       await expect(passwordInput).toBeVisible();
-      
+
       // Check for submit button
       await expect(page.getByRole('button', { name: /sign up/i })).toBeVisible();
     });
@@ -209,11 +209,11 @@ test.describe('Authentication', () => {
     test('should display forgot password form with all required elements', async ({ page }) => {
       // Check for heading
       await expect(page.getByRole('heading', { name: /reset/i })).toBeVisible({ timeout: 10000 });
-      
+
       // Check for email input
       const emailInput = page.locator('#email');
       await expect(emailInput).toBeVisible();
-      
+
       // Check for submit button
       await expect(page.getByRole('button', { name: /send/i })).toBeVisible();
     });

@@ -169,7 +169,7 @@ describe('Messages Page', () => {
   };
 
   beforeAll(() => {
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
   });
 
   beforeEach(() => {
@@ -178,7 +178,7 @@ describe('Messages Page', () => {
     mockPush.mockReset();
     mockSearchParams.get.mockReset();
     (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
-    
+
     // Mock RPCs
     (appClient.rpc as jest.Mock).mockImplementation(buildRpcMock());
 
@@ -456,14 +456,14 @@ describe('Messages Page', () => {
       expect(screen.getByPlaceholderText(messagesCopy.typeMessagePlaceholder)).toBeInTheDocument();
     });
 
-		const messagesContainer = screen.getByTestId('messages-container');
-		Object.defineProperty(messagesContainer, 'scrollTop', { value: 0, writable: true });
-		Object.defineProperty(messagesContainer, 'scrollHeight', { value: 1000, writable: true });
-		Object.defineProperty(messagesContainer, 'clientHeight', { value: 500, writable: true });
+    const messagesContainer = screen.getByTestId('messages-container');
+    Object.defineProperty(messagesContainer, 'scrollTop', { value: 0, writable: true });
+    Object.defineProperty(messagesContainer, 'scrollHeight', { value: 1000, writable: true });
+    Object.defineProperty(messagesContainer, 'clientHeight', { value: 500, writable: true });
 
-		fireEvent.scroll(messagesContainer);
+    fireEvent.scroll(messagesContainer);
 
-		expect(rangeMock).toHaveBeenCalledTimes(1);
+    expect(rangeMock).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       resolveMessages?.({ data: mockMessages, error: null });
@@ -744,14 +744,14 @@ describe('Messages Page', () => {
 
     const input = screen.getByPlaceholderText('Type a message...');
     fireEvent.change(input, { target: { value: 'New message' } });
-    
+
     const form = input.closest('form');
     fireEvent.submit(form!);
 
     await waitFor(() => {
       expect(appClient.from).toHaveBeenCalledWith('messages');
     });
-    
+
     expect(screen.getByText('New message')).toBeInTheDocument(); // Optimistic update
   });
 
@@ -1004,7 +1004,7 @@ describe('Messages Page', () => {
   it('blocks a user', async () => {
     window.confirm = jest.fn(() => true);
     window.alert = jest.fn();
-    
+
     await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
@@ -1021,64 +1021,64 @@ describe('Messages Page', () => {
 
   it('handles send message error', async () => {
     (appClient.from as jest.Mock).mockImplementation((table) => {
-        if (table === 'messages') {
-            return {
-                select: jest.fn(() => ({
-                    or: jest.fn(() => ({
-                        order: jest.fn(() => ({
-                            range: jest.fn().mockResolvedValue({ data: mockMessages, error: null }),
-                        })),
-                    })),
-                })),
-                insert: createInsertMock({ error: { message: 'Send failed' } }),
-            };
-        }
-        return { select: jest.fn() };
+      if (table === 'messages') {
+        return {
+          select: jest.fn(() => ({
+            or: jest.fn(() => ({
+              order: jest.fn(() => ({
+                range: jest.fn().mockResolvedValue({ data: mockMessages, error: null }),
+              })),
+            })),
+          })),
+          insert: createInsertMock({ error: { message: 'Send failed' } }),
+        };
+      }
+      return { select: jest.fn() };
     });
 
     window.alert = jest.fn();
 
-  await renderMessagesPage();
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Hello there')).toBeInTheDocument());
 
     const input = await screen.findByPlaceholderText('Type a message...');
     fireEvent.change(input, { target: { value: 'Fail message' } });
-    
+
     const form = input.closest('form');
     fireEvent.submit(form!);
 
     await waitFor(() => {
-        expect(window.alert).toHaveBeenCalledWith('Failed to send message');
+      expect(window.alert).toHaveBeenCalledWith('Failed to send message');
     });
   });
 
   it('loads more messages on scroll', async () => {
     // Mock a large list of messages for the first page
     const manyMessages = Array.from({ length: 20 }, (_, i) => ({
-        ...mockMessages[0],
-        id: i + 100,
-        content: `Message ${i}`
+      ...mockMessages[0],
+      id: i + 100,
+      content: `Message ${i}`
     }));
 
     (appClient.from as jest.Mock).mockImplementation((table) => {
-        if (table === 'messages') {
-            return {
-                select: jest.fn(() => ({
-                    or: jest.fn(() => ({
-                        order: jest.fn(() => ({
-                            range: jest.fn().mockResolvedValue({ data: manyMessages, error: null }),
-                        })),
-                    })),
-                })),
-                insert: createInsertMock(),
-            };
-        }
-        return { select: jest.fn() };
+      if (table === 'messages') {
+        return {
+          select: jest.fn(() => ({
+            or: jest.fn(() => ({
+              order: jest.fn(() => ({
+                range: jest.fn().mockResolvedValue({ data: manyMessages, error: null }),
+              })),
+            })),
+          })),
+          insert: createInsertMock(),
+        };
+      }
+      return { select: jest.fn() };
     });
 
-      await renderMessagesPage();
+    await renderMessagesPage();
     await waitFor(() => expect(screen.getByText('User One')).toBeInTheDocument());
     fireEvent.click(screen.getByText('User One'));
     await waitFor(() => expect(screen.getByText('Message 0')).toBeInTheDocument());
@@ -1094,10 +1094,10 @@ describe('Messages Page', () => {
     // Should trigger load more (which calls appClient.from('messages')...range(...))
     // We can check if range was called with different parameters, but checking the call count is easier
     await waitFor(() => {
-        // Initial load + load more
-        // Note: This is a bit tricky to assert exactly without more complex mocking, 
-        // but we can check if the loading state was triggered or if the API was called again.
-        // For now, let's just ensure no crash and the event handler runs.
+      // Initial load + load more
+      // Note: This is a bit tricky to assert exactly without more complex mocking,
+      // but we can check if the loading state was triggered or if the API was called again.
+      // For now, let's just ensure no crash and the event handler runs.
     });
   });
 
@@ -1281,38 +1281,38 @@ describe('Messages Page', () => {
     let presenceCallback: PresenceSyncCallback | undefined;
     const channelMock = {
       on: jest.fn().mockImplementation((event: string, type: { event?: string }, cb: PresenceSyncCallback) => {
-            if (event === 'presence' && type.event === 'sync') {
-                presenceCallback = cb;
-            }
-            return channelMock;
-        }),
-        track: jest.fn(),
-        untake: jest.fn(),
-        presenceState: jest.fn(() => ({
-            'user-1': [{ user_id: 'user-1', online_at: new Date().toISOString() }]
-        })),
-        subscribe: jest.fn().mockImplementation((cb?: ChannelStatusCallback) => {
-            if (cb) {
-                setTimeout(() => cb('SUBSCRIBED'), 0);
-            }
-            return channelMock;
-        }),
-        unsubscribe: jest.fn(),
+        if (event === 'presence' && type.event === 'sync') {
+          presenceCallback = cb;
+        }
+        return channelMock;
+      }),
+      track: jest.fn(),
+      untake: jest.fn(),
+      presenceState: jest.fn(() => ({
+        'user-1': [{ user_id: 'user-1', online_at: new Date().toISOString() }]
+      })),
+      subscribe: jest.fn().mockImplementation((cb?: ChannelStatusCallback) => {
+        if (cb) {
+          setTimeout(() => cb('SUBSCRIBED'), 0);
+        }
+        return channelMock;
+      }),
+      unsubscribe: jest.fn(),
     };
 
     (appClient.channel as jest.Mock).mockReturnValue(channelMock);
 
-  await renderMessagesPage();
+    await renderMessagesPage();
 
     await waitFor(() => {
-        expect(appClient.channel).toHaveBeenCalledWith('online-users');
+      expect(appClient.channel).toHaveBeenCalledWith('online-users');
     });
 
     // Trigger presence sync
     if (presenceCallback) {
-        await act(async () => {
-            presenceCallback();
-        });
+      await act(async () => {
+        presenceCallback();
+      });
     }
 
     // Check if the online indicator is present.
@@ -1321,7 +1321,7 @@ describe('Messages Page', () => {
     // We need to wait for the state update
     await waitFor(() => {
       const onlineIndicators = document.querySelectorAll('.bg-approval');
-        expect(onlineIndicators.length).toBeGreaterThan(0);
+      expect(onlineIndicators.length).toBeGreaterThan(0);
     });
   });
 

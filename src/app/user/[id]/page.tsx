@@ -216,12 +216,12 @@ const UserProfile: React.FC = () => {
         return (
             <div className="editorial-shell flex flex-grow flex-col items-center justify-center py-10 text-center text-foreground">
                 <div className="glass-panel max-w-xl rounded-[2rem] p-10">
-                <Ghost size={64} className="text-muted mb-4" />
-                <h2 className="text-2xl font-bold text-foreground mb-2">{profilePageCopy.user.profileUnavailable}</h2>
-                <p className="text-faint">{profilePageCopy.user.cannotViewProfile}</p>
-                <Link href="/dashboard" className="mt-6 text-brand hover:text-brand">
-                    {profilePageCopy.user.returnToDashboard}
-                </Link>
+                    <Ghost size={64} className="text-muted mb-4" />
+                    <h2 className="text-2xl font-bold text-foreground mb-2">{profilePageCopy.user.profileUnavailable}</h2>
+                    <p className="text-faint">{profilePageCopy.user.cannotViewProfile}</p>
+                    <Link href="/dashboard" className="mt-6 text-brand hover:text-brand">
+                        {profilePageCopy.user.returnToDashboard}
+                    </Link>
                 </div>
             </div>
         );
@@ -301,23 +301,23 @@ const UserProfile: React.FC = () => {
         return (
             <div className="editorial-shell flex flex-grow flex-col items-center justify-center py-10 text-center text-foreground animate-fade-in-up">
                 <div className="glass-panel max-w-2xl rounded-[2rem] p-8 sm:p-10">
-                <div className="mb-6">
-                    <div className="relative inline-block">
-                        <Avatar seed={profile.id} className="w-32 h-32 rounded-full mx-auto mb-4" />
-                        <div className="glass-surface absolute bottom-0 right-0 rounded-full border-2 border-line/30 p-2">
-                            <Lock size={20} className="text-muted" />
+                    <div className="mb-6">
+                        <div className="relative inline-block">
+                            <Avatar seed={profile.id} className="w-32 h-32 rounded-full mx-auto mb-4" />
+                            <div className="glass-surface absolute bottom-0 right-0 rounded-full border-2 border-line/30 p-2">
+                                <Lock size={20} className="text-muted" />
+                            </div>
                         </div>
+                        <h1 className="text-3xl font-bold">{profile.first_name} {profile.last_name}</h1>
                     </div>
-                    <h1 className="text-3xl font-bold">{profile.first_name} {profile.last_name}</h1>
-                </div>
-                <div className="glass-surface mx-auto max-w-md w-full rounded-[1.5rem] p-6 card-hover-lift">
-                    <Lock size={48} className="text-muted mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">{profilePageCopy.user.privateTitle}</h2>
-                    <p className="text-faint mb-6">
-                        {profilePageCopy.user.privateDescription(profile.first_name)}
-                    </p>
-                    {actionButton}
-                </div>
+                    <div className="glass-surface mx-auto max-w-md w-full rounded-[1.5rem] p-6 card-hover-lift">
+                        <Lock size={48} className="text-muted mx-auto mb-4" />
+                        <h2 className="text-xl font-semibold mb-2">{profilePageCopy.user.privateTitle}</h2>
+                        <p className="text-faint mb-6">
+                            {profilePageCopy.user.privateDescription(profile.first_name)}
+                        </p>
+                        {actionButton}
+                    </div>
                 </div>
                 {session?.user && profile && (
                     <ReportModal

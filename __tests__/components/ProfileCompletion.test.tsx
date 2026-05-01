@@ -19,7 +19,7 @@ describe('ProfileCompletion Component', () => {
             languages_count: 0,
         };
         const { container } = render(<ProfileCompletion profile={profile} />);
-        
+
         expect(screen.getByText('Complete Your Profile')).toBeInTheDocument();
         expect(screen.getByText('Add a bio to tell people about yourself.')).toBeInTheDocument();
         expect(screen.getByText('Add more passions to find better connections.')).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe('ProfileCompletion Component', () => {
             languages_count: 1,
         };
         render(<ProfileCompletion profile={profile} />);
-        
+
         expect(screen.queryByText('Add a bio to tell people about yourself.')).not.toBeInTheDocument();
         expect(screen.getByText('Add more passions to find better connections.')).toBeInTheDocument();
         expect(screen.queryByText('Add the languages you speak.')).not.toBeInTheDocument();

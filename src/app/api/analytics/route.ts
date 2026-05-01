@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       properties: isAnalyticsProperties(properties) ? properties : {},
       path: path.trim(),
     });
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error tracking analytics:', error);

@@ -14,7 +14,7 @@ export async function POST(
       request.headers.get('user-agent') ?? undefined
     );
     const result = await service.invokeCompatFunction(name, payload.body ?? {});
-    
+
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });

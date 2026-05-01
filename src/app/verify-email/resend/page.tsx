@@ -62,65 +62,65 @@ const ResendVerificationPage = () => {
   return (
     <FormCard title={authCopy.resendVerification.title} subtitle={message}>
       <div className="mb-6 text-center">
-          <div className="glass-surface inline-flex h-16 w-16 items-center justify-center rounded-full mb-4">
-            {loading ? (
-              <Loader2 className="w-8 h-8 text-brand-soft animate-spin" />
-            ) : status === 'success' ? (
-              <CheckCircle className="w-8 h-8 text-approval" />
-            ) : status === 'error' ? (
-              <AlertCircle className="w-8 h-8 text-danger" />
-            ) : (
-              <Mail className="w-8 h-8 text-brand-soft" />
-            )}
-          </div>
+        <div className="glass-surface inline-flex h-16 w-16 items-center justify-center rounded-full mb-4">
+          {loading ? (
+            <Loader2 className="w-8 h-8 text-brand-soft animate-spin" />
+          ) : status === 'success' ? (
+            <CheckCircle className="w-8 h-8 text-approval" />
+          ) : status === 'error' ? (
+            <AlertCircle className="w-8 h-8 text-danger" />
+          ) : (
+            <Mail className="w-8 h-8 text-brand-soft" />
+          )}
+        </div>
       </div>
 
-        {status !== 'success' && (
-          <form onSubmit={handleResendVerification} className="space-y-6">
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              label={authCopy.resendVerification.email}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder={authCopy.resendVerification.emailPlaceholder}
-              autoComplete="email"
-              disabled={loading}
-            />
+      {status !== 'success' && (
+        <form onSubmit={handleResendVerification} className="space-y-6">
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            label={authCopy.resendVerification.email}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder={authCopy.resendVerification.emailPlaceholder}
+            autoComplete="email"
+            disabled={loading}
+          />
 
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              label={authCopy.resendVerification.password}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder={authCopy.resendVerification.passwordPlaceholder}
-              autoComplete="current-password"
-              disabled={loading}
-            />
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            label={authCopy.resendVerification.password}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={authCopy.resendVerification.passwordPlaceholder}
+            autoComplete="current-password"
+            disabled={loading}
+          />
 
-            <Button type="submit" disabled={loading} fullWidth>
-              {loading ? authCopy.resendVerification.loading : authCopy.resendVerification.submit}
-            </Button>
-          </form>
-        )}
+          <Button type="submit" disabled={loading} fullWidth>
+            {loading ? authCopy.resendVerification.loading : authCopy.resendVerification.submit}
+          </Button>
+        </form>
+      )}
 
-        <div className="mt-8 flex items-center justify-center gap-3 border-t border-line/20 pt-6 text-center">
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-5 py-3 text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover"
-          >
-            {authCopy.resendVerification.backToLogin}
-          </Link>
-          <Link
-            href="/signup"
-            className="glass-surface inline-flex items-center justify-center rounded-xl px-5 py-3 text-muted transition-all duration-300 hover:-translate-y-0.5"
-          >
-            {authCopy.resendVerification.backToSignUp}
-          </Link>
-        </div>
+      <div className="mt-8 flex items-center justify-center gap-3 border-t border-line/20 pt-6 text-center">
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-5 py-3 text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover"
+        >
+          {authCopy.resendVerification.backToLogin}
+        </Link>
+        <Link
+          href="/signup"
+          className="glass-surface inline-flex items-center justify-center rounded-xl px-5 py-3 text-muted transition-all duration-300 hover:-translate-y-0.5"
+        >
+          {authCopy.resendVerification.backToSignUp}
+        </Link>
+      </div>
     </FormCard>
   );
 };

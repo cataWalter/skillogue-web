@@ -106,10 +106,10 @@ describe('AppDataService coverage', () => {
 			value: index,
 			...(index === 0
 				? {
-						$createdAt: '2024-01-01T00:00:00.000Z',
-						$updatedAt: '2024-01-02T00:00:00.000Z',
-						nested: { $id: 'nested-1', label: 'Nested' },
-					}
+					$createdAt: '2024-01-01T00:00:00.000Z',
+					$updatedAt: '2024-01-02T00:00:00.000Z',
+					nested: { $id: 'nested-1', label: 'Nested' },
+				}
 				: {}),
 		}));
 
@@ -898,15 +898,15 @@ describe('AppDataService coverage', () => {
 			})
 		).resolves.toEqual({ id: 'profile-1' });
 		expect(executeCollectionOperationSpy).toHaveBeenCalledWith('profiles', {
-				action: 'upsert',
-				payload: expect.objectContaining({
-						id: 'profile-2',
-						location_id: 'loc_new_york_us',
-				}),
+			action: 'upsert',
+			payload: expect.objectContaining({
+				id: 'profile-2',
+				location_id: 'loc_new_york_us',
+			}),
 		});
 		expect(executeCollectionOperationSpy).not.toHaveBeenCalledWith(
-				'locations',
-				expect.anything()
+			'locations',
+			expect.anything()
 		);
 
 		executeCollectionOperationSpy.mockReset();
@@ -2381,64 +2381,6 @@ describe('AppDataService coverage', () => {
 			expect.objectContaining({ id: 'user-2', passions_count: [{ count: 0 }], languages_count: [{ count: 0 }] }),
 		]);
 
-		const eventService = createService();
-		jest.spyOn(eventService, 'getEventForViewer').mockResolvedValue({ id: 'event-1' } as never);
-		mockRepo.createDocument.mockResolvedValueOnce({ $id: 'event-1' });
-		await expect(
-			eventService.createEvent('user-1', {
-				title: 'Coffee meetup',
-				description: 'Discuss ideas',
-				location_id: 'loc-1',
-				starts_at: '2024-03-01T10:00:00.000Z',
-				ends_at: null,
-				timezone: 'UTC',
-				capacity: 5,
-			})
-		).resolves.toEqual({ id: 'event-1' });
-		expect(mockRepo.createDocument).toHaveBeenCalledWith(
-			'collection:events',
-			expect.objectContaining({
-				creator_id: 'user-1',
-				title: 'Coffee meetup',
-				status: 'draft',
-			}),
-			expect.any(String)
-		);
-
-		const rsvpService = createService();
-		jest.spyOn(rsvpService as any, 'getEventDocument').mockResolvedValue({
-			id: 'event-1',
-			status: 'published',
-			capacity: 1,
-		} as never);
-		jest.spyOn(rsvpService as any, 'listAllDocuments').mockResolvedValueOnce([] as never);
-		jest.spyOn(rsvpService as any, 'getRsvpSummaryForEventIds').mockResolvedValue({
-			'event-1': { attendance_count: 0, is_attending: false },
-		} as never);
-		jest.spyOn(rsvpService, 'getEventForViewer').mockResolvedValueOnce({ id: 'event-1' } as never);
-		mockRepo.createDocument.mockResolvedValueOnce({ $id: 'rsvp-1' });
-		await expect(rsvpService.setEventRsvp('user-1', 'event-1')).resolves.toEqual({ id: 'event-1' });
-
-		const fullEventService = createService();
-		jest.spyOn(fullEventService as any, 'getEventDocument').mockResolvedValue({
-			id: 'event-2',
-			status: 'published',
-			capacity: 1,
-		} as never);
-		jest.spyOn(fullEventService as any, 'listAllDocuments').mockResolvedValueOnce([] as never);
-		jest.spyOn(fullEventService as any, 'getRsvpSummaryForEventIds').mockResolvedValue({
-			'event-2': { attendance_count: 1, is_attending: false },
-		} as never);
-		await expect(fullEventService.setEventRsvp('user-1', 'event-2')).rejects.toThrow('This event is full');
-
-		const removeRsvpService = createService();
-		jest.spyOn(removeRsvpService as any, 'listAllDocuments').mockResolvedValue([
-			{ id: 'rsvp-1', _appwriteId: 'appwrite-rsvp-1' },
-		] as never);
-		jest.spyOn(removeRsvpService, 'getEventForViewer').mockResolvedValueOnce({ id: 'event-1' } as never);
-		await expect(removeRsvpService.removeEventRsvp('user-1', 'event-1')).resolves.toEqual({ id: 'event-1' });
-		expect(mockRepo.deleteDocument).toHaveBeenCalledWith('collection:event_rsvps', 'appwrite-rsvp-1');
-
 		const readService = createService();
 		jest.spyOn(readService as any, 'requireCurrentUser').mockResolvedValue({ id: 'user-1' } as never);
 		const executeReadSpy = jest.spyOn(readService, 'executeCollectionOperation').mockResolvedValue({ data: null, error: null } as never);
@@ -2600,7 +2542,7 @@ describe('AppDataService coverage', () => {
 		});
 	});
 
-	it('covers remaining admin ranking, event mutation, and suggestion fallback branches', async () => {
+	it('covers remaining admin ranking and suggestion fallback branches', async () => {
 		const settingsService = createService();
 		jest.spyOn(settingsService, 'executeCollectionOperation').mockResolvedValueOnce({
 			data: {
@@ -2620,118 +2562,6 @@ describe('AppDataService coverage', () => {
 			followUpUserIds: ['user-1', 'user-2'],
 			updatedAt: null,
 		});
-
-		const creatorEventsService = createService();
-		jest.spyOn(creatorEventsService as any, 'listAllDocuments').mockResolvedValue([
-			{ id: 'event-2', creator_id: 'user-1', starts_at: '2024-03-02T10:00:00.000Z' },
-			{ id: 'event-1', creator_id: 'user-1', starts_at: '2024-03-01T10:00:00.000Z' },
-		] as never);
-		jest
-			.spyOn(creatorEventsService as any, 'hydrateEvents')
-			.mockImplementation(async (events: any[]) => events as never);
-		await expect(creatorEventsService.listCreatorEvents('user-1')).resolves.toEqual([
-			{ id: 'event-1', creator_id: 'user-1', starts_at: '2024-03-01T10:00:00.000Z' },
-			{ id: 'event-2', creator_id: 'user-1', starts_at: '2024-03-02T10:00:00.000Z' },
-		]);
-
-		const ownedEventService = createService();
-		jest
-			.spyOn(ownedEventService as any, 'getEventDocument')
-			.mockResolvedValueOnce(null as never)
-			.mockResolvedValueOnce({ id: 'event-2', creator_id: 'user-2' } as never);
-		await expect((ownedEventService as any).requireOwnedEvent('missing', 'user-1')).rejects.toThrow(
-			'Event not found'
-		);
-		await expect((ownedEventService as any).requireOwnedEvent('event-2', 'user-1')).rejects.toThrow(
-			'Only the event creator can modify this event'
-		);
-
-		const eventMutationService = createService();
-		jest.spyOn(eventMutationService as any, 'getEventDocument').mockResolvedValue({
-			id: 'event-1',
-			_appwriteId: 'appwrite-event-1',
-			creator_id: 'user-1',
-		} as never);
-		jest
-			.spyOn(eventMutationService, 'getEventForViewer')
-			.mockResolvedValueOnce({ id: 'event-1', status: 'draft' } as never)
-			.mockResolvedValueOnce({ id: 'event-1', status: 'published' } as never)
-			.mockResolvedValueOnce({ id: 'event-1', status: 'cancelled' } as never);
-		mockRepo.updateDocument.mockResolvedValue({ $id: 'event-1' });
-		await expect(
-			eventMutationService.updateEvent('user-1', {
-				id: 'event-1',
-				title: 'Updated event',
-				description: 'Updated description',
-				location_id: 'loc-1',
-				starts_at: '2024-03-01T10:00:00.000Z',
-				ends_at: null,
-				timezone: 'UTC',
-				capacity: 10,
-			})
-		).resolves.toEqual({ id: 'event-1', status: 'draft' });
-		await expect(eventMutationService.publishEvent('user-1', 'event-1')).resolves.toEqual({
-			id: 'event-1',
-			status: 'published',
-		});
-		await expect(eventMutationService.cancelEvent('user-1', 'event-1')).resolves.toEqual({
-			id: 'event-1',
-			status: 'cancelled',
-		});
-
-		const rsvpFallbackService = createService();
-		jest.spyOn(rsvpFallbackService as any, 'listAllDocuments').mockImplementation(
-			async (_collection: string, queries?: string[]) => {
-				if (queries) {
-					throw new Error('filtered lookup failed');
-				}
-
-				return [
-					{ event_id: 'event-1', user_id: 'user-1' },
-					{ event_id: 'event-2', user_id: 'user-2' },
-				];
-			}
-		);
-		await expect(rsvpFallbackService.getRsvpSummaryForEventIds(['event-1'], 'user-1')).resolves.toEqual({
-			'event-1': { attendance_count: 1, is_attending: true },
-		});
-
-		const hydrateEventsService = createService();
-		jest
-			.spyOn(hydrateEventsService as any, 'fetchByIds')
-			.mockResolvedValueOnce(new Map())
-			.mockResolvedValueOnce(new Map());
-		jest.spyOn(hydrateEventsService, 'getRsvpSummaryForEventIds').mockResolvedValue({} as never);
-		await expect(
-			(hydrateEventsService as any).hydrateEvents(
-				[
-					{
-						id: 'event-3',
-						creator_id: 'user-2',
-						title: 'Fallback event',
-						description: null,
-						location_id: 'loc-missing',
-						starts_at: '2024-03-03T10:00:00.000Z',
-						ends_at: null,
-						timezone: 'UTC',
-						capacity: null,
-						status: 'published',
-						created_at: '2024-03-01T10:00:00.000Z',
-						updated_at: '2024-03-02T10:00:00.000Z',
-					},
-				],
-				'user-1'
-			)
-		).resolves.toEqual([
-			expect.objectContaining({
-				id: 'event-3',
-				attendance_count: 0,
-				is_attending: false,
-				creator: null,
-				location: null,
-				is_owner: false,
-			}),
-		]);
 
 		const adminSortService = createService();
 		jest.spyOn(adminSortService as any, 'listAllDocuments').mockImplementation(async (collection: string) => {
@@ -2887,7 +2717,7 @@ describe('AppDataService coverage', () => {
 		});
 	});
 
-	it('covers helper fallbacks for push payloads, static data, and optional event collections', async () => {
+	it('covers helper fallbacks for push payloads and static data', async () => {
 		const service = createService();
 
 		(getAppwriteFunctionId as jest.Mock).mockReturnValueOnce('send-push-id');
@@ -2943,20 +2773,6 @@ describe('AppDataService coverage', () => {
 				country: 'France',
 			})
 		).toBeNull();
-
-		mockRepo.listDocuments.mockRejectedValueOnce({
-			type: 'collection_not_found',
-			code: 404,
-			message: 'Missing events collection',
-		});
-		await expect((service as any).listAllDocuments('events')).resolves.toEqual([]);
-
-		mockRepo.listDocuments.mockRejectedValueOnce(
-			Object.assign(new Error('Collection with the requested ID was not found'), {
-				code: 404,
-			})
-		);
-		await expect((service as any).listDocumentsPage('event_rsvps', [], 25, 0)).resolves.toEqual([]);
 
 		mockRepo.listDocuments.mockRejectedValueOnce(new Error('profiles lookup failed'));
 		await expect((service as any).listAllDocuments('profiles')).rejects.toThrow('profiles lookup failed');
@@ -3178,10 +2994,6 @@ describe('AppDataService coverage', () => {
 		);
 		expect(profilesWithNullLocation[0].locations).toBeNull();
 		jest.restoreAllMocks();
-
-		// isMissingOptionalEventCollectionError: errorCode !== 404 → false (lines 536-540)
-		mockRepo.listDocuments.mockRejectedValueOnce(Object.assign(new Error('Server error'), { code: 500, type: null }));
-		await expect((service as any).listAllDocuments('events')).rejects.toThrow('Server error');
 
 		// getConversations: multiple messages from same user → unread increments (lines 3771, 3774-3775)
 		jest.spyOn(service as any, 'listMessagesForParticipant').mockResolvedValueOnce([
@@ -3533,25 +3345,8 @@ describe('AppDataService coverage', () => {
 		jest.restoreAllMocks();
 	});
 
-	it('covers event filters, RSVP summary, saved profiles empty path, search profile rejections, and compat RPC cases', async () => {
+	it('covers saved profiles empty path, search profile rejections, and compat RPC cases', async () => {
 		const service = createService();
-
-		// isEventWithinRange: NaN timestamp → false (lines 1530-1531)
-		expect((service as any).isEventWithinRange({ starts_at: 'not-a-date' }, null, null)).toBe(false);
-		// isEventWithinRange: event before startsFrom → false (lines 1537-1538)
-		const future = new Date(Date.now() + 86400000).toISOString();
-		const past = new Date(Date.now() - 86400000).toISOString();
-		expect((service as any).isEventWithinRange({ starts_at: past }, future, null)).toBe(false);
-		// isEventWithinRange: event after startsTo → false (lines 1545-1546)
-		expect((service as any).isEventWithinRange({ starts_at: future }, null, past)).toBe(false);
-
-		// getRsvpSummaryForEventIds: row with unknown eventId → continue (lines 1585-1586)
-		jest.spyOn(service as any, 'listAllDocuments').mockResolvedValueOnce([
-			{ event_id: 'unknown-event', user_id: 'user-1' },
-		]);
-		const rsvpSummary = await service.getRsvpSummaryForEventIds(['known-event']);
-		expect(rsvpSummary['known-event'].attendance_count).toBe(0);
-		jest.restoreAllMocks();
 
 		// getFavorites (loadSavedProfiles): no favorites → return [] (lines 3667-3668)
 		jest.spyOn(service, 'executeCollectionOperation').mockResolvedValueOnce({ data: [], error: null } as never);
@@ -3583,27 +3378,6 @@ describe('AppDataService coverage', () => {
 		// old-profile rejected by maxAge (lines 3937-3938) (age > 50)
 		// match-profile passes (Alice, female, ~20 yo)
 		expect(Array.isArray(searchResult.data)).toBe(true);
-		jest.restoreAllMocks();
-
-		// listCalendarEventsForUser with scope='created' (lines 1813-1814) and scope='attending' (lines 1817-1818)
-		jest.spyOn(service as any, 'listAllDocuments').mockImplementation(async (collection: string) => {
-			if (collection === 'events') return [{ id: 'evt-1', creator_id: 'user-1', status: 'published', starts_at: new Date().toISOString() }];
-			if (collection === 'event_rsvps') return [];
-			return [];
-		});
-		const createdEvents = await service.listCalendarEventsForUser('user-1', { scope: 'created' });
-		expect(Array.isArray(createdEvents)).toBe(true);
-		jest.spyOn(service as any, 'listAllDocuments').mockResolvedValue([]);
-		const attendingEvents = await service.listCalendarEventsForUser('user-1', { scope: 'attending' });
-		expect(Array.isArray(attendingEvents)).toBe(true);
-		jest.restoreAllMocks();
-
-		// setEventRsvp: event not found → throws (lines 1843-1844)
-		jest.spyOn(service as any, 'getEventDocument').mockResolvedValueOnce(null);
-		await expect(service.setEventRsvp('user-1', 'missing-event')).rejects.toThrow('Event not found');
-		// setEventRsvp: event not published → throws (lines 1847-1848)
-		jest.spyOn(service as any, 'getEventDocument').mockResolvedValueOnce({ id: 'evt-draft', status: 'draft' });
-		await expect(service.setEventRsvp('user-1', 'evt-draft')).rejects.toThrow('Only published events can accept RSVPs');
 		jest.restoreAllMocks();
 
 		// sendMessage: error path throws (lines 1915-1916)

@@ -62,11 +62,10 @@ const Navbar = () => {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                      isActive(item.href)
-                        ? 'bg-surface-secondary text-foreground'
-                        : 'text-faint hover:text-foreground hover:bg-surface-secondary'
-                    }`}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${isActive(item.href)
+                      ? 'bg-surface-secondary text-foreground'
+                      : 'text-faint hover:text-foreground hover:bg-surface-secondary'
+                      }`}
                   >
                     <item.icon size={18} />
                     <span className="text-sm">{item.label}</span>
@@ -120,11 +119,10 @@ const Navbar = () => {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-lg transition ${
-                      isActive(item.href)
-                        ? 'bg-surface-secondary text-foreground'
-                        : 'text-faint hover:text-foreground hover:bg-surface-secondary'
-                    }`}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg transition ${isActive(item.href)
+                      ? 'bg-surface-secondary text-foreground'
+                      : 'text-faint hover:text-foreground hover:bg-surface-secondary'
+                      }`}
                   >
                     <item.icon size={18} />
                     <span>{item.label}</span>

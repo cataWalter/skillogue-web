@@ -260,7 +260,7 @@ const Messages: React.FC = () => {
     }, [hydrateCachedConversation, selectedChat, user]);
 
     useEffect(() => {
-        if (!user) return () => {};
+        if (!user) return () => { };
 
         const cachedState = readMessagesPageCache(user.id);
         loadConversations({ showLoading: !cachedState?.conversations.length });
@@ -366,7 +366,7 @@ const Messages: React.FC = () => {
 
     useEffect(() => {
         if (!selectedChat || !user) {
-            return () => {};
+            return () => { };
         }
 
         const intervalId = window.setInterval(() => {
@@ -381,7 +381,7 @@ const Messages: React.FC = () => {
 
     // Presence
     useEffect(() => {
-        if (!user) return () => {};
+        if (!user) return () => { };
 
         const presenceChannel = appClient.channel('online-users')
             .on('presence', { event: 'sync' }, () => {
@@ -407,7 +407,7 @@ const Messages: React.FC = () => {
 
     // Real-time subscription
     useEffect(() => {
-        if (!selectedChat || !user) return () => {};
+        if (!selectedChat || !user) return () => { };
 
         const channel = appClient
             .channel(`chat:${selectedChat}`)
@@ -624,187 +624,187 @@ const Messages: React.FC = () => {
     return (
         <div className="editorial-shell flex h-[calc(100vh-64px)] py-4 sm:py-6">
             <div className="glass-panel flex w-full overflow-hidden rounded-[2rem] text-foreground">
-            {/* Sidebar - Conversations List */}
-            <div className={`w-full md:w-1/3 lg:w-1/4 border-r border-line/20 flex flex-col bg-surface/35 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
-                <div className="border-b border-line/20 p-4 sm:p-5">
-                    <h2 className="text-xl font-bold">{commonLabels.messages}</h2>
-                </div>
-                <div className="flex-grow overflow-y-auto">
-                    {conversationsLoading ? (
-                        <div className="flex flex-col h-full p-6 text-faint" role="status" aria-live="polite">
-                            <div className="flex items-center gap-3 mb-6">
-                                <Loader2 className="w-5 h-5 animate-spin text-brand" />
-                                <div>
-                                    <p className="text-base font-medium text-foreground">{messagesCopy.loadingConversations}</p>
-                                    <p className="text-sm text-faint">{messagesCopy.checkingLatestChats}</p>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                {Array.from({ length: 4 }, (_, index) => (
-                                    <div key={index} className="glass-surface flex items-center gap-3 rounded-[1.25rem] p-3">
-                                        <Skeleton className="h-12 w-12 rounded-full bg-surface-secondary" />
-                                        <div className="flex-1 space-y-2">
-                                            <Skeleton className="h-4 w-1/3 bg-surface-secondary" />
-                                            <Skeleton className="h-3 w-2/3 bg-surface-secondary" />
-                                        </div>
+                {/* Sidebar - Conversations List */}
+                <div className={`w-full md:w-1/3 lg:w-1/4 border-r border-line/20 flex flex-col bg-surface/35 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
+                    <div className="border-b border-line/20 p-4 sm:p-5">
+                        <h2 className="text-xl font-bold">{commonLabels.messages}</h2>
+                    </div>
+                    <div className="flex-grow overflow-y-auto">
+                        {conversationsLoading ? (
+                            <div className="flex flex-col h-full p-6 text-faint" role="status" aria-live="polite">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <Loader2 className="w-5 h-5 animate-spin text-brand" />
+                                    <div>
+                                        <p className="text-base font-medium text-foreground">{messagesCopy.loadingConversations}</p>
+                                        <p className="text-sm text-faint">{messagesCopy.checkingLatestChats}</p>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    ) : conversations.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-64 p-6 text-center text-faint">
-                            <MessageSquare className="w-12 h-12 mb-4 text-muted" />
-                            <p className="text-lg font-medium text-foreground">{messagesCopy.emptyStateTitle}</p>
-                            <p className="text-sm mt-2">{messagesCopy.emptyStateSubtitle}</p>
-                            <Link href="/search" className="mt-4 rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-4 py-2 text-white transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover">
-                                {messagesCopy.findPeople}
-                            </Link>
-                        </div>
-                    ) : (
-                        conversations.map(convo => (
-                            <ConversationItem
-                                key={convo.user_id}
-                                userId={convo.user_id}
-                                fullName={convo.full_name}
-                                lastMessage={convo.last_message}
-                                unread={convo.unread}
-                                isSelected={selectedChat === convo.user_id}
-                                isOnline={onlineUsers.has(convo.user_id)}
-                                onClick={selectChat}
-                            />
-                        ))
-                    )}
-                </div>
-            </div>
-
-            {/* Chat Area */}
-            <div className={`w-full md:w-2/3 lg:w-3/4 flex flex-col bg-background/20 ${!selectedChat ? 'hidden md:flex' : 'flex'}`}>
-                {selectedChat ? (
-                    <>
-                        {/* Chat Header */}
-                        <div className="border-b border-line/20 bg-surface/45 px-3 py-3 sm:px-4 sm:py-4 backdrop-blur-sm">
-                            <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 sm:gap-3">
-                                <button onClick={() => setSelectedChat(null)} className="md:hidden text-faint hover:text-foreground p-1">
-                                    <ArrowLeft size={20} />
-                                </button>
-                                <Link href={`/user/${selectedChat}`}>
-                                    <Avatar seed={selectedChat} className="w-8 h-8 sm:w-10 sm:h-10 cursor-pointer hover:opacity-80 transition" />
-                                </Link>
-                                <Link href={`/user/${selectedChat}`} className="hover:underline">
-                                    <h2 className="font-bold text-base sm:text-lg truncate max-w-[150px] sm:max-w-xs">
-                                        {getDisplayFullName(currentChatUser?.full_name || selectedChatName)}
-                                    </h2>
-                                </Link>
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-2">
-                                <button
-                                    onClick={blockUser}
-                                    className="glass-surface p-2 text-faint hover:text-danger transition-colors"
-                                    title={messagesCopy.blockUserTitle}
-                                >
-                                    <Ban size={18} className="sm:w-5 sm:h-5" />
-                                </button>
-                                <button
-                                    onClick={() => setReportModalOpen(true)}
-                                    className="glass-surface p-2 text-faint hover:text-warning transition-colors"
-                                    title={messagesCopy.reportUserTitle}
-                                >
-                                    <Flag size={18} className="sm:w-5 sm:h-5" />
-                                </button>
-                            </div>
-                            </div>
-                        </div>
-
-                        {/* Messages List */}
-                        <div
-                            ref={messagesContainerRef}
-                            onScroll={handleScroll}
-                            data-testid="messages-container"
-                            className="messages-container flex-grow overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4 bg-transparent"
-                        >
-                            {loadingMore && (
-                                <div className="flex justify-center py-2">
-                                    <Loader2 className="animate-spin text-brand" />
                                 </div>
-                            )}
-                            {messages.map((msg, index) => {
-                                const isMe = msg.sender_id === user?.id;
-                                const showAvatar = !isMe && (index === 0 || messages[index - 1].sender_id !== msg.sender_id);
-                                return (
-                                    <MessageItem
-                                        key={getMessageRenderKey(msg)}
-                                        content={msg.content}
-                                        createdAt={msg.created_at}
-                                        isMe={isMe}
-                                        showAvatar={showAvatar}
-                                        senderId={msg.sender_id}
-                                    />
-                                );
-                            })}
-                            {loading && (
-                                <div className="flex justify-center items-center h-full">
-                                    <Loader2 className="animate-spin text-brand w-8 h-8" />
+                                <div className="space-y-4">
+                                    {Array.from({ length: 4 }, (_, index) => (
+                                        <div key={index} className="glass-surface flex items-center gap-3 rounded-[1.25rem] p-3">
+                                            <Skeleton className="h-12 w-12 rounded-full bg-surface-secondary" />
+                                            <div className="flex-1 space-y-2">
+                                                <Skeleton className="h-4 w-1/3 bg-surface-secondary" />
+                                                <Skeleton className="h-3 w-2/3 bg-surface-secondary" />
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Input Area */}
-                        {isBlocking || isBlocked ? (
-                            <div className="border-t border-line/20 bg-surface/45 p-4 text-center text-faint">
-                                {isBlocking ? (
-                                    <p className="flex items-center justify-center gap-2">
-                                        <ShieldAlert size={18} />
-                                        {messagesCopy.youBlockedThisUser}
-                                    </p>
-                                ) : (
-                                    <p className="flex items-center justify-center gap-2">
-                                        <ShieldAlert size={18} />
-                                        {messagesCopy.youCannotMessageThisUser}
-                                    </p>
-                                )}
+                            </div>
+                        ) : conversations.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-64 p-6 text-center text-faint">
+                                <MessageSquare className="w-12 h-12 mb-4 text-muted" />
+                                <p className="text-lg font-medium text-foreground">{messagesCopy.emptyStateTitle}</p>
+                                <p className="text-sm mt-2">{messagesCopy.emptyStateSubtitle}</p>
+                                <Link href="/search" className="mt-4 rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-4 py-2 text-white transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover">
+                                    {messagesCopy.findPeople}
+                                </Link>
                             </div>
                         ) : (
-                            <form onSubmit={sendMessage} className="border-t border-line/20 bg-surface/45 p-4">
-                                <div className="flex gap-2 items-center">
-                                    <input
-                                        id="message-input"
-                                        name="message"
-                                        type="text"
-                                        value={newMessage}
-                                        onChange={(e) => setNewMessage(e.target.value)}
-                                        placeholder={messagesCopy.typeMessagePlaceholder}
-                                        aria-label={messagesCopy.typeMessageAriaLabel}
-                                        className="flex-grow rounded-full border border-line/30 bg-surface-secondary/70 px-4 py-3 text-foreground placeholder-faint focus:outline-none focus:ring-2 focus:ring-brand/50"
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={!newMessage.trim()}
-                                        className="rounded-full bg-gradient-to-r from-brand-start to-brand-end p-2.5 text-white transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        <Send size={20} />
-                                    </button>
-                                </div>
-                            </form>
+                            conversations.map(convo => (
+                                <ConversationItem
+                                    key={convo.user_id}
+                                    userId={convo.user_id}
+                                    fullName={convo.full_name}
+                                    lastMessage={convo.last_message}
+                                    unread={convo.unread}
+                                    isSelected={selectedChat === convo.user_id}
+                                    isOnline={onlineUsers.has(convo.user_id)}
+                                    onClick={selectChat}
+                                />
+                            ))
                         )}
-
-                        {user && selectedChat && (
-                            <ReportModal
-                                isOpen={isReportModalOpen}
-                                onClose={() => setReportModalOpen(false)}
-                                reportedUserId={selectedChat}
-                            />
-                        )}
-                    </>
-                ) : (
-                    <div className="flex-grow flex flex-col items-center justify-center text-faint">
-                        <div className="glass-surface mb-4 rounded-full p-6">
-                            <Send size={48} className="text-muted" />
-                        </div>
-                        <p className="text-xl font-medium">{messagesCopy.emptyPrompt}</p>
                     </div>
-                )}
-            </div>
+                </div>
+
+                {/* Chat Area */}
+                <div className={`w-full md:w-2/3 lg:w-3/4 flex flex-col bg-background/20 ${!selectedChat ? 'hidden md:flex' : 'flex'}`}>
+                    {selectedChat ? (
+                        <>
+                            {/* Chat Header */}
+                            <div className="border-b border-line/20 bg-surface/45 px-3 py-3 sm:px-4 sm:py-4 backdrop-blur-sm">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        <button onClick={() => setSelectedChat(null)} className="md:hidden text-faint hover:text-foreground p-1">
+                                            <ArrowLeft size={20} />
+                                        </button>
+                                        <Link href={`/user/${selectedChat}`}>
+                                            <Avatar seed={selectedChat} className="w-8 h-8 sm:w-10 sm:h-10 cursor-pointer hover:opacity-80 transition" />
+                                        </Link>
+                                        <Link href={`/user/${selectedChat}`} className="hover:underline">
+                                            <h2 className="font-bold text-base sm:text-lg truncate max-w-[150px] sm:max-w-xs">
+                                                {getDisplayFullName(currentChatUser?.full_name || selectedChatName)}
+                                            </h2>
+                                        </Link>
+                                    </div>
+                                    <div className="flex items-center gap-1 sm:gap-2">
+                                        <button
+                                            onClick={blockUser}
+                                            className="glass-surface p-2 text-faint hover:text-danger transition-colors"
+                                            title={messagesCopy.blockUserTitle}
+                                        >
+                                            <Ban size={18} className="sm:w-5 sm:h-5" />
+                                        </button>
+                                        <button
+                                            onClick={() => setReportModalOpen(true)}
+                                            className="glass-surface p-2 text-faint hover:text-warning transition-colors"
+                                            title={messagesCopy.reportUserTitle}
+                                        >
+                                            <Flag size={18} className="sm:w-5 sm:h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Messages List */}
+                            <div
+                                ref={messagesContainerRef}
+                                onScroll={handleScroll}
+                                data-testid="messages-container"
+                                className="messages-container flex-grow overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4 bg-transparent"
+                            >
+                                {loadingMore && (
+                                    <div className="flex justify-center py-2">
+                                        <Loader2 className="animate-spin text-brand" />
+                                    </div>
+                                )}
+                                {messages.map((msg, index) => {
+                                    const isMe = msg.sender_id === user?.id;
+                                    const showAvatar = !isMe && (index === 0 || messages[index - 1].sender_id !== msg.sender_id);
+                                    return (
+                                        <MessageItem
+                                            key={getMessageRenderKey(msg)}
+                                            content={msg.content}
+                                            createdAt={msg.created_at}
+                                            isMe={isMe}
+                                            showAvatar={showAvatar}
+                                            senderId={msg.sender_id}
+                                        />
+                                    );
+                                })}
+                                {loading && (
+                                    <div className="flex justify-center items-center h-full">
+                                        <Loader2 className="animate-spin text-brand w-8 h-8" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Input Area */}
+                            {isBlocking || isBlocked ? (
+                                <div className="border-t border-line/20 bg-surface/45 p-4 text-center text-faint">
+                                    {isBlocking ? (
+                                        <p className="flex items-center justify-center gap-2">
+                                            <ShieldAlert size={18} />
+                                            {messagesCopy.youBlockedThisUser}
+                                        </p>
+                                    ) : (
+                                        <p className="flex items-center justify-center gap-2">
+                                            <ShieldAlert size={18} />
+                                            {messagesCopy.youCannotMessageThisUser}
+                                        </p>
+                                    )}
+                                </div>
+                            ) : (
+                                <form onSubmit={sendMessage} className="border-t border-line/20 bg-surface/45 p-4">
+                                    <div className="flex gap-2 items-center">
+                                        <input
+                                            id="message-input"
+                                            name="message"
+                                            type="text"
+                                            value={newMessage}
+                                            onChange={(e) => setNewMessage(e.target.value)}
+                                            placeholder={messagesCopy.typeMessagePlaceholder}
+                                            aria-label={messagesCopy.typeMessageAriaLabel}
+                                            className="flex-grow rounded-full border border-line/30 bg-surface-secondary/70 px-4 py-3 text-foreground placeholder-faint focus:outline-none focus:ring-2 focus:ring-brand/50"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!newMessage.trim()}
+                                            className="rounded-full bg-gradient-to-r from-brand-start to-brand-end p-2.5 text-white transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <Send size={20} />
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {user && selectedChat && (
+                                <ReportModal
+                                    isOpen={isReportModalOpen}
+                                    onClose={() => setReportModalOpen(false)}
+                                    reportedUserId={selectedChat}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <div className="flex-grow flex flex-col items-center justify-center text-faint">
+                            <div className="glass-surface mb-4 rounded-full p-6">
+                                <Send size={48} className="text-muted" />
+                            </div>
+                            <p className="text-xl font-medium">{messagesCopy.emptyPrompt}</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

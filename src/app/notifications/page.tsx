@@ -8,9 +8,11 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { componentCopy } from '../../lib/app-copy';
 import { trackAnalyticsEvent } from '../../lib/analytics';
+import { useProfileGate } from '../../hooks/useProfileGate';
 
 const NotificationsPage: React.FC = () => {
     const { notifications, unreadCount, markAsRead } = useNotifications();
+    useProfileGate();
 
     const getNotificationLink = (notification: typeof notifications[number]): string => {
         if (notification.url) return notification.url;
@@ -60,19 +62,19 @@ const NotificationsPage: React.FC = () => {
         <main className="editorial-shell flex-grow py-8 sm:py-12 lg:py-16">
             <div className="glass-panel mb-8 rounded-[2rem] px-6 py-8 sm:px-8 sm:py-10">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="flex items-center gap-3 text-4xl font-bold">
-                    <Bell className="text-brand" />
-                    {componentCopy.notificationCenter.title}
-                </h1>
-                {unreadCount > 0 && (
-                    <button
-                        onClick={() => markAsRead(null)}
-                        className="glass-surface flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:bg-surface-secondary/80"
-                    >
-                        <CheckCheck size={16} />
-                        {componentCopy.notificationCenter.markAllAsRead}
-                    </button>
-                )}
+                    <h1 className="flex items-center gap-3 text-4xl font-bold">
+                        <Bell className="text-brand" />
+                        {componentCopy.notificationCenter.title}
+                    </h1>
+                    {unreadCount > 0 && (
+                        <button
+                            onClick={() => markAsRead(null)}
+                            className="glass-surface flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:bg-surface-secondary/80"
+                        >
+                            <CheckCheck size={16} />
+                            {componentCopy.notificationCenter.markAllAsRead}
+                        </button>
+                    )}
                 </div>
             </div>
 

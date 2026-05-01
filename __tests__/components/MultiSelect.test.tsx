@@ -27,12 +27,12 @@ describe('MultiSelect Component', () => {
         expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
 
-	it('opens dropdown on focus', () => {
-		render(<MultiSelect {...defaultProps} />);
-		const input = screen.getByRole('combobox');
-		fireEvent.focus(input);
-		expect(screen.getByRole('listbox')).toBeInTheDocument();
-	});
+    it('opens dropdown on focus', () => {
+        render(<MultiSelect {...defaultProps} />);
+        const input = screen.getByRole('combobox');
+        fireEvent.focus(input);
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
 
     it('filters options', () => {
         render(<MultiSelect {...defaultProps} />);
@@ -78,7 +78,7 @@ describe('MultiSelect Component', () => {
         const input = screen.getByRole('combobox');
         fireEvent.click(input);
         expect(screen.getByRole('listbox')).toBeInTheDocument();
-        
+
         fireEvent.mouseDown(screen.getByTestId('outside'));
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });

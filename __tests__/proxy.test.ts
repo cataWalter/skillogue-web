@@ -75,8 +75,8 @@ describe('proxy', () => {
           if (name === 'cookie') {
             return cookies.size > 0
               ? Array.from(cookies.entries())
-                  .map(([cookieName, cookieValue]) => `${cookieName}=${cookieValue}`)
-                  .join('; ')
+                .map(([cookieName, cookieValue]) => `${cookieName}=${cookieValue}`)
+                .join('; ')
               : null;
           }
 

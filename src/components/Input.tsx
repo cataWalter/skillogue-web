@@ -21,11 +21,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                     ref={ref}
                     aria-invalid={error ? true : undefined}
                     aria-describedby={errorId}
-                    className={`w-full rounded-xl border bg-surface-secondary/70 px-4 py-3 text-foreground placeholder-faint shadow-glass-sm transition-all duration-200 focus:outline-none ${
-                        error
-                            ? 'border-danger focus:border-danger focus:ring-2 focus:ring-danger/40'
-                            : 'border-line/30 focus:border-brand focus:ring-2 focus:ring-brand/50'
-                    } ${className}`}
+                    className={`w-full rounded-xl border bg-surface-secondary/70 px-4 py-3 text-foreground placeholder-faint shadow-glass-sm transition-all duration-200 focus:outline-none ${error
+                        ? 'border-danger focus:border-danger focus:ring-2 focus:ring-danger/40'
+                        : 'border-line/30 focus:border-brand focus:ring-2 focus:ring-brand/50'
+                        } ${className}`}
                     {...props}
                 />
                 {error && (

@@ -72,7 +72,7 @@ export default function AdminReports() {
                                     {new Date(report.created_at).toLocaleDateString()}
                                 </span>
                             </div>
-                            
+
                             <div className="mb-4 rounded-lg border border-line/25 bg-surface-secondary/55 p-4 text-muted">
                                 "{report.reason}"
                             </div>

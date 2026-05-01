@@ -91,7 +91,7 @@ describe('DeleteAccount', () => {
   });
 
   it('falls back to the unexpected error copy when deletion rejects with a non-Error value', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (global.fetch as jest.Mock).mockRejectedValue('unexpected failure');
 
     render(<DeleteAccount />);

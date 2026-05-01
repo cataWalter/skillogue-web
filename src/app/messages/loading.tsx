@@ -18,15 +18,15 @@ export default function Loading() {
           ))}
         </div>
       </div>
-      
+
       {/* Chat Area Skeleton */}
       <div className="flex-1 p-4 flex flex-col">
         <div className="flex-1 space-y-6 p-4">
-           {[1, 2, 3].map((i) => (
-             <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-               <Skeleton className="h-16 w-1/2 rounded-2xl bg-surface-secondary" />
-             </div>
-           ))}
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+              <Skeleton className="h-16 w-1/2 rounded-2xl bg-surface-secondary" />
+            </div>
+          ))}
         </div>
         <Skeleton className="h-14 w-full rounded-lg mt-4 bg-surface-secondary" />
       </div>

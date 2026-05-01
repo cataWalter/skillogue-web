@@ -87,7 +87,7 @@ describe('FavoritesPage', () => {
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
 
     await act(async () => {
-        render(<FavoritesPage />);
+      render(<FavoritesPage />);
     });
 
     expect(screen.getByText('Favorite Profiles')).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('FavoritesPage', () => {
     fireEvent.click(removeButton);
 
     expect(window.confirm).toHaveBeenCalled();
-    
+
     await waitFor(() => {
       expect(appClient.rpc).toHaveBeenCalledWith('unsave_profile', { target_id: '1' });
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
@@ -168,7 +168,7 @@ describe('FavoritesPage', () => {
 
   it('handles load error', async () => {
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Error' } });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<FavoritesPage />);
 
@@ -191,9 +191,9 @@ describe('FavoritesPage', () => {
 
   it('handles RPC error with fallback', async () => {
     // Simulate a 42883 error code which triggers fallback
-    (appClient.rpc as jest.Mock).mockResolvedValue({ 
-      data: null, 
-      error: { code: '42883', message: 'function does not exist' } 
+    (appClient.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { code: '42883', message: 'function does not exist' }
     });
 
     render(<FavoritesPage />);
@@ -466,7 +466,7 @@ describe('FavoritesPage', () => {
       }
       return { select: jest.fn() };
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<FavoritesPage />);
 
@@ -513,7 +513,7 @@ describe('FavoritesPage', () => {
       }
       return { select: jest.fn() };
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<FavoritesPage />);
 
@@ -560,7 +560,7 @@ describe('FavoritesPage', () => {
       }
       return { select: jest.fn() };
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<FavoritesPage />);
 
@@ -607,7 +607,7 @@ describe('FavoritesPage', () => {
       }
       return { select: jest.fn() };
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<FavoritesPage />);
 
@@ -661,7 +661,7 @@ describe('FavoritesPage', () => {
       }
       return { select: jest.fn() };
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<FavoritesPage />);
 
@@ -715,7 +715,7 @@ describe('FavoritesPage', () => {
       }
       return { select: jest.fn() };
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<FavoritesPage />);
 

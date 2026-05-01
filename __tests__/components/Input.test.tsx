@@ -8,7 +8,7 @@ describe('Input Component', () => {
         render(<Input label="Email Address" id="email" />);
         const label = screen.getByText('Email Address');
         const input = screen.getByLabelText('Email Address');
-        
+
         expect(label).toBeInTheDocument();
         expect(input).toBeInTheDocument();
         expect(input).toHaveAttribute('id', 'email');
@@ -17,10 +17,10 @@ describe('Input Component', () => {
     it('handles value changes', () => {
         const handleChange = jest.fn();
         render(<Input label="Username" id="username" onChange={handleChange} />);
-        
+
         const input = screen.getByLabelText('Username');
         fireEvent.change(input, { target: { value: 'testuser' } });
-        
+
         expect(handleChange).toHaveBeenCalledTimes(1);
     });
 

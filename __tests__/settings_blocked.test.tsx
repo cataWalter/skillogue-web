@@ -128,7 +128,7 @@ describe('BlockedUsersPage', () => {
   });
 
   it('logs and toasts when loading blocked users fails', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (appClient.rpc as jest.Mock).mockResolvedValueOnce({
       data: null,
       error: new Error('load failed'),
@@ -174,7 +174,7 @@ describe('BlockedUsersPage', () => {
   });
 
   it('surfaces the unblock error message when the RPC fails with an Error', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (appClient.rpc as jest.Mock)
       .mockResolvedValueOnce({
         data: [
@@ -207,7 +207,7 @@ describe('BlockedUsersPage', () => {
   });
 
   it('uses the fallback unblock error when the RPC rejects with a non-Error payload', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (appClient.rpc as jest.Mock)
       .mockResolvedValueOnce({
         data: [

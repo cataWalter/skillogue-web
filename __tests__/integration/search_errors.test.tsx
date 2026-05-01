@@ -24,7 +24,7 @@ jest.mock('next/navigation', () => ({
 describe('Search Page Error Handling and Edge Cases', () => {
   const mockUser = { id: 'user-123' };
   const mockSession = { user: mockUser };
-  
+
   const mockPassions = [
     { id: 1, name: 'Adventure' },
     { id: 2, name: 'Coding' },
@@ -43,13 +43,13 @@ describe('Search Page Error Handling and Edge Cases', () => {
         };
       }
       if (table === 'saved_searches') {
-          return {
-              select: jest.fn(() => ({
-                  eq: jest.fn().mockResolvedValue({ data: [], error: null })
-              })),
-              insert: jest.fn(),
-              delete: jest.fn(),
-          }
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [], error: null })
+          })),
+          insert: jest.fn(),
+          delete: jest.fn(),
+        }
       }
       return {
         select: jest.fn(() => ({
@@ -72,7 +72,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: privateUser, error: null });
 
     await act(async () => {
-        render(<SearchPage />);
+      render(<SearchPage />);
     });
 
     await waitFor(() => {
@@ -82,11 +82,11 @@ describe('Search Page Error Handling and Edge Cases', () => {
   });
 
   it('handles search error gracefully', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (appClient.rpc as jest.Mock).mockRejectedValue(new Error('Search failed'));
 
     await act(async () => {
-        render(<SearchPage />);
+      render(<SearchPage />);
     });
 
     await waitFor(() => {
@@ -96,34 +96,34 @@ describe('Search Page Error Handling and Edge Cases', () => {
   });
 
   it('handles save search error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const toastErrorSpy = jest.spyOn(require('react-hot-toast').default, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+    const toastErrorSpy = jest.spyOn(require('react-hot-toast').default, 'error').mockImplementation(() => { });
 
     // Mock successful search first to enable save button
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
-    
+
     // Mock save search failure
     (appClient.from as jest.Mock).mockImplementation((table) => {
-        if (table === 'passions') {
-            return { select: jest.fn().mockResolvedValue({ data: mockPassions, error: null }) };
-        }
-        if (table === 'saved_searches') {
-            return {
-                select: jest.fn(() => ({
-                    eq: jest.fn().mockResolvedValue({ data: [], error: null })
-                })),
-                insert: jest.fn().mockReturnValue({
-                    select: jest.fn().mockReturnValue({
-                        single: jest.fn().mockResolvedValue({ data: null, error: { message: 'Save failed' } })
-                    })
-                })
-            };
-        }
-        return { select: jest.fn(() => ({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) })) };
+      if (table === 'passions') {
+        return { select: jest.fn().mockResolvedValue({ data: mockPassions, error: null }) };
+      }
+      if (table === 'saved_searches') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [], error: null })
+          })),
+          insert: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: null, error: { message: 'Save failed' } })
+            })
+          })
+        };
+      }
+      return { select: jest.fn(() => ({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) })) };
     });
 
     await act(async () => {
-        render(<SearchPage />);
+      render(<SearchPage />);
     });
 
     // Open save modal
@@ -133,15 +133,15 @@ describe('Search Page Error Handling and Edge Cases', () => {
     // Fill form and submit
     const nameInput = screen.getByPlaceholderText('Give this search a name...');
     fireEvent.change(nameInput, { target: { value: 'My Failed Search' } });
-    
+
     const confirmButton = screen.getByText('Save');
     await act(async () => {
-        fireEvent.click(confirmButton);
+      fireEvent.click(confirmButton);
     });
 
     await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('Error saving search:', expect.objectContaining({ message: 'Save failed' }));
-        expect(toastErrorSpy).toHaveBeenCalledWith('Failed to save search');
+      expect(consoleSpy).toHaveBeenCalledWith('Error saving search:', expect.objectContaining({ message: 'Save failed' }));
+      expect(toastErrorSpy).toHaveBeenCalledWith('Failed to save search');
     });
 
     consoleSpy.mockRestore();
@@ -152,7 +152,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
 
     await act(async () => {
-        render(<SearchPage />);
+      render(<SearchPage />);
     });
 
     // Set some filters
@@ -161,52 +161,52 @@ describe('Search Page Error Handling and Edge Cases', () => {
 
     // Wait for "No profiles found" which contains the clear button
     await waitFor(() => {
-        expect(screen.getByText('No profiles found matching your criteria.')).toBeInTheDocument();
+      expect(screen.getByText('No profiles found matching your criteria.')).toBeInTheDocument();
     });
 
     const clearButton = screen.getAllByText('Clear all filters')[0];
-    
+
     await act(async () => {
-        fireEvent.click(clearButton);
+      fireEvent.click(clearButton);
     });
 
     expect(keywordInput).toHaveValue('');
   });
 
   it('deletes a saved search', async () => {
-      const mockSavedSearch = { id: 1, name: 'To Delete', query: 'test' };
-      
-      (appClient.from as jest.Mock).mockImplementation((table) => {
-        if (table === 'passions') return { select: jest.fn().mockResolvedValue({ data: mockPassions, error: null }) };
-        if (table === 'saved_searches') {
-            return {
-                select: jest.fn(() => ({
-                    eq: jest.fn().mockResolvedValue({ data: [mockSavedSearch], error: null })
-                })),
-                delete: jest.fn(() => ({
-                    eq: jest.fn().mockResolvedValue({ error: null })
-                }))
-            };
-        }
-        return { select: jest.fn(() => ({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) })) };
-      });
+    const mockSavedSearch = { id: 1, name: 'To Delete', query: 'test' };
 
-      await act(async () => {
-          render(<SearchPage />);
-      });
+    (appClient.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'passions') return { select: jest.fn().mockResolvedValue({ data: mockPassions, error: null }) };
+      if (table === 'saved_searches') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ data: [mockSavedSearch], error: null })
+          })),
+          delete: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ error: null })
+          }))
+        };
+      }
+      return { select: jest.fn(() => ({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) })) };
+    });
 
-      await waitFor(() => {
-          expect(screen.getByText('To Delete')).toBeInTheDocument();
-      });
+    await act(async () => {
+      render(<SearchPage />);
+    });
 
-      const deleteButton = screen.getByTitle('Delete Search');
-      
-      await act(async () => {
-          fireEvent.click(deleteButton);
-      });
+    await waitFor(() => {
+      expect(screen.getByText('To Delete')).toBeInTheDocument();
+    });
 
-      await waitFor(() => {
-          expect(screen.queryByText('To Delete')).not.toBeInTheDocument();
-      });
+    const deleteButton = screen.getByTitle('Delete Search');
+
+    await act(async () => {
+      fireEvent.click(deleteButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('To Delete')).not.toBeInTheDocument();
+    });
   });
 });

@@ -21,7 +21,7 @@ describe('AnalyticsTracker', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Reset mocks
     (usePathname as jest.Mock).mockReturnValue(mockPathname);
     (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
@@ -30,7 +30,7 @@ describe('AnalyticsTracker', () => {
 
   it('should track page view on mount', () => {
     render(<AnalyticsTracker />);
-    
+
     expect(mockTrackEvent).toHaveBeenCalledWith('page_view', {
       url: '/test-path?param1=value1'
     });
@@ -38,9 +38,9 @@ describe('AnalyticsTracker', () => {
 
   it('should track page view with no search params', () => {
     (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
-    
+
     render(<AnalyticsTracker />);
-    
+
     expect(mockTrackEvent).toHaveBeenCalledWith('page_view', {
       url: '/test-path'
     });
@@ -48,9 +48,9 @@ describe('AnalyticsTracker', () => {
 
   it('should track page view with empty search params', () => {
     (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams(''));
-    
+
     render(<AnalyticsTracker />);
-    
+
     expect(mockTrackEvent).toHaveBeenCalledWith('page_view', {
       url: '/test-path'
     });
@@ -62,11 +62,11 @@ describe('AnalyticsTracker', () => {
       param2: 'value2',
       param3: 'value3'
     });
-    
+
     (useSearchParams as jest.Mock).mockReturnValue(multiParams);
-    
+
     render(<AnalyticsTracker />);
-    
+
     expect(mockTrackEvent).toHaveBeenCalledWith('page_view', {
       url: '/test-path?param1=value1&param2=value2&param3=value3'
     });
@@ -74,7 +74,7 @@ describe('AnalyticsTracker', () => {
 
   it('should not render any content', () => {
     const { container } = render(<AnalyticsTracker />);
-    
+
     expect(container.firstChild).toBeNull();
   });
 
@@ -84,11 +84,11 @@ describe('AnalyticsTracker', () => {
       id: '123&456',
       category: 'test/123'
     });
-    
+
     (useSearchParams as jest.Mock).mockReturnValue(specialParams);
-    
+
     render(<AnalyticsTracker />);
-    
+
     expect(mockTrackEvent).toHaveBeenCalledWith('page_view', {
       url: '/test-path?query=hello+world&id=123%26456&category=test%2F123'
     });
@@ -96,9 +96,9 @@ describe('AnalyticsTracker', () => {
 
   it('should track page view with numeric pathname', () => {
     (usePathname as jest.Mock).mockReturnValue('/user/123/profile');
-    
+
     render(<AnalyticsTracker />);
-    
+
     expect(mockTrackEvent).toHaveBeenCalledWith('page_view', {
       url: '/user/123/profile?param1=value1'
     });

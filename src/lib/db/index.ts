@@ -11,4 +11,4 @@ export const query = async (_text: string, _params?: any[]) => ({
 } as QueryResult);
 
 export const connect = async () => ({} as PoolClient);
-export const end = async () => {};
+export const end = async () => { };

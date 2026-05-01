@@ -35,7 +35,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('../src/lib/analytics', () => ({
-	trackAnalyticsEvent: jest.fn(),
+  trackAnalyticsEvent: jest.fn(),
 }));
 
 // Mock components
@@ -170,7 +170,7 @@ describe('Search Page', () => {
       originalConsoleError(...(args as Parameters<typeof console.error>));
     });
     window.alert = jest.fn();
-    jest.spyOn(require('react-hot-toast').default, 'error').mockImplementation(() => {});
+    jest.spyOn(require('react-hot-toast').default, 'error').mockImplementation(() => { });
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'passions') {
@@ -638,14 +638,14 @@ describe('Search Page', () => {
     });
   });
 
-	it('updates the sort selector after results load', async () => {
-		await renderLoadedSearchPage();
+  it('updates the sort selector after results load', async () => {
+    await renderLoadedSearchPage();
 
-		const sortSelect = screen.getByLabelText('Sort by');
-		fireEvent.change(sortSelect, { target: { value: 'passions' } });
+    const sortSelect = screen.getByLabelText('Sort by');
+    fireEvent.change(sortSelect, { target: { value: 'passions' } });
 
-		expect(sortSelect).toHaveValue('passions');
-	});
+    expect(sortSelect).toHaveValue('passions');
+  });
 
   it('merges duplicate and new results when loading more pages', async () => {
     (appClient.rpc as jest.Mock)

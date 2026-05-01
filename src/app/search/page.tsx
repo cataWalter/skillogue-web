@@ -80,7 +80,8 @@ const formatShortDate = (iso: string | null | undefined) => {
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-const mergeUniqueResults = (existing: SearchResult[], incoming: SearchResult[]) => {    const resultMap = new Map<string, SearchResult>();
+const mergeUniqueResults = (existing: SearchResult[], incoming: SearchResult[]) => {
+    const resultMap = new Map<string, SearchResult>();
 
     for (const result of existing) {
         resultMap.set(result.id, result);

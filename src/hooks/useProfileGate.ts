@@ -10,24 +10,24 @@ import { useAuth } from './useAuth';
  * Must be called at the top level of a page component that is already guarded by ProtectedRoute.
  */
 export function useProfileGate() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+    const { user, loading } = useAuth();
+    const router = useRouter();
 
-  useEffect(() => {
-    if (loading || !user) return;
+    useEffect(() => {
+        if (loading || !user) return;
 
-    const checkProfile = async () => {
-      const { data, error } = await appClient
-        .from('profiles')
-        .select('first_name')
-        .eq('id', user.id)
-        .maybeSingle();
+        const checkProfile = async () => {
+            const { data, error } = await appClient
+                .from('profiles')
+                .select('first_name')
+                .eq('id', user.id)
+                .maybeSingle();
 
-      if (error || !data?.first_name) {
-        router.push('/onboarding');
-      }
-    };
+            if (error || !data?.first_name) {
+                router.push('/onboarding');
+            }
+        };
 
-    void checkProfile();
-  }, [user, loading, router]);
+        void checkProfile();
+    }, [user, loading, router]);
 }

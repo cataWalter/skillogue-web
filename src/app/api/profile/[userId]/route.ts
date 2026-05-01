@@ -8,13 +8,13 @@ export async function GET(
   try {
     const { userId } = await params;
     const service = new AppDataService();
-    
+
     const profile = await service.getProfile(userId);
-    
+
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
-    
+
     return NextResponse.json(profile);
   } catch (error) {
     console.error('Error fetching profile:', error);
@@ -30,9 +30,9 @@ export async function PUT(
     const { userId } = await params;
     const data = await request.json();
     const service = new AppDataService();
-    
+
     const updatedProfile = await service.saveProfile(userId, data);
-    
+
     return NextResponse.json(updatedProfile);
   } catch (error) {
     console.error('Error updating profile:', error);

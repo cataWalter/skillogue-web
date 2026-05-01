@@ -33,13 +33,13 @@ const CookieBanner: React.FC = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button 
+                    <button
                         onClick={acceptCookies}
                         className="px-4 py-2 bg-brand-start hover:bg-brand-start-hover text-white rounded-lg text-sm font-medium transition"
                     >
                         {componentCopy.cookieBanner.accept}
                     </button>
-                    <button 
+                    <button
                         onClick={() => setIsVisible(false)}
                         className="p-2 text-faint hover:text-foreground transition"
                         aria-label={componentCopy.cookieBanner.closeAriaLabel}

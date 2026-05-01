@@ -118,7 +118,7 @@ describe('VerificationPage', () => {
   });
 
   it('logs and falls back to the request state when loading verification status fails', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (appClient.auth.getUser as jest.Mock).mockRejectedValueOnce(new Error('status failed'));
 
     render(<VerificationPage />);
@@ -149,7 +149,7 @@ describe('VerificationPage', () => {
   });
 
   it('shows the authentication error when a verification request is submitted without a user', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     let getUserCalls = 0;
     (appClient.auth.getUser as jest.Mock).mockImplementation(async () => {
       getUserCalls += 1;
@@ -179,7 +179,7 @@ describe('VerificationPage', () => {
   });
 
   it('uses the fallback submission error message when insert fails with a non-Error payload', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockInsert.mockResolvedValueOnce({ error: { message: 'plain failure' } });
 
     render(<VerificationPage />);

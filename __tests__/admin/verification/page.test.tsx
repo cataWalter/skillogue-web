@@ -17,17 +17,17 @@ import { toast } from 'react-hot-toast';
 
 describe('AdminVerification', () => {
   const mockRequests = [
-    { 
-      id: 1, 
-      user_id: 'user-1', 
-      status: 'pending', 
+    {
+      id: 1,
+      user_id: 'user-1',
+      status: 'pending',
       created_at: '2024-01-01T00:00:00Z',
       profiles: { first_name: 'John', last_name: 'Doe', id: 'user-1' }
     },
-    { 
-      id: 2, 
-      user_id: 'user-2', 
-      status: 'pending', 
+    {
+      id: 2,
+      user_id: 'user-2',
+      status: 'pending',
       created_at: '2024-01-02T00:00:00Z',
       profiles: { first_name: 'Jane', last_name: 'Smith', id: 'user-2' }
     },
@@ -45,7 +45,7 @@ describe('AdminVerification', () => {
   };
 
   it('shows loading state initially', () => {
-    mockFetch.mockImplementation(() => new Promise(() => {}));
+    mockFetch.mockImplementation(() => new Promise(() => { }));
     render(<AdminVerification />);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -65,7 +65,7 @@ describe('AdminVerification', () => {
   });
 
   it('should handle fetch error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockFetch.mockRejectedValue(new Error('Network error'));
 
     await renderVerificationPage();
@@ -144,7 +144,7 @@ describe('AdminVerification', () => {
   });
 
   it('should handle approve request rejections', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -221,7 +221,7 @@ describe('AdminVerification', () => {
   });
 
   it('should handle reject request rejections', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockFetch
       .mockResolvedValueOnce({
         ok: true,

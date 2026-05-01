@@ -252,8 +252,8 @@ const Dashboard: React.FC = () => {
                                     <MessageSquare className="w-8 h-8 text-faint" />
                                 </div>
                                 <p className="text-muted mb-4">{dashboardCopy.noConversationsTitle}</p>
-                                <Link 
-                                    href="/search" 
+                                <Link
+                                    href="/search"
                                     className="inline-flex items-center gap-2 text-brand hover:text-brand-soft font-medium transition"
                                 >
                                     {dashboardCopy.startExploring}

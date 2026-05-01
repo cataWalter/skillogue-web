@@ -41,7 +41,7 @@ export default function AdminVerification() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'approved', userId }),
             });
-            
+
             if (response.ok) {
                 toast.success(adminCopy.verification.userVerified);
                 fetchRequests();
@@ -61,7 +61,7 @@ export default function AdminVerification() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'rejected' }),
             });
-            
+
             if (response.ok) {
                 toast.success(adminCopy.verification.rejected);
                 fetchRequests();
@@ -110,14 +110,14 @@ export default function AdminVerification() {
                                     </td>
                                     <td className="p-4">
                                         <div className="flex gap-2">
-                                            <button 
+                                            <button
                                                 onClick={() => handleApprove(req.id, req.user_id)}
                                                 className="rounded-xl bg-approval/10 p-2 text-approval transition hover:bg-approval/15"
                                                 title={adminCopy.verification.approveTitle}
                                             >
                                                 <Check size={18} />
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={() => handleReject(req.id)}
                                                 className="rounded-xl bg-danger/10 p-2 text-danger transition hover:bg-danger/15"
                                                 title={adminCopy.verification.rejectTitle}

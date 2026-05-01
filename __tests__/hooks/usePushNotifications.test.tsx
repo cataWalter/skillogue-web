@@ -149,7 +149,7 @@ describe('usePushNotifications Hook', () => {
   });
 
   it('logs and stops when no public key is available', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     delete process.env.NEXT_PUBLIC_VAPID_KEY;
 
     mockFetch.mockResolvedValueOnce({
@@ -320,7 +320,7 @@ describe('usePushNotifications Hook', () => {
   });
 
   it('does not keep the subscription enabled when the server save fails', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockFetch.mockResolvedValue({ ok: false });
 
     const { result } = renderHook(() => usePushNotifications());
@@ -349,7 +349,7 @@ describe('usePushNotifications Hook', () => {
   });
 
   it('logs config loading failures and keeps the hook idle', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     delete process.env.NEXT_PUBLIC_VAPID_KEY;
     mockFetch.mockRejectedValueOnce(new Error('config failed'));
 
@@ -377,7 +377,7 @@ describe('usePushNotifications Hook', () => {
   });
 
   it('logs configuration fetch failures when the public key request responds unsuccessfully', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     delete process.env.NEXT_PUBLIC_VAPID_KEY;
     mockFetch.mockResolvedValueOnce({ ok: false });
 
@@ -405,7 +405,7 @@ describe('usePushNotifications Hook', () => {
   });
 
   it('logs unsubscribe failures without clearing the subscription', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     const { result } = renderHook(() => usePushNotifications());
 

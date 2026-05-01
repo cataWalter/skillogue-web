@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       p256dh,
       auth,
     });
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error saving push subscription:', error);
@@ -62,7 +62,7 @@ export async function DELETE(request: Request) {
 
     const service = new AppDataService();
     await service.deletePushSubscription(userId, endpoint);
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error removing push subscription:', error);

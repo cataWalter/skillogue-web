@@ -28,7 +28,7 @@ jest.mock('../src/hooks/useAuth', () => ({
 
 describe('SignUp Page', () => {
   const mockPush = jest.fn()
-  
+
   beforeEach(() => {
     (useRouter as jest.Mock).mockReturnValue({
       push: mockPush,
@@ -69,11 +69,11 @@ describe('SignUp Page', () => {
 
   it('submits form successfully', async () => {
     mockSignUp.mockResolvedValue({})
-    
+
     render(<SignUp />)
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } })
-    
+
     // Find checkbox and click it
     const checkbox = screen.getByRole('checkbox')
     fireEvent.click(checkbox)
@@ -103,17 +103,17 @@ describe('SignUp Page', () => {
   })
 
   it('handles signup error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockSignUp.mockRejectedValue(new Error('Signup failed'));
 
     render(<SignUp />);
 
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } });
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } });
-    
+
     const checkbox = screen.getByRole('checkbox');
     fireEvent.click(checkbox);
-    
+
     fireEvent.click(screen.getByRole('button'));
 
     await waitFor(() => {
@@ -124,7 +124,7 @@ describe('SignUp Page', () => {
   });
 
   it('falls back to the default error message when signup rejects with a non-Error value', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockSignUp.mockRejectedValue('Signup failed');
 
     render(<SignUp />);

@@ -14,7 +14,7 @@ export default function NotFound() {
         <p className="text-faint mb-8">
           {notFound.description}
         </p>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link href="/">
             <Button className="w-full sm:w-auto flex items-center justify-center gap-2">

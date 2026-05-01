@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       message,
       category,
     });
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error saving contact request:', error);

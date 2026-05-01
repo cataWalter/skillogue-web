@@ -5,17 +5,17 @@ import '@testing-library/jest-dom';
 
 // Mock useAuth so ReportModal does not require AuthProvider
 jest.mock('../../src/hooks/useAuth', () => ({
-  useAuth: () => ({
-    user: null,
-    session: null,
-    loading: false,
-    signIn: jest.fn(),
-    signUp: jest.fn(),
-    signOut: jest.fn(),
-    resetPassword: jest.fn(),
-    changePassword: jest.fn(),
-    refresh: jest.fn(),
-  }),
+    useAuth: () => ({
+        user: null,
+        session: null,
+        loading: false,
+        signIn: jest.fn(),
+        signUp: jest.fn(),
+        signOut: jest.fn(),
+        resetPassword: jest.fn(),
+        changePassword: jest.fn(),
+        refresh: jest.fn(),
+    }),
 }));
 
 // Mock App Client client

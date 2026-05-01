@@ -90,7 +90,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
             setIsOpen(false);
             setActiveIndex(-1);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, activeIndex, filteredOptions, isAtMax, selected]);
 
     return (

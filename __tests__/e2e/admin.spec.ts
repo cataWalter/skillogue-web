@@ -408,6 +408,11 @@ test.describe('Admin', () => {
         };
       }, adminSessionPayload);
 
+      // Suppress cookie consent banner so it doesn't intercept clicks on mobile viewports
+      await page.addInitScript(() => {
+        localStorage.setItem('cookie-consent', 'accepted');
+      });
+
       await page.context().addCookies([
         {
           name: E2E_AUTH_COOKIE_NAME,

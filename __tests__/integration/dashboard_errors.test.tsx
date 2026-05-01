@@ -48,7 +48,7 @@ describe('Dashboard Error Handling', () => {
     });
 
     it('handles errors in parallel data fetching', async () => {
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
         // Mock successful profile fetch
         const mockProfile = {

@@ -461,47 +461,6 @@ const collections = [
     ],
   },
   {
-    id: 'events',
-    name: 'events',
-    attributes: [
-      varchar('id', 255, { required: true }),
-      varchar('creator_id', 255, { required: true }),
-      varchar('title', 255, { required: true }),
-      varchar('description', 4096),
-      varchar('location_id', 255, { required: true }),
-      datetime('starts_at', { required: true }),
-      datetime('ends_at'),
-      varchar('timezone', 128, { required: true }),
-      integer('capacity'),
-      varchar('status', 64, { required: true }),
-      datetime('created_at', { required: true }),
-      datetime('updated_at', { required: true }),
-    ],
-    indexes: [
-      { key: 'id_unique', type: 'unique', attributes: ['id'], orders: ['ASC'] },
-      { key: 'creator_status_starts_idx', type: 'key', attributes: ['creator_id', 'status', 'starts_at'], orders: ['ASC', 'ASC', 'ASC'] },
-      { key: 'status_starts_idx', type: 'key', attributes: ['status', 'starts_at'], orders: ['ASC', 'ASC'] },
-      { key: 'location_status_starts_idx', type: 'key', attributes: ['location_id', 'status', 'starts_at'], orders: ['ASC', 'ASC', 'ASC'] },
-      { key: 'starts_at_idx', type: 'key', attributes: ['starts_at'], orders: ['ASC'] },
-    ],
-  },
-  {
-    id: 'event_rsvps',
-    name: 'event_rsvps',
-    attributes: [
-      varchar('id', 255, { required: true }),
-      varchar('event_id', 255, { required: true }),
-      varchar('user_id', 255, { required: true }),
-      datetime('created_at', { required: true }),
-    ],
-    indexes: [
-      { key: 'id_unique', type: 'unique', attributes: ['id'], orders: ['ASC'] },
-      { key: 'event_idx', type: 'key', attributes: ['event_id'], orders: ['ASC'] },
-      { key: 'user_idx', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
-      { key: 'event_user_unique', type: 'unique', attributes: ['event_id', 'user_id'], orders: ['ASC', 'ASC'] },
-    ],
-  },
-  {
     id: 'notifications',
     name: 'notifications',
     attributes: [

@@ -8,7 +8,7 @@ import { AppDataService } from './app-data-service';
 
 export const getAppData = (sessionSecret?: string) => {
   const service = new AppDataService(sessionSecret);
-  
+
   return {
     profiles: {
       get: (id: string) => service.getProfile(id),

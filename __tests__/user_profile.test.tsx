@@ -94,7 +94,7 @@ jest.mock('react-hot-toast', () => ({
 }));
 
 jest.mock('../src/lib/analytics', () => ({
-	trackAnalyticsEvent: jest.fn(),
+  trackAnalyticsEvent: jest.fn(),
 }));
 
 jest.mock('../src/components/ReportModal', () => ({
@@ -154,9 +154,9 @@ describe('UserProfile', () => {
       const stringArgs = args.filter((value): value is string => typeof value === 'string');
 
       if (
-			stringArgs.some((value) => value.includes('not wrapped in act')) ||
-			args.some((value) => String(value).includes('Not implemented: navigation'))
-		) {
+        stringArgs.some((value) => value.includes('not wrapped in act')) ||
+        args.some((value) => String(value).includes('Not implemented: navigation'))
+      ) {
         return;
       }
 
@@ -164,7 +164,7 @@ describe('UserProfile', () => {
     });
     (trackAnalyticsEvent as jest.Mock).mockReset();
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
-    
+
     // Mock profile fetch
     (appClient.from as jest.Mock).mockImplementation(
       createFromMock({
@@ -229,21 +229,21 @@ describe('UserProfile', () => {
 
   it('handles block user error', async () => {
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-        if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
-        if (fn === 'is_saved_profile') return Promise.resolve({ data: false, error: null });
-        if (fn === 'block_user') return Promise.resolve({ error: { message: 'Block failed' } });
-        return Promise.resolve({ data: null, error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+      if (fn === 'is_saved_profile') return Promise.resolve({ data: false, error: null });
+      if (fn === 'block_user') return Promise.resolve({ error: { message: 'Block failed' } });
+      return Promise.resolve({ data: null, error: null });
     });
 
     window.confirm = jest.fn(() => true);
 
-  await renderLoadedUserProfilePage();
+    await renderLoadedUserProfilePage();
 
     const blockButton = screen.getByTitle('Block User');
     fireEvent.click(blockButton);
 
     await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Error blocking user');
+      expect(toast.error).toHaveBeenCalledWith('Error blocking user');
     });
   });
 
@@ -267,59 +267,59 @@ describe('UserProfile', () => {
 
   it('unblocks a user', async () => {
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-        if (fn === 'is_blocked') return Promise.resolve({ data: true, error: null }); // Initially blocked
-        if (fn === 'is_saved_profile') return Promise.resolve({ data: false, error: null });
-        if (fn === 'unblock_user') return Promise.resolve({ error: null });
-        return Promise.resolve({ data: null, error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: true, error: null }); // Initially blocked
+      if (fn === 'is_saved_profile') return Promise.resolve({ data: false, error: null });
+      if (fn === 'unblock_user') return Promise.resolve({ error: null });
+      return Promise.resolve({ data: null, error: null });
     });
 
     window.confirm = jest.fn(() => true);
 
-  await renderLoadedUserProfilePage();
+    await renderLoadedUserProfilePage();
 
     const unblockButton = screen.getByTitle('Unblock User');
     fireEvent.click(unblockButton);
 
     await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith('User unblocked');
+      expect(toast.success).toHaveBeenCalledWith('User unblocked');
     });
   });
 
   it('toggles save profile (unsave)', async () => {
     // Test Unsave
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-        if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
-        if (fn === 'is_saved') return Promise.resolve({ data: true, error: null }); // Initially saved
-        if (fn === 'unsave_profile') return Promise.resolve({ error: null });
-        return Promise.resolve({ data: null, error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+      if (fn === 'is_saved') return Promise.resolve({ data: true, error: null }); // Initially saved
+      if (fn === 'unsave_profile') return Promise.resolve({ error: null });
+      return Promise.resolve({ data: null, error: null });
     });
 
-      await renderLoadedUserProfilePage();
+    await renderLoadedUserProfilePage();
 
     const unsaveButton = screen.getByTitle('Remove from Favorites');
     fireEvent.click(unsaveButton);
 
     await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith('Removed from favorites');
+      expect(toast.success).toHaveBeenCalledWith('Removed from favorites');
     });
   });
 
   it('shows blocked by user state', async () => {
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-        if (fn === 'is_blocked_by') return Promise.resolve({ data: true, error: null });
-        return Promise.resolve({ data: null, error: null });
+      if (fn === 'is_blocked_by') return Promise.resolve({ data: true, error: null });
+      return Promise.resolve({ data: null, error: null });
     });
 
-      await renderUserProfilePage();
+    await renderUserProfilePage();
 
     await waitFor(() => {
-        expect(screen.getByText('Profile Unavailable')).toBeInTheDocument();
-        expect(screen.getByText('You cannot view this profile.')).toBeInTheDocument();
+      expect(screen.getByText('Profile Unavailable')).toBeInTheDocument();
+      expect(screen.getByText('You cannot view this profile.')).toBeInTheDocument();
     });
   });
 
   it('shows error state when profile fetch fails', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (appClient.from as jest.Mock).mockImplementation(
       createFromMock({
         profiles: createProfileTableMock({ data: null, error: { message: 'Profile not found' } }),
@@ -329,7 +329,7 @@ describe('UserProfile', () => {
     await renderUserProfilePage();
 
     await waitFor(() => {
-        expect(screen.getByText('Could not find this user.')).toBeInTheDocument();
+      expect(screen.getByText('Could not find this user.')).toBeInTheDocument();
     });
 
     consoleSpy.mockRestore();
@@ -340,57 +340,57 @@ describe('UserProfile', () => {
 
   it('handles save profile error', async () => {
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-        if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
-        if (fn === 'is_saved') return Promise.resolve({ data: false, error: null });
-        if (fn === 'save_profile') return Promise.resolve({ error: { message: 'Save failed' } });
-        return Promise.resolve({ data: null, error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+      if (fn === 'is_saved') return Promise.resolve({ data: false, error: null });
+      if (fn === 'save_profile') return Promise.resolve({ error: { message: 'Save failed' } });
+      return Promise.resolve({ data: null, error: null });
     });
 
-      await renderLoadedUserProfilePage();
+    await renderLoadedUserProfilePage();
 
     const saveButton = screen.getByTitle('Add to Favorites');
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Failed to save favorite');
+      expect(toast.error).toHaveBeenCalledWith('Failed to save favorite');
     });
   });
 
   it('handles unsave profile error', async () => {
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-        if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
-        if (fn === 'is_saved') return Promise.resolve({ data: true, error: null });
-        if (fn === 'unsave_profile') return Promise.resolve({ error: { message: 'Unsave failed' } });
-        return Promise.resolve({ data: null, error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: false, error: null });
+      if (fn === 'is_saved') return Promise.resolve({ data: true, error: null });
+      if (fn === 'unsave_profile') return Promise.resolve({ error: { message: 'Unsave failed' } });
+      return Promise.resolve({ data: null, error: null });
     });
 
-      await renderLoadedUserProfilePage();
+    await renderLoadedUserProfilePage();
 
     const unsaveButton = screen.getByTitle('Remove from Favorites');
     fireEvent.click(unsaveButton);
 
     await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Failed to remove favorite');
+      expect(toast.error).toHaveBeenCalledWith('Failed to remove favorite');
     });
   });
 
   it('handles unblock user error', async () => {
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
-        if (fn === 'is_blocked') return Promise.resolve({ data: true, error: null });
-        if (fn === 'is_saved_profile') return Promise.resolve({ data: false, error: null });
-        if (fn === 'unblock_user') return Promise.resolve({ error: { message: 'Unblock failed' } });
-        return Promise.resolve({ data: null, error: null });
+      if (fn === 'is_blocked') return Promise.resolve({ data: true, error: null });
+      if (fn === 'is_saved_profile') return Promise.resolve({ data: false, error: null });
+      if (fn === 'unblock_user') return Promise.resolve({ error: { message: 'Unblock failed' } });
+      return Promise.resolve({ data: null, error: null });
     });
 
     window.confirm = jest.fn(() => true);
 
-  await renderLoadedUserProfilePage();
+    await renderLoadedUserProfilePage();
 
     const unblockButton = screen.getByTitle('Unblock User');
     fireEvent.click(unblockButton);
 
     await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Error unblocking user');
+      expect(toast.error).toHaveBeenCalledWith('Error unblocking user');
     });
   });
 
@@ -458,8 +458,8 @@ describe('UserProfile', () => {
     fireEvent.click(screen.getByTitle('Report User'));
     expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'true');
 
-		fireEvent.click(screen.getByRole('button', { name: 'Close report modal' }));
-		expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Close report modal' }));
+    expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'false');
 
     fireEvent.click(screen.getByRole('link', { name: 'Message' }));
     expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_result_clicked', {

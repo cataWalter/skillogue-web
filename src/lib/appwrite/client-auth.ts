@@ -8,4 +8,4 @@ export const fetchAuthUser = async () => ({
   session: { $id: 'test-session' },
 });
 
-export const signOutAuth = async () => {};
+export const signOutAuth = async () => { };

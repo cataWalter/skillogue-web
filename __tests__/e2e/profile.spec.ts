@@ -61,14 +61,14 @@ test.describe('Static Pages', () => {
   test.describe('Contact Page', () => {
     test('should display contact page', async ({ page }) => {
       await page.goto('/contact');
-      
+
       // Check for heading
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     });
 
     test('should have contact form', async ({ page }) => {
       await page.goto('/contact');
-      
+
       // Check for form elements
       // At least one should be visible or page should load
       await page.waitForTimeout(500);
@@ -78,14 +78,14 @@ test.describe('Static Pages', () => {
   test.describe('Privacy Policy Page', () => {
     test('should display privacy policy page', async ({ page }) => {
       await page.goto('/privacy-policy');
-      
+
       // Check for heading
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     });
 
     test('should have privacy policy content', async ({ page }) => {
       await page.goto('/privacy-policy');
-      
+
       // Check for privacy policy heading (avoiding strict mode violation)
       await expect(page.locator('h1').getByText(/privacy/i)).toBeVisible();
     });
@@ -94,14 +94,14 @@ test.describe('Static Pages', () => {
   test.describe('Terms of Service Page', () => {
     test('should display terms of service page', async ({ page }) => {
       await page.goto('/terms-of-service');
-      
+
       // Check for heading
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     });
 
     test('should have terms of service content', async ({ page }) => {
       await page.goto('/terms-of-service');
-      
+
       // Check for terms heading (avoiding strict mode violation)
       await expect(page.locator('h1').getByText(/terms/i)).toBeVisible();
     });

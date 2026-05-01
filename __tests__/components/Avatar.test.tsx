@@ -31,8 +31,8 @@ describe('Avatar Component', () => {
 
     it('renders loading state initially', async () => {
         // Mock a pending promise so state doesn't update during test
-        (createAvatar as jest.Mock).mockReturnValue(new Promise(() => {}));
-        
+        (createAvatar as jest.Mock).mockReturnValue(new Promise(() => { }));
+
         render(<Avatar seed="test-seed" />);
         const loader = screen.getByLabelText('Loading avatar');
         expect(loader).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('Avatar Component', () => {
     });
 
     it('handles generation error gracefully', async () => {
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
         (createAvatar as jest.Mock).mockRejectedValue(new Error('Generation failed'));
 
         render(<Avatar seed="error-seed" />);
@@ -64,7 +64,7 @@ describe('Avatar Component', () => {
         await waitFor(() => {
             expect(consoleSpy).toHaveBeenCalledWith('Failed to generate avatar:', expect.any(Error));
         });
-        
+
         expect(screen.getByLabelText('Loading avatar')).toBeInTheDocument();
         consoleSpy.mockRestore();
     });

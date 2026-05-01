@@ -41,7 +41,7 @@ const createDeferred = <T,>() => {
 
 describe('Dashboard Integration Flow', () => {
   const mockUser = { id: 'user-123', email: 'test@example.com' };
-  
+
   const mockProfile = {
     id: 'user-123',
     first_name: 'Integration',
@@ -51,14 +51,14 @@ describe('Dashboard Integration Flow', () => {
   };
 
   const mockConversations = [
-    { 
+    {
       conversation_id: 'user-2',
-      user_id: 'user-2', 
-      first_name: 'Alice', 
+      user_id: 'user-2',
+      first_name: 'Alice',
       last_name: 'Wonderland',
-      last_message: 'Hi', 
+      last_message: 'Hi',
       last_message_time: '2023-01-01',
-      unread: 1 
+      unread: 1
     },
   ];
 
@@ -72,7 +72,7 @@ describe('Dashboard Integration Flow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Default successful auth
     (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
 
@@ -156,7 +156,7 @@ describe('Dashboard Integration Flow', () => {
       return { select: jest.fn() };
     });
 
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<Dashboard />);
 
@@ -224,7 +224,7 @@ describe('Dashboard Integration Flow', () => {
   });
 
   it('redirects to onboarding if profile is incomplete', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     // Mock incomplete profile
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
@@ -247,7 +247,7 @@ describe('Dashboard Integration Flow', () => {
   });
 
   it('redirects to onboarding if the profile gate returns an error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'profiles') {
         return createProfileSelectMock({ data: null, error: { message: 'profile failed' } });
@@ -307,7 +307,7 @@ describe('Dashboard Integration Flow', () => {
   });
 
   it('clears the skeleton when the initial dashboard fetch throws', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     (appClient.auth.getUser as jest.Mock).mockRejectedValueOnce(new Error('dashboard failed'));
 
     render(<Dashboard />);

@@ -14,7 +14,7 @@ export class AppwriteRepository {
   private databaseId: string;
 
   constructor(sessionSecret?: string, userAgent?: string) {
-    this.databases = sessionSecret 
+    this.databases = sessionSecret
       ? createAppwriteSessionDatabases(sessionSecret, userAgent)
       : createAppwriteAdminDatabases(userAgent);
     this.databaseId = getAppwriteDatabaseId();

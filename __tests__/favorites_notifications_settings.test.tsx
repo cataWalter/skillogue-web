@@ -55,7 +55,7 @@ jest.mock('../src/context/NotificationContext', () => ({
 }));
 
 jest.mock('../src/lib/analytics', () => ({
-	trackAnalyticsEvent: jest.fn(),
+  trackAnalyticsEvent: jest.fn(),
 }));
 
 jest.mock('../src/components/PushNotificationToggle', () => ({
@@ -181,9 +181,9 @@ describe('Notifications integration tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
-		mockMarkAsRead.mockReset();
-		mockNotificationsState.notifications = [];
-		mockNotificationsState.unreadCount = 0;
+    mockMarkAsRead.mockReset();
+    mockNotificationsState.notifications = [];
+    mockNotificationsState.unreadCount = 0;
   });
 
   it('displays empty state when no notifications', async () => {

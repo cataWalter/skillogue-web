@@ -23,10 +23,10 @@ describe('useAuth Hook', () => {
         });
 
         const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
-        
+
         // Initially loading is true before effect runs
         expect(result.current.loading).toBe(true);
-        
+
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
         });

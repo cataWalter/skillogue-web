@@ -83,8 +83,8 @@ export async function proxy(request: NextRequest) {
   const profileCompletion = e2eSession
     ? 'complete'
     : shouldCheckProfileCompletion && sessionUser && sessionToken
-    ? await getProfileCompletionState(sessionToken, sessionUser.id)
-    : 'unknown';
+      ? await getProfileCompletionState(sessionToken, sessionUser.id)
+      : 'unknown';
 
   // If trying to access protected route without session, redirect to login
   if (isProtectedRoute && !isAuthenticated) {
@@ -109,5 +109,3 @@ export async function proxy(request: NextRequest) {
 
   return NextResponse.next();
 }
-
-

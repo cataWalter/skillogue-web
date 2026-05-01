@@ -26,7 +26,7 @@ export const profileCopy = {
 export const dashboardCopy = {
   discoverTitle: 'Discover',
   discoverSubtitle: 'Find new connections',
-  fetchError: 'Failed to load dashboard data. Please refresh the page.'
+  fetchError: 'Failed to load dashboard data. Please refresh the page.',
   messagesSubtitle: 'View your conversations',
   noConversationsTitle: 'No conversations yet.',
   profileSubtitle: 'Update your details',

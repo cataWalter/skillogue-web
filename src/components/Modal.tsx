@@ -83,7 +83,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer 
     if (!isOpen || !mounted) return null;
 
     const content = (
-        <div 
+        <div
             data-testid="modal-backdrop"
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-overlay/80 backdrop-blur-glass transition-opacity"
             onClick={handleBackdropClick}
@@ -91,7 +91,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer 
             aria-modal="true"
             aria-labelledby="modal-title"
         >
-            <div 
+            <div
                 ref={modalRef}
                 className="glass-panel max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[1.75rem] animate-in fade-in zoom-in duration-200"
             >

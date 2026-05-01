@@ -401,10 +401,10 @@ body {
 
 body::before {
     background:
-    radial-gradient(ellipse at 20% 20%, rgb(var(--color-hero-mesh-brand-rgb) / 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgb(var(--color-hero-mesh-connection-rgb) / 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 40% 60%, rgb(var(--color-hero-mesh-discovery-rgb) / 0.05) 0%, transparent 40%),
-    radial-gradient(ellipse at 60% 20%, rgb(var(--color-hero-mesh-approval-rgb) / 0.05) 0%, transparent 40%);
+        radial-gradient(ellipse at 20% 20%, rgb(var(--color-hero-mesh-brand-rgb) / 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgb(var(--color-hero-mesh-connection-rgb) / 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 40% 60%, rgb(var(--color-hero-mesh-discovery-rgb) / 0.05) 0%, transparent 40%),
+        radial-gradient(ellipse at 60% 20%, rgb(var(--color-hero-mesh-approval-rgb) / 0.05) 0%, transparent 40%);
 }
 
 .gradient-mesh {
@@ -417,10 +417,10 @@ body::before {
 
 .light body::before {
     background:
-    radial-gradient(ellipse at 18% 18%, rgb(var(--color-hero-mesh-brand-rgb) / 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 82% 82%, rgb(var(--color-hero-mesh-connection-rgb) / 0.12) 0%, transparent 52%),
-    radial-gradient(ellipse at 42% 62%, rgb(var(--color-hero-mesh-discovery-rgb) / 0.08) 0%, transparent 42%),
-    radial-gradient(ellipse at 64% 22%, rgb(var(--color-hero-mesh-approval-rgb) / 0.08) 0%, transparent 42%);
+        radial-gradient(ellipse at 18% 18%, rgb(var(--color-hero-mesh-brand-rgb) / 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 82% 82%, rgb(var(--color-hero-mesh-connection-rgb) / 0.12) 0%, transparent 52%),
+        radial-gradient(ellipse at 42% 62%, rgb(var(--color-hero-mesh-discovery-rgb) / 0.08) 0%, transparent 42%),
+        radial-gradient(ellipse at 64% 22%, rgb(var(--color-hero-mesh-approval-rgb) / 0.08) 0%, transparent 42%);
 }
 
 .light .gradient-mesh {
@@ -500,9 +500,12 @@ textarea:focus-visible {
 }
 
 @keyframes pulse-glow {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 0 0 rgb(var(--color-pulse-glow-rgb) / 0.4);
     }
+
     50% {
         box-shadow: 0 0 0 8px rgb(var(--color-pulse-glow-rgb) / 0);
     }
@@ -516,29 +519,26 @@ textarea:focus-visible {
     0% {
         background-position: -200% 0;
     }
+
     100% {
         background-position: 200% 0;
     }
 }
 
 .animate-shimmer {
-    background: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.05) 50%,
-        rgba(255, 255, 255, 0) 100%
-    );
+    background: linear-gradient(90deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.05) 50%,
+            rgba(255, 255, 255, 0) 100%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
 }
 
 .light .animate-shimmer {
-    background: linear-gradient(
-        90deg,
-        rgba(148, 163, 184, 0) 0%,
-        rgba(148, 163, 184, 0.12) 50%,
-        rgba(148, 163, 184, 0) 100%
-    );
+    background: linear-gradient(90deg,
+            rgba(148, 163, 184, 0) 0%,
+            rgba(148, 163, 184, 0.12) 50%,
+            rgba(148, 163, 184, 0) 100%);
 }
 
 .date-input-light-icon {
