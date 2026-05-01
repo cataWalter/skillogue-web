@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
 import { isAdminEmail } from '../lib/admin';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, User, Settings, LogOut, Heart, MessageCircle, Bell, Search, CalendarDays, PartyPopper, ShieldAlert } from 'lucide-react';
+import { Menu, X, User, Settings, LogOut, Heart, MessageCircle, Bell, Search, ShieldAlert } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { componentCopy } from '../lib/app-copy';
 import ThemeToggle from './ThemeToggle';
@@ -35,8 +35,6 @@ const Navbar = () => {
   const navItems = user ? [
     ...(isAdminEmail(user.email) ? [{ href: '/admin', icon: ShieldAlert, label: 'Admin' }] : []),
     { href: '/search', icon: Search, label: componentCopy.navbar.search },
-    { href: '/events', icon: PartyPopper, label: componentCopy.navbar.events },
-    { href: '/calendar', icon: CalendarDays, label: componentCopy.navbar.calendar },
     { href: '/favorites', icon: Heart, label: componentCopy.navbar.favorites },
     { href: '/messages', icon: MessageCircle, label: componentCopy.navbar.messages },
     { href: '/notifications', icon: Bell, label: componentCopy.navbar.notifications },

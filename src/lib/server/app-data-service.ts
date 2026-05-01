@@ -8,7 +8,6 @@ import {
 } from '@/lib/appwrite/server';
 import { calculateProfileAge, normalizeBirthDate } from '@/lib/profile-age';
 import staticMasterData from '@/lib/static-master-data';
-import type { CalendarEventFilter, EventLocation, EventSearchFilters, EventSummary } from '@/types/events';
 import { AppwriteRepository } from './appwrite-repo';
 
 type StaticPassion = {
@@ -16,7 +15,17 @@ type StaticPassion = {
   name: string;
 };
 
-type StaticLocation = EventLocation;
+type StaticLanguage = {
+  id: string;
+  name: string;
+};
+
+type StaticLocation = {
+  id: string;
+  city: string;
+  region: string;
+  country: string;
+};
 
 type CurrentUser = {
   id: string;
@@ -52,10 +61,8 @@ type SelectResponse<T = any> = {
 };
 
 const BATCH_SIZE = 100;
-const STATIC_COLLECTION_NAMES = new Set(['locations', 'passions']);
+const STATIC_COLLECTION_NAMES = new Set(['locations', 'passions', 'languages']);
 const ADMIN_SETTINGS_DOCUMENT_ID = 'global';
-const OPTIONAL_EVENT_COLLECTION_NAMES = new Set(['events', 'event_rsvps']);
-const EVENT_VISIBLE_STATUSES = new Set(['published', 'cancelled']);
 
 const splitTopLevel = (value: string) => {
   const parts: string[] = [];
@@ -484,7 +491,8 @@ const isOnOrAfter = (value: string | null | undefined, cutoff: number) => {
 
 function getStaticCollectionData(collection: 'locations'): StaticLocation[];
 function getStaticCollectionData(collection: 'passions'): StaticPassion[];
-function getStaticCollectionData(collection: string): StaticLocation[] | StaticPassion[] | null;
+function getStaticCollectionData(collection: 'languages'): StaticLanguage[];
+function getStaticCollectionData(collection: string): StaticLocation[] | StaticPassion[] | StaticLanguage[] | null;
 function getStaticCollectionData(collection: string) {
   if (collection === 'locations') {
     return staticMasterData.locations.map((location) => ({ ...location }));
@@ -492,6 +500,10 @@ function getStaticCollectionData(collection: string) {
 
   if (collection === 'passions') {
     return staticMasterData.passions.map((passion) => ({ ...passion }));
+  }
+
+  if (collection === 'languages') {
+    return staticMasterData.languages.map((language: StaticLanguage) => ({ ...language }));
   }
 
   return null;
@@ -624,7 +636,8 @@ export class AppDataService {
 
   private getStaticCollectionDocuments(collection: 'locations'): StaticLocation[];
   private getStaticCollectionDocuments(collection: 'passions'): StaticPassion[];
-  private getStaticCollectionDocuments(collection: string): StaticLocation[] | StaticPassion[] | null;
+  private getStaticCollectionDocuments(collection: 'languages'): StaticLanguage[];
+  private getStaticCollectionDocuments(collection: string): StaticLocation[] | StaticPassion[] | StaticLanguage[] | null;
   private getStaticCollectionDocuments(collection: string) {
     return getStaticCollectionData(collection);
   }
@@ -1453,6 +1466,14 @@ export class AppDataService {
     }
 
     return this.getProfile(id);
+  }
+
+  async listLanguages(): Promise<StaticLanguage[]> {
+    const languages = this.getStaticCollectionDocuments('languages');
+
+    return languages?.sort((left, right) =>
+      String(left.name ?? '').localeCompare(String(right.name ?? ''))
+    ) ?? [];
   }
 
   async listPassions(): Promise<StaticPassion[]> {

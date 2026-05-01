@@ -15,12 +15,12 @@ import { Suspense } from "react";
 // This is needed because the app uses real-time features and authentication
 export const dynamic = 'force-dynamic';
 
-const spaceGrotesk = Space_Grotesk({ 
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: '--font-space-grotesk',
 });
 
-const outfit = Outfit({ 
+const outfit = Outfit({
   subsets: ["latin"],
   variable: '--font-outfit',
 });
@@ -106,17 +106,17 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <AuthProvider>
             <NotificationProvider>
-            <Suspense fallback={null}>
-              <AnalyticsTracker />
-            </Suspense>
-            <Navbar />
-            <main id="main-content" className="flex-grow flex flex-col">
-              {children}
-            </main>
-            <Footer />
-            <CookieBanner />
-            <Toaster position="top-right" />
-          </NotificationProvider>
+              <Suspense fallback={null}>
+                <AnalyticsTracker />
+              </Suspense>
+              <Navbar />
+              <main id="main-content" className="flex-grow flex flex-col">
+                {children}
+              </main>
+              <Footer />
+              <CookieBanner />
+              <Toaster position="top-right" />
+            </NotificationProvider>
           </AuthProvider>
         </Suspense>
       </body>

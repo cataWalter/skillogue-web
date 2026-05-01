@@ -1,9 +1,18 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { componentCopy } from '../lib/app-copy';
+
+const FOCUSABLE_SELECTORS = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+].join(', ');
 
 interface ModalProps {
     isOpen: boolean;
@@ -22,21 +31,48 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer 
         return () => setMounted(false);
     }, []);
 
+    const trapFocus = useCallback((e: KeyboardEvent) => {
+        if (e.key !== 'Tab' || !modalRef.current) return;
+        const focusable = Array.from(
+            modalRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS)
+        ).filter((el) => !el.closest('[aria-hidden="true"]'));
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+            if (document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            }
+        } else {
+            if (document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    }, []);
+
     useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { onClose(); return; }
+            trapFocus(e);
         };
 
         if (isOpen) {
-            document.addEventListener('keydown', handleEscape);
+            document.addEventListener('keydown', handleKeyDown);
             document.body.style.overflow = 'hidden';
+            // Move focus into the modal on open
+            requestAnimationFrame(() => {
+                const focusable = modalRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTORS);
+                focusable?.focus();
+            });
         }
 
         return () => {
-            document.removeEventListener('keydown', handleEscape);
+            document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = 'unset';
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, trapFocus]);
 
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (modalRef.current && !modalRef.current.contains(e.target as Node)) {

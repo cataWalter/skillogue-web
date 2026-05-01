@@ -80,7 +80,6 @@ const Avatar: React.FC<AvatarProps> = ({ seed, className, alt }) => {
                 alt={alt || componentCopy.avatar.defaultAlt}
                 fill
                 className="rounded-full object-cover"
-                unoptimized
             />
         </div>
     );

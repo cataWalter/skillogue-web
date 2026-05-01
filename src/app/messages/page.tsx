@@ -13,6 +13,7 @@ import Skeleton from '../../components/Skeleton';
 import { trackAnalyticsEvent } from '../../lib/analytics';
 import { getDisplayFullName, getDisplayName } from '@/lib/profile-display';
 import { commonLabels, messagesCopy } from '@/lib/app-copy';
+import { useProfileGate } from '@/hooks/useProfileGate';
 
 import type { Profile, Message, Conversation } from '@/lib/messages-cache';
 import {
@@ -62,6 +63,7 @@ const mergeUniqueMessages = (existing: Message[], incoming: Message[]) => {
 };
 
 const Messages: React.FC = () => {
+    useProfileGate();
     const searchParams = useSearchParams();
     const chatWith = searchParams?.get('conversation'); // Changed from 'with' to 'conversation' to match Dashboard link
     const router = useRouter();

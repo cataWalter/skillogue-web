@@ -170,6 +170,7 @@ describe('Search Page', () => {
       originalConsoleError(...(args as Parameters<typeof console.error>));
     });
     window.alert = jest.fn();
+    jest.spyOn(require('react-hot-toast').default, 'error').mockImplementation(() => {});
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
     (appClient.from as jest.Mock).mockImplementation((table) => {
       if (table === 'passions') {
@@ -409,7 +410,7 @@ describe('Search Page', () => {
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Failed to save search');
+      expect(require('react-hot-toast').default.error).toHaveBeenCalledWith('Failed to save search');
     });
   });
 

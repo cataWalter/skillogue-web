@@ -73,7 +73,7 @@ export default function Home() {
 
             {/* Right: passion tag cloud — desktop only */}
             <div className="hidden lg:block">
-              <p className="mb-3 text-right text-xs font-semibold uppercase tracking-widest text-faint">500+ passions to explore</p>
+              <p className="mb-3 text-right text-xs font-semibold uppercase tracking-widest text-faint">100 passions to explore</p>
               <div className="flex flex-wrap justify-end gap-2.5" aria-hidden="true">
                 {PASSION_TAGS.map((tag) => (
                   <span

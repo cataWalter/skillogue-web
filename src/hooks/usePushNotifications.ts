@@ -80,10 +80,32 @@ const supportsPushNotifications = () => {
 export const usePushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setIsSupported(supportsPushNotifications());
+    const supported = supportsPushNotifications();
+    setIsSupported(supported);
+
+    if (!supported) {
+      setLoading(false);
+      return;
+    }
+
+    navigator.serviceWorker.getRegistration().then((registration) => {
+      if (!registration) {
+        setLoading(false);
+        return undefined;
+      }
+      return registration.pushManager.getSubscription();
+    }).then((existing) => {
+      if (existing) {
+        setSubscription(existing);
+      }
+    }).catch((error) => {
+      console.error('Error reading existing push subscription:', error);
+    }).finally(() => {
+      setLoading(false);
+    });
   }, []);
 
   const requestPermission = async () => {

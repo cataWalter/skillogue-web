@@ -97,7 +97,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
 
   it('handles save search error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+    const toastErrorSpy = jest.spyOn(require('react-hot-toast').default, 'error').mockImplementation(() => {});
 
     // Mock successful search first to enable save button
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
@@ -141,11 +141,11 @@ describe('Search Page Error Handling and Edge Cases', () => {
 
     await waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith('Error saving search:', expect.objectContaining({ message: 'Save failed' }));
-        expect(alertSpy).toHaveBeenCalledWith('Failed to save search');
+        expect(toastErrorSpy).toHaveBeenCalledWith('Failed to save search');
     });
 
     consoleSpy.mockRestore();
-    alertSpy.mockRestore();
+    toastErrorSpy.mockRestore();
   });
 
   it('clears all filters', async () => {

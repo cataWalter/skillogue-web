@@ -161,6 +161,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -185,6 +186,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -226,6 +228,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -253,6 +256,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -278,6 +282,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -322,6 +327,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -351,6 +357,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -378,6 +385,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -403,6 +411,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {
@@ -443,6 +452,7 @@ describe('usePushNotifications Hook', () => {
 
     await waitFor(() => {
       expect(result.current.isSupported).toBe(true);
+      expect(result.current.loading).toBe(false);
     });
 
     await act(async () => {

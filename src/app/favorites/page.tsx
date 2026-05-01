@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { getDisplayBio, getDisplayGender, getDisplayLocation, getDisplayName } from '../../lib/profile-display';
 import { commonLabels, favoritesCopy, profileCopy } from '../../lib/app-copy';
 import { trackAnalyticsEvent } from '../../lib/analytics';
+import { useProfileGate } from '../../hooks/useProfileGate';
 
 interface SearchResult {
     id: string;
@@ -333,6 +334,7 @@ const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => voi
 };
 
 const FavoritesPage = () => {
+    useProfileGate();
     const [favorites, setFavorites] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(true);
 

@@ -56,25 +56,6 @@ const fillResetPasswords = async (page: Page, password: string, confirmPassword:
   await expect(confirmPasswordInput).toHaveValue(confirmPassword);
 };
 
-const expectDialogMessage = async (
-  page: Page,
-  action: () => Promise<void>,
-  expectedMessage: string
-) => {
-  const dialogMessagePromise = new Promise<string>((resolve) => {
-    page.once('dialog', async (dialog) => {
-      const message = dialog.message();
-
-      await dialog.accept();
-      resolve(message);
-    });
-  });
-
-  await action();
-
-  await expect(dialogMessagePromise).resolves.toBe(expectedMessage);
-};
-
 test.describe('Authentication', () => {
   test.describe('Login Page', () => {
     test.beforeEach(async ({ page }) => {
@@ -158,39 +139,24 @@ test.describe('Authentication', () => {
     });
 
     test('should show an alert when fields are empty', async ({ page }) => {
-      await expectDialogMessage(
-        page,
-        async () => {
-          await page.getByRole('button', { name: /sign up/i }).click({ noWaitAfter: true });
-        },
-        'Please fill in both fields'
-      );
+      await page.getByRole('button', { name: /sign up/i }).click();
+      await expect(page.getByText('Please fill in both fields')).toBeVisible({ timeout: 5000 });
     });
 
     test('should show an alert for a weak password', async ({ page }) => {
       await fillAndExpectValue(page, '#email', 'test@example.com');
       await fillAndExpectValue(page, '#password', 'weak');
 
-      await expectDialogMessage(
-        page,
-        async () => {
-          await page.getByRole('button', { name: /sign up/i }).click({ noWaitAfter: true });
-        },
-        'Please ensure your password meets all the strength requirements.'
-      );
+      await page.getByRole('button', { name: /sign up/i }).click();
+      await expect(page.getByText('Please ensure your password meets all the strength requirements.')).toBeVisible({ timeout: 5000 });
     });
 
     test('should require terms agreement before signup', async ({ page }) => {
       await fillAndExpectValue(page, '#email', 'test@example.com');
       await fillAndExpectValue(page, '#password', 'StrongP@ssw0rd!');
 
-      await expectDialogMessage(
-        page,
-        async () => {
-          await page.getByRole('button', { name: /sign up/i }).click({ noWaitAfter: true });
-        },
-        'You must agree to the Terms of Service and Privacy Policy to create an account.'
-      );
+      await page.getByRole('button', { name: /sign up/i }).click();
+      await expect(page.getByText('You must agree to the Terms of Service and Privacy Policy to create an account.')).toBeVisible({ timeout: 5000 });
     });
 
     test('should submit successfully and return to login', async ({ page }) => {
@@ -212,13 +178,8 @@ test.describe('Authentication', () => {
       await fillAndExpectValue(page, '#password', 'StrongP@ssw0rd!');
       await page.locator('#agreed').check();
 
-      await expectDialogMessage(
-        page,
-        async () => {
-          await page.getByRole('button', { name: /sign up/i }).click({ noWaitAfter: true });
-        },
-        '🎉 Check your email for the confirmation link!'
-      );
+      await page.getByRole('button', { name: /sign up/i }).click();
+      await expect(page.getByText('🎉 Check your email for the confirmation link!')).toBeVisible({ timeout: 5000 });
 
       await signUpRequest;
       await page.waitForURL(/.*\/login/, { timeout: 10000 });

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, ChevronDown, Check } from 'lucide-react';
 import { componentCopy } from '../lib/app-copy';
 
@@ -20,12 +20,15 @@ interface MultiSelectProps {
 const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, label, placeholder, id, name, maxSelect }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeIndex, setActiveIndex] = useState<number>(-1);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const listboxRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
+                setActiveIndex(-1);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
@@ -33,6 +36,14 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [wrapperRef]);
+
+    // Scroll the active option into view
+    useEffect(() => {
+        if (activeIndex >= 0 && listboxRef.current) {
+            const items = listboxRef.current.querySelectorAll<HTMLElement>('[role="option"]');
+            items[activeIndex]?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [activeIndex]);
 
     const handleSelect = (optionName: string) => {
         if (selected.includes(optionName)) {
@@ -55,6 +66,32 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
 
     const inputId = id ?? `multiselect-${label.replace(/\s+/g, '-').toLowerCase()}`;
     const isAtMax = maxSelect !== undefined && selected.length >= maxSelect;
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+        const count = filteredOptions.length;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!isOpen) setIsOpen(true);
+            setActiveIndex((prev) => (count === 0 ? -1 : (prev + 1) % count));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!isOpen) setIsOpen(true);
+            setActiveIndex((prev) => (count === 0 ? -1 : prev <= 0 ? count - 1 : prev - 1));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (isOpen && activeIndex >= 0 && activeIndex < count) {
+                const option = filteredOptions[activeIndex];
+                const isDisabled = isAtMax && !selected.includes(option.name);
+                if (!isDisabled) handleSelect(option.name);
+            } else {
+                setIsOpen(true);
+            }
+        } else if (e.key === 'Escape') {
+            setIsOpen(false);
+            setActiveIndex(-1);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, activeIndex, filteredOptions, isAtMax, selected]);
 
     return (
         <div className="relative" ref={wrapperRef}>
@@ -96,11 +133,13 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
                     type="text"
                     role="combobox"
                     aria-controls={`${inputId}-listbox`}
+                    aria-activedescendant={activeIndex >= 0 ? `${inputId}-option-${activeIndex}` : undefined}
                     className="min-w-[100px] flex-grow border-none bg-transparent text-foreground placeholder-faint focus:ring-0"
                     placeholder={selected.length === 0 ? (placeholder || componentCopy.multiSelect.defaultPlaceholder) : ''}
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => { setSearchTerm(e.target.value); setActiveIndex(-1); }}
                     onFocus={() => setIsOpen(true)}
+                    onKeyDown={handleKeyDown}
                     aria-expanded={isOpen}
                     aria-haspopup="listbox"
                     autoComplete="off"
@@ -109,16 +148,18 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
             </div>
 
             {isOpen && (
-                <div id={`${inputId}-listbox`} className="absolute z-10 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-line/30 bg-[var(--glass-panel)]/95 shadow-glass-lg backdrop-blur-glass" role="listbox">
+                <div ref={listboxRef} id={`${inputId}-listbox`} className="absolute z-10 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-line/30 bg-[var(--glass-panel)]/95 shadow-glass-lg backdrop-blur-glass" role="listbox">
                     {filteredOptions.length > 0 ? (
-                        filteredOptions.map((option) => {
+                        filteredOptions.map((option, index) => {
                             const isSelected = selected.includes(option.name);
                             const isDisabled = isAtMax && !isSelected;
+                            const isActive = index === activeIndex;
                             return (
                                 <div
                                     key={option.name}
+                                    id={`${inputId}-option-${index}`}
                                     onClick={() => !isDisabled && handleSelect(option.name)}
-                                    className={`flex cursor-pointer items-center justify-between px-4 py-2 transition-colors ${isSelected ? 'bg-brand/15 text-brand-soft' : isDisabled ? 'cursor-not-allowed opacity-40 text-muted' : 'text-muted hover:bg-surface/50'}`}
+                                    className={`flex cursor-pointer items-center justify-between px-4 py-2 transition-colors ${isActive ? 'bg-surface/80' : ''} ${isSelected ? 'bg-brand/15 text-brand-soft' : isDisabled ? 'cursor-not-allowed opacity-40 text-muted' : 'text-muted hover:bg-surface/50'}`}
                                     role="option"
                                     aria-selected={isSelected}
                                     aria-disabled={isDisabled}

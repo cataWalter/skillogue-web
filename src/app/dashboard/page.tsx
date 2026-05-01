@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MessageSquare, User, Search, CalendarDays, PartyPopper, ArrowRight } from 'lucide-react';
+import { MessageSquare, User, Search, ArrowRight } from 'lucide-react';
 import { appClient } from '../../lib/appClient';
 import Avatar from '../../components/Avatar';
 import ProfileCompletion from '../../components/ProfileCompletion';
@@ -11,6 +11,7 @@ import PassionSpotlight from '../../components/PassionSpotlight';
 import { ProfileData, Conversation, SuggestedProfile, UserPassion } from '../../types';
 import { getDisplayMessagePreview, getDisplayName } from '@/lib/profile-display';
 import { commonLabels, dashboardCopy } from '@/lib/app-copy';
+import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
     const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -91,6 +92,7 @@ const Dashboard: React.FC = () => {
                 console.error('Error fetching dashboard data:', error);
                 if (isActive) {
                     setLoading(false);
+                    toast.error(dashboardCopy.fetchError);
                 }
             } finally {
                 if (isActive) {
@@ -134,22 +136,6 @@ const Dashboard: React.FC = () => {
             iconClass: 'bg-discovery/15 text-discovery',
             borderClass: 'hover:border-discovery/40',
         },
-        {
-            href: '/dashboard/events',
-            icon: PartyPopper,
-            title: dashboardCopy.eventsTitle,
-            subtitle: dashboardCopy.eventsSubtitle,
-            iconClass: 'bg-approval/15 text-approval',
-            borderClass: 'hover:border-approval/40',
-        },
-        {
-            href: '/calendar',
-            icon: CalendarDays,
-            title: dashboardCopy.calendarTitle,
-            subtitle: dashboardCopy.calendarSubtitle,
-            iconClass: 'bg-info/15 text-info',
-            borderClass: 'hover:border-info/40',
-        },
     ];
 
     return (
@@ -160,7 +146,6 @@ const Dashboard: React.FC = () => {
                 <div className="relative grid gap-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.85fr)] xl:items-end">
                     <div>
                         <div className="editorial-kicker mb-5 border-brand/20 bg-brand/10 text-brand-soft">
-                            <PartyPopper size={16} className="text-approval" />
                             <span>Curated dashboard</span>
                         </div>
                         <h1 className="text-3xl font-extrabold text-foreground sm:text-4xl md:text-5xl">

@@ -21,20 +21,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
 
         const checkAdmin = () => {
-            console.log('CHECK ADMIN', { user, authLoading });
             if (!user) {
-                console.log('NO USER REDIRECTING');
                 router.replace('/login');
                 return;
             }
 
             if (!isAdminEmail(user.email)) {
-                console.log('NOT ADMIN REDIRECTING', user.email);
                 router.replace('/');
                 return;
             }
 
-            console.log('IS ADMIN, RETURNING TRUE');
             setIsAdmin(true);
         };
 

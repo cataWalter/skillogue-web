@@ -24,12 +24,9 @@ export const profileCopy = {
 } as const;
 
 export const dashboardCopy = {
-  calendarSubtitle: 'See created and attending events in one calendar',
-  calendarTitle: 'Calendar',
   discoverTitle: 'Discover',
   discoverSubtitle: 'Find new connections',
-  eventsSubtitle: 'Create and manage your events',
-  eventsTitle: 'Events',
+  fetchError: 'Failed to load dashboard data. Please refresh the page.'
   messagesSubtitle: 'View your conversations',
   noConversationsTitle: 'No conversations yet.',
   profileSubtitle: 'Update your details',
@@ -40,65 +37,6 @@ export const dashboardCopy = {
   suggestionsEmpty: 'Complete your profile to get suggestions!',
   welcomeBackPrefix: 'Welcome back,',
   yourProfileTitle: 'Your Profile',
-} as const;
-
-export const eventCopy = {
-  actions: {
-    backToManager: 'Back to list',
-    cancel: 'Cancel Event',
-    create: 'Create Event',
-    publish: 'Publish Event',
-    removeRsvp: 'Leave Event',
-    save: 'Save Changes',
-    setRsvp: 'Attend Event',
-  },
-  calendar: {
-    all: 'All',
-    attending: 'Attending',
-    created: 'Created',
-    emptyDay: 'No plans scheduled for this day.',
-    emptyMonth: 'No events match this filter yet.',
-    title: 'Calendar',
-  },
-  fields: {
-    capacity: 'Capacity',
-    description: 'Description',
-    endsAt: 'End date/time',
-    location: 'Location',
-    startsAt: 'Start date/time',
-    timezone: 'Timezone',
-    title: 'Title',
-  },
-  filters: {
-    clear: 'Clear filters',
-    filtersTitle: 'Filters',
-    from: 'From',
-    location: 'Location',
-    query: 'Keyword',
-    submit: 'Search Events',
-    to: 'To',
-  },
-  sortOptions: [
-    { value: 'soonest', label: 'Soonest' },
-    { value: 'popular', label: 'Most attended' },
-    { value: 'newest', label: 'Newest' },
-  ] as const,
-  manage: {
-    empty: "You haven't created any events yet.",
-    subtitle: 'Draft, publish, and track attendance for your events.',
-    title: 'Your Events',
-  },
-  search: {
-    emptyDescription: 'Try another keyword, date range, or location.',
-    emptyTitle: 'No events found.',
-    subtitle: 'Browse published events by date and location.',
-    title: 'Discover Events',
-  },
-  status: {
-    cancelled: 'Cancelled',
-    draft: 'Draft',
-    published: 'Published',
-  },
 } as const;
 
 export const searchCopy = {
@@ -568,7 +506,7 @@ export const marketingPageCopy = {
       },
       {
         title: 'Message directly or meet in person',
-        description: 'Start a private conversation, or RSVP to local events and meet over a shared interest.',
+        description: 'Start a private conversation and connect over a shared interest.',
       },
     ] as const,
     featureCards: [
@@ -579,10 +517,6 @@ export const marketingPageCopy = {
       {
         title: 'Real-time messaging',
         description: 'Private, one-to-one conversations. No group chats, no noise — just you and the people you actually want to talk to.',
-      },
-      {
-        title: 'Events & meetups',
-        description: 'Create or discover local events, RSVP, and see everything in a calendar view. Because online connections are better in person.',
       },
       {
         title: 'Safety by default',
@@ -623,9 +557,7 @@ export const componentCopy = {
     selectedCount: (count: number) => `${count} selected`,
   },
   navbar: {
-    calendar: 'Calendar',
     closeNavigationMenu: 'Close navigation menu',
-    events: 'Events',
     favorites: 'Favorites',
     logIn: 'Sign In',
     messages: 'Messages',
@@ -796,17 +728,6 @@ export const staticPageCopy = {
         highlights: [
           'You do not need to manage profile image uploads.',
           'Everyone appears with a generated avatar instead of a personal photo.',
-        ],
-      },
-      {
-        category: 'Events',
-        question: 'Can I create or join events on Skillogue?',
-        shortAnswer: 'Yes. Skillogue includes event discovery, RSVPs, and calendar views for people who want to connect around plans as well as profiles.',
-        answer: 'If you want to meet around a shared interest or activity, you can browse published events, RSVP, and keep track of created or attending events in the calendar. That gives you a second way to connect beyond one-to-one discovery.',
-        highlights: [
-          'Published events can be browsed by date and location.',
-          'RSVPs help you keep track of what you plan to attend.',
-          'Created and attending events appear together in the calendar view.',
         ],
       },
     ] as const,

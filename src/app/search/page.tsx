@@ -35,6 +35,8 @@ import {
 } from '@/lib/profile-display';
 import { GENDER_OPTIONS, normalizeGender } from '@/lib/gender';
 import { commonLabels, searchCopy } from '@/lib/app-copy';
+import toast from 'react-hot-toast';
+import { useProfileGate } from '@/hooks/useProfileGate';
 
 // --- Type Definitions ---
 interface Passion {
@@ -271,6 +273,7 @@ const SearchResultCard: React.FC<{
 };
 
 const Search: React.FC = () => {
+    useProfileGate();
     const searchParams = useSearchParams();
     const initialPassion = searchParams?.get('passion');
 
@@ -458,7 +461,7 @@ const Search: React.FC = () => {
 
         if (error) {
             console.error('Error saving search:', error);
-            alert(searchCopy.failedToSaveSearch);
+            toast.error(searchCopy.failedToSaveSearch);
         } else {
             setSavedSearches([...savedSearches, data]);
             setIsSaveModalOpen(false);

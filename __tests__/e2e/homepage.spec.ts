@@ -12,34 +12,34 @@ test.describe('Homepage', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
-  test('should show Get Started and Browse Profiles buttons', async ({ page }) => {
+  test('should show primary and secondary CTA buttons', async ({ page }) => {
     await page.goto('/');
     
-    // Check for Get Started button (links to login)
-    await expect(page.getByRole('link', { name: /get started/i })).toBeVisible();
+    // Check for Create Free Profile button (links to signup)
+    await expect(page.getByRole('link', { name: /create free profile/i })).toBeVisible();
     
-    // Check for Browse Profiles button
-    await expect(page.getByRole('link', { name: /browse profiles/i })).toBeVisible();
+    // Check for FAQ link
+    await expect(page.getByRole('link', { name: /faq/i })).toBeVisible();
   });
 
-  test('should navigate to login page via Get Started', async ({ page }) => {
+  test('should navigate to signup page via Create Free Profile', async ({ page }) => {
     await page.goto('/');
     
-    // Click on Get Started link
-    await page.getByRole('link', { name: /get started/i }).click();
+    // Click on Create Free Profile link
+    await page.getByRole('link', { name: /create free profile/i }).click();
     
-    // Should navigate to login page
-    await expect(page).toHaveURL(/.*\/login/);
+    // Should navigate to signup page
+    await expect(page).toHaveURL(/.*\/signup/);
   });
 
-  test('should navigate to search page via Browse Profiles', async ({ page }) => {
+  test('should navigate to FAQ page via FAQ link', async ({ page }) => {
     await page.goto('/');
     
-    // Click on Browse Profiles link
-    await page.getByRole('link', { name: /browse profiles/i }).click();
+    // Click on FAQ link
+    await page.getByRole('link', { name: /^faq$/i }).first().click();
     
-    // Should navigate to login page (search requires authentication)
-    await expect(page).toHaveURL(/.*\/login/);
+    // Should navigate to FAQ page
+    await expect(page).toHaveURL(/.*\/faq/);
   });
 });
 

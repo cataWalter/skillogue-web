@@ -26,8 +26,10 @@ import {
     SettingsStatusBanner,
 } from '../../components/settings/SettingsShell';
 import { settingsCopy } from '../../lib/app-copy';
+import { useProfileGate } from '../../hooks/useProfileGate';
 
 const Settings: React.FC = () => {
+    useProfileGate();
     const accountActions = [
         {
             actionLabel: settingsCopy.main.requestVerificationAction,
