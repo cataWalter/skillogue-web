@@ -3,6 +3,21 @@ import MessagesPage from '../../src/app/messages/page';
 import { appClient } from '../../src/lib/appClient';
 import '@testing-library/jest-dom';
 
+// Mock useAuth so ReportModal does not require AuthProvider
+jest.mock('../../src/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: null,
+    session: null,
+    loading: false,
+    signIn: jest.fn(),
+    signUp: jest.fn(),
+    signOut: jest.fn(),
+    resetPassword: jest.fn(),
+    changePassword: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
 // Mock App Client client
 jest.mock('../../src/lib/appClient', () => ({
     appClient: {

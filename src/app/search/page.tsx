@@ -174,7 +174,7 @@ const SearchResultCard: React.FC<{
             <div className="glass-surface card-hover-lift rounded-[1.75rem] p-6 transition-all duration-300 hover:border-brand/40 hover:-translate-y-1">
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                     <div className="relative">
-                        <Avatar seed={user.id} className="w-24 h-24 rounded-full object-cover border-4 border-line/40 flex-shrink-0" />
+                        <Avatar seed={user.id} alt={`${displayName}'s avatar`} className="w-24 h-24 rounded-full object-cover border-4 border-line/40 flex-shrink-0" />
                         <div className="absolute inset-0 bg-surface-overlay/50 rounded-full flex items-center justify-center">
                             <Lock size={24} className="text-faint" />
                         </div>
@@ -207,8 +207,8 @@ const SearchResultCard: React.FC<{
         <div className="glass-surface card-hover-lift rounded-[1.75rem] p-6 transition-all duration-300 hover:border-brand/40 hover:-translate-y-1">
             <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="relative">
-                    <Avatar seed={user.id} className="w-24 h-24 rounded-full object-cover border-4 border-line/40 flex-shrink-0" />
-                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-approval rounded-full border-2 border-surface" title={searchCopy.onlineTitle} />
+                    <Avatar seed={user.id} alt={`${displayName}'s avatar`} className="w-24 h-24 rounded-full object-cover border-4 border-line/40 flex-shrink-0" />
+                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-approval rounded-full border-2 border-surface" title={searchCopy.onlineTitle} aria-label={searchCopy.onlineTitle} role="status" />
                 </div>
                 <div className="flex-grow text-center sm:text-left">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -696,6 +696,14 @@ const Search: React.FC = () => {
                                     <Save size={16} /> {searchCopy.saveSearchButton}
                                 </button>
                             )}
+
+                            <button
+                                type="button"
+                                onClick={clearAllFilters}
+                                className="glass-surface flex w-full items-center justify-center rounded-xl py-2.5 font-medium text-muted transition-all duration-300 hover:-translate-y-0.5 hover:text-brand"
+                            >
+                                {searchCopy.clearAllFilters}
+                            </button>
                         </form>
                     </div>
 

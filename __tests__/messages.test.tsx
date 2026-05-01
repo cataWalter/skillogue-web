@@ -7,6 +7,22 @@ import {
 import { appClient } from '../src/lib/appClient';
 import { messagesCopy, reportModalCopy } from '../src/lib/app-copy';
 import '@testing-library/jest-dom';
+
+// Mock useAuth so ReportModal does not require AuthProvider
+jest.mock('../src/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: null,
+    session: null,
+    loading: false,
+    signIn: jest.fn(),
+    signUp: jest.fn(),
+    signOut: jest.fn(),
+    resetPassword: jest.fn(),
+    changePassword: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
 const mockPush = jest.fn();
 const mockRouter = { push: mockPush };
 const mockSearchParams = { get: jest.fn() };

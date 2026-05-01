@@ -44,3 +44,13 @@ test_results.json
 brevo-login-snapshot.md
 lighthouse-live-desktop.json
 lighthouse-live-mobile.json
+
+# Temporary / debug artifacts
+.tmp/
+*.out
+*-live.png
+test-appwrite-*.js
+playwright-run.js
+
+# Local Netlify folder
+.netlify

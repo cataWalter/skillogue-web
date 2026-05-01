@@ -1,24 +1,26 @@
 import { proxy } from '../src/proxy';
-import { getCurrentUserFromRequest } from '../src/lib/server/current-user';
-import { AppwriteRepository } from '../src/lib/server/appwrite-repo';
 
 jest.mock('../src/lib/appwrite/config', () => ({
   getAppwriteSessionCookieName: jest.fn(() => 'a_session_skillogue'),
+  getAppwriteEndpoint: jest.fn(() => 'https://appwrite.example.com/v1'),
+  getAppwriteProjectId: jest.fn(() => 'test-project'),
+  getAppwriteDatabaseId: jest.fn(() => 'test-db'),
+  getAppwriteCollectionId: jest.fn(() => 'test-collection'),
 }));
 
-jest.mock('../src/lib/server/current-user', () => ({
-  getCurrentUserFromRequest: jest.fn(),
-}));
-
+const mockAccountGet = jest.fn();
 const mockListDocuments = jest.fn();
 
-jest.mock('../src/lib/server/appwrite-repo', () => ({
-  AppwriteRepository: jest.fn().mockImplementation(() => ({
-    listDocuments: mockListDocuments,
-  })),
-}));
+const mockClient = {
+  setEndpoint: jest.fn().mockReturnThis(),
+  setProject: jest.fn().mockReturnThis(),
+  setSession: jest.fn().mockReturnThis(),
+};
 
-jest.mock('node-appwrite', () => ({
+jest.mock('appwrite', () => ({
+  Client: jest.fn(() => mockClient),
+  Account: jest.fn(() => ({ get: mockAccountGet })),
+  Databases: jest.fn(() => ({ listDocuments: mockListDocuments })),
   Query: {
     equal: jest.fn((field: string, value: string) => `equal:${field}:${value}`),
     limit: jest.fn((value: number) => `limit:${value}`),
@@ -40,9 +42,6 @@ jest.mock('next/server', () => ({
 }));
 
 describe('proxy', () => {
-  const mockedGetCurrentUserFromRequest = getCurrentUserFromRequest as jest.MockedFunction<typeof getCurrentUserFromRequest>;
-  const MockedAppwriteRepository = AppwriteRepository as jest.MockedClass<typeof AppwriteRepository>;
-
   const createRequest = (
     pathname: string,
     sessionToken?: string,
@@ -99,14 +98,14 @@ describe('proxy', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedGetCurrentUserFromRequest.mockReset();
+    mockAccountGet.mockReset();
     mockListDocuments.mockReset();
   });
 
   it('redirects protected routes to login when there is no session cookie', async () => {
     const response = await proxy(createRequest('/dashboard'));
 
-    expect(mockedGetCurrentUserFromRequest).not.toHaveBeenCalled();
+    expect(mockAccountGet).not.toHaveBeenCalled();
     expect(response).toEqual({
       kind: 'redirect',
       status: 307,
@@ -119,7 +118,7 @@ describe('proxy', () => {
     const favoritesResponse = await proxy(createRequest('/favorites'));
     const notificationsResponse = await proxy(createRequest('/notifications'));
 
-    expect(mockedGetCurrentUserFromRequest).not.toHaveBeenCalled();
+    expect(mockAccountGet).not.toHaveBeenCalled();
     expect(adminResponse).toEqual({
       kind: 'redirect',
       status: 307,
@@ -138,11 +137,11 @@ describe('proxy', () => {
   });
 
   it('redirects protected routes to login when the session is unverified', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue(null);
+    mockAccountGet.mockRejectedValue(new Error('no session'));
 
     const response = await proxy(createRequest('/settings', 'session-secret'));
 
-    expect(mockedGetCurrentUserFromRequest).toHaveBeenCalled();
+    expect(mockAccountGet).toHaveBeenCalled();
     expect(response).toEqual({
       kind: 'redirect',
       status: 307,
@@ -151,7 +150,7 @@ describe('proxy', () => {
   });
 
   it('allows auth routes when a session cookie exists but the session is unverified', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue(null);
+    mockAccountGet.mockRejectedValue(new Error('no session'));
 
     const response = await proxy(createRequest('/login', 'session-secret'));
 
@@ -162,7 +161,7 @@ describe('proxy', () => {
   });
 
   it('redirects auth routes away only for verified sessions', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue({ id: 'user-123', email: 'ada@example.com' });
+    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
     mockListDocuments.mockResolvedValue({
       documents: [{ id: 'user-123', first_name: 'Ada' }],
     });
@@ -177,7 +176,7 @@ describe('proxy', () => {
   });
 
   it('redirects the home route to dashboard for verified sessions', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue({ id: 'user-123', email: 'ada@example.com' });
+    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
     mockListDocuments.mockResolvedValue({
       documents: [{ id: 'user-123', first_name: 'Ada' }],
     });
@@ -192,12 +191,11 @@ describe('proxy', () => {
   });
 
   it('redirects protected routes to onboarding when the logged-in profile is incomplete', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue({ id: 'user-123', email: 'ada@example.com' });
+    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
     mockListDocuments.mockResolvedValue({ documents: [] });
 
     const response = await proxy(createRequest('/messages', 'session-secret'));
 
-    expect(MockedAppwriteRepository).toHaveBeenCalledWith(undefined, 'jest-test');
     expect(mockListDocuments).toHaveBeenCalled();
     expect(response).toEqual({
       kind: 'redirect',
@@ -207,12 +205,11 @@ describe('proxy', () => {
   });
 
   it('redirects favorites to onboarding when the logged-in profile is incomplete', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue({ id: 'user-123', email: 'ada@example.com' });
+    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
     mockListDocuments.mockResolvedValue({ documents: [] });
 
     const response = await proxy(createRequest('/favorites', 'session-secret'));
 
-    expect(MockedAppwriteRepository).toHaveBeenCalledWith(undefined, 'jest-test');
     expect(mockListDocuments).toHaveBeenCalled();
     expect(response).toEqual({
       kind: 'redirect',
@@ -222,7 +219,7 @@ describe('proxy', () => {
   });
 
   it('allows onboarding for logged-in users with incomplete profiles', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue({ id: 'user-123', email: 'ada@example.com' });
+    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
     mockListDocuments.mockResolvedValue({
       documents: [{ id: 'user-123', first_name: '' }],
     });
@@ -236,7 +233,7 @@ describe('proxy', () => {
   });
 
   it('redirects auth routes to onboarding when the logged-in profile is incomplete', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue({ id: 'user-123', email: 'ada@example.com' });
+    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
     mockListDocuments.mockResolvedValue({
       documents: [{ id: 'user-123', first_name: null }],
     });
@@ -251,7 +248,7 @@ describe('proxy', () => {
   });
 
   it('redirects the home route to onboarding when the logged-in profile is incomplete', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue({ id: 'user-123', email: 'ada@example.com' });
+    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
     mockListDocuments.mockResolvedValue({
       documents: [{ id: 'user-123', first_name: null }],
     });
@@ -266,7 +263,7 @@ describe('proxy', () => {
   });
 
   it('allows protected routes when profile completion cannot be determined', async () => {
-    mockedGetCurrentUserFromRequest.mockResolvedValue({ id: 'user-123', email: 'ada@example.com' });
+    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
     mockListDocuments.mockRejectedValueOnce(new Error('repository unavailable'));
 
     const response = await proxy(
@@ -275,7 +272,6 @@ describe('proxy', () => {
       })
     );
 
-    expect(MockedAppwriteRepository).toHaveBeenCalledWith(undefined, undefined);
     expect(response).toEqual({
       kind: 'next',
       status: 200,
@@ -295,8 +291,7 @@ describe('proxy', () => {
       })
     );
 
-    expect(mockedGetCurrentUserFromRequest).not.toHaveBeenCalled();
-    expect(MockedAppwriteRepository).not.toHaveBeenCalled();
+    expect(mockAccountGet).not.toHaveBeenCalled();
     expect(response).toEqual({
       kind: 'redirect',
       status: 307,

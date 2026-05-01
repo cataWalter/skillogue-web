@@ -10,19 +10,33 @@ const NotificationsDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =
     const { notifications, markAsRead } = useNotifications();
 
     const getNotificationLink = (notification: typeof notifications[number]): string => {
-        if (notification.type === 'new_message' && notification.actorId) {
-            return `/messages?conversation=${notification.actorId}`;
+        if (notification.url) return notification.url;
+        if (!notification.actorId) return '/notifications';
+        switch (notification.type) {
+            case 'new_message': return `/messages?conversation=${notification.actorId}`;
+            case 'new_favorite':
+            case 'profile_visit': return `/user/${notification.actorId}`;
+            case 'new_match': return `/messages?conversation=${notification.actorId}`;
+            default: return '/notifications';
         }
-        return '/notifications'; // Fallback link
     };
 
     const getNotificationText = (notification: typeof notifications[number]): React.ReactNode => {
         const actorName = notification.actorId || componentCopy.notificationCenter.fallbackActorName;
-
-        if (notification.type === 'new_message') {
-            return <><strong>{actorName}</strong> {componentCopy.notificationCenter.sentMessage}</>;
+        switch (notification.type) {
+            case 'new_message':
+                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.sentMessage}</>;
+            case 'new_favorite':
+                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.savedYourProfile}</>;
+            case 'profile_visit':
+                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.viewedYourProfile}</>;
+            case 'new_match':
+                return componentCopy.notificationCenter.youMatchedWith(actorName);
+            case 'admin_notice':
+                return notification.body || componentCopy.notificationCenter.defaultNotification;
+            default:
+                return componentCopy.notificationCenter.newNotificationFrom(actorName);
         }
-        return componentCopy.notificationCenter.newNotificationFrom(actorName);
     };
 
     return (

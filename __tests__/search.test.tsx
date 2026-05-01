@@ -193,7 +193,7 @@ describe('Search Page', () => {
     await renderLoadedSearchPage();
 
     expect(screen.getByText('Discover People')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Name, bio, etc.')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search by name or bio…')).toBeInTheDocument();
   });
 
   it('treats null search results as an empty result set', async () => {
@@ -526,7 +526,7 @@ describe('Search Page', () => {
   it('clears filters', async () => {
     await renderLoadedSearchPage();
 
-    const queryInput = screen.getByPlaceholderText('Name, bio, etc.');
+    const queryInput = screen.getByPlaceholderText('Search by name or bio…');
     fireEvent.change(queryInput, { target: { value: 'test query' } });
 
     const clearButton = await screen.findByRole('button', { name: 'Clear all' });
@@ -640,7 +640,7 @@ describe('Search Page', () => {
 	it('updates the sort selector after results load', async () => {
 		await renderLoadedSearchPage();
 
-		const sortSelect = screen.getByLabelText('Sort results');
+		const sortSelect = screen.getByLabelText('Sort by');
 		fireEvent.change(sortSelect, { target: { value: 'passions' } });
 
 		expect(sortSelect).toHaveValue('passions');
@@ -685,12 +685,12 @@ describe('Search Page', () => {
   it('clears individual active filter chips', async () => {
     await renderLoadedSearchPage();
 
-    const queryInput = screen.getByPlaceholderText('Name, bio, etc.');
+    const queryInput = screen.getByPlaceholderText('Search by name or bio…');
     const locationInput = screen.getByPlaceholderText('City, Country');
     const minAgeInput = screen.getByLabelText('Min Age');
     const maxAgeInput = screen.getByLabelText('Max Age');
     const genderSelect = screen.getByLabelText('Gender');
-    const languageInput = screen.getByPlaceholderText('English, Spanish...');
+    const languageInput = screen.getByPlaceholderText('Select languages\u2026');
 
     fireEvent.change(queryInput, { target: { value: 'test query' } });
     fireEvent.change(locationInput, { target: { value: 'NYC' } });

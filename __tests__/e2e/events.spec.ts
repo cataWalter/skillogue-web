@@ -17,7 +17,7 @@ test.describe('Events', () => {
       await authenticatedPage.goto('/events');
 
       await expect(authenticatedPage.getByRole('heading', { name: /discover events/i })).toBeVisible();
-      await expect(authenticatedPage.getByText(/published events found/i)).toBeVisible();
+      await expect(authenticatedPage.getByText(/browse published events/i)).toBeVisible();
     });
 
     test('should render the events calendar page', async ({ authenticatedPage }) => {

@@ -12,14 +12,14 @@ test.describe('Homepage', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
-  test('should show Get Started and Explore Connections buttons', async ({ page }) => {
+  test('should show Get Started and Browse Profiles buttons', async ({ page }) => {
     await page.goto('/');
     
     // Check for Get Started button (links to login)
     await expect(page.getByRole('link', { name: /get started/i })).toBeVisible();
     
-    // Check for Explore Connections button  
-    await expect(page.getByRole('link', { name: /explore connections/i })).toBeVisible();
+    // Check for Browse Profiles button
+    await expect(page.getByRole('link', { name: /browse profiles/i })).toBeVisible();
   });
 
   test('should navigate to login page via Get Started', async ({ page }) => {
@@ -32,11 +32,11 @@ test.describe('Homepage', () => {
     await expect(page).toHaveURL(/.*\/login/);
   });
 
-  test('should navigate to search page via Explore Connections', async ({ page }) => {
+  test('should navigate to search page via Browse Profiles', async ({ page }) => {
     await page.goto('/');
     
-    // Click on Explore Connections link
-    await page.getByRole('link', { name: /explore connections/i }).click();
+    // Click on Browse Profiles link
+    await page.getByRole('link', { name: /browse profiles/i }).click();
     
     // Should navigate to login page (search requires authentication)
     await expect(page).toHaveURL(/.*\/login/);

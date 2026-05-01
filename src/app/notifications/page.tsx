@@ -13,23 +13,31 @@ const NotificationsPage: React.FC = () => {
     const { notifications, unreadCount, markAsRead } = useNotifications();
 
     const getNotificationLink = (notification: typeof notifications[number]): string => {
-        if (notification.type === 'new_message' && notification.actorId) {
-            return `/messages?conversation=${notification.actorId}`;
+        if (notification.url) return notification.url;
+        if (!notification.actorId) return '#';
+        switch (notification.type) {
+            case 'new_message': return `/messages?conversation=${notification.actorId}`;
+            case 'new_favorite':
+            case 'profile_visit': return `/user/${notification.actorId}`;
+            case 'new_match': return `/messages?conversation=${notification.actorId}`;
+            default: return '#';
         }
-        // Fallback for other notification types or if actorId is null
-        return '#';
     };
 
     const getNotificationText = (notification: typeof notifications[number]): React.ReactNode => {
-        // For now, we'll use a generic message since we don't have actor info
         const actorName = notification.actorId || componentCopy.notificationCenter.genericActorName;
 
         switch (notification.type) {
             case 'new_message':
                 return <><strong>{actorName}</strong> {componentCopy.notificationCenter.sentMessage}</>;
-            // Future cases can be added here
-            // case 'new_match':
-            //     return <>You have a new match with <strong>{actorName}</strong>!</>;
+            case 'new_favorite':
+                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.savedYourProfile}</>;
+            case 'profile_visit':
+                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.viewedYourProfile}</>;
+            case 'new_match':
+                return componentCopy.notificationCenter.youMatchedWith(actorName);
+            case 'admin_notice':
+                return notification.body || componentCopy.notificationCenter.defaultNotification;
             default:
                 return componentCopy.notificationCenter.defaultNotification;
         }

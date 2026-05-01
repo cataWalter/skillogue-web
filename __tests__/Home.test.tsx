@@ -7,27 +7,19 @@ describe('Home', () => {
     render(<Home />)
 
     const heading = screen.getByRole('heading', { level: 1 })
-    screen.getByRole('link', { name: /get started/i })
+    screen.getByRole('link', { name: /create free profile/i })
 
     expect(heading).toBeInTheDocument()
-    expect(heading).toHaveTextContent('Connect by Passion')
+    expect(heading).toHaveTextContent('Find people who get your references')
   })
 
-  it('renders a section heading before feature card headings', () => {
+  it('renders the hero CTA links', () => {
     render(<Home />)
 
-    expect(
-      screen.getByRole('heading', {
-        level: 2,
-        name: /core features/i,
-      })
-    ).toBeInTheDocument()
+    const signupLink = screen.getByRole('link', { name: /create free profile/i })
+    expect(signupLink).toHaveAttribute('href', '/signup')
 
-    expect(
-      screen.getByRole('heading', {
-        level: 3,
-        name: /passion-based matching/i,
-      })
-    ).toBeInTheDocument()
+    const faqLink = screen.getByRole('link', { name: /faq/i })
+    expect(faqLink).toHaveAttribute('href', '/faq')
   })
 })

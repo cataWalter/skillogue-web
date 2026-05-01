@@ -57,10 +57,15 @@ const ReportModal: React.FC<ReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-surface-overlay/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface border border-line/30 rounded-xl p-6 max-w-md w-full shadow-xl shadow-black/15">
+    <div className="fixed inset-0 bg-surface-overlay/50 flex items-center justify-center z-50 p-4" role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="report-modal-title"
+        className="bg-surface border border-line/30 rounded-xl p-6 max-w-md w-full shadow-xl shadow-black/15"
+      >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-foreground">{reportModalCopy.title}</h2>
+          <h2 id="report-modal-title" className="text-xl font-bold text-foreground">{reportModalCopy.title}</h2>
           <button
             onClick={onClose}
             className="text-faint hover:text-foreground transition"

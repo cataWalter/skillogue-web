@@ -100,7 +100,7 @@ describe('Search Integration Flow', () => {
   it('handles search input change', async () => {
     render(<SearchPage />);
 
-    const searchInput = screen.getByPlaceholderText('Name, bio, etc.');
+    const searchInput = screen.getByPlaceholderText('Search by name or bio…');
     fireEvent.change(searchInput, { target: { value: 'Bob' } });
 
     // Wait for debounce and effect
@@ -132,7 +132,7 @@ describe('Search Integration Flow', () => {
 
     render(<SearchPage />);
     
-    const searchInput = screen.getByPlaceholderText('Name, bio, etc.');
+    const searchInput = screen.getByPlaceholderText('Search by name or bio…');
     fireEvent.change(searchInput, { target: { value: 'Alice' } });
     
     const form = searchInput.closest('form');
@@ -213,7 +213,7 @@ describe('Search Integration Flow', () => {
     fireEvent.click(savedSearchChip);
 
     await waitFor(() => {
-        expect(screen.getByPlaceholderText('Name, bio, etc.')).toHaveValue('Alice');
+        expect(screen.getByPlaceholderText('Search by name or bio…')).toHaveValue('Alice');
     });
 
     // Delete Saved Search

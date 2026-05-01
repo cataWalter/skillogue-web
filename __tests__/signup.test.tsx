@@ -2,10 +2,20 @@ import '@testing-library/jest-dom'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import SignUp from '../src/app/signup/page'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 
 // Mock useRouter
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+}))
+
+// Mock react-hot-toast
+jest.mock('react-hot-toast', () => ({
+  __esModule: true,
+  default: {
+    error: jest.fn(),
+    success: jest.fn(),
+  },
 }))
 
 // Mock useAuth hook
@@ -25,8 +35,6 @@ describe('SignUp Page', () => {
     })
     jest.clearAllMocks()
     mockSignUp.mockReset();
-    // Mock alert
-    window.alert = jest.fn()
   })
 
   it('renders signup form', () => {
@@ -40,7 +48,7 @@ describe('SignUp Page', () => {
   it('validates empty fields', async () => {
     render(<SignUp />)
     fireEvent.click(screen.getByRole('button'))
-    expect(window.alert).toHaveBeenCalledWith('Please fill in both fields')
+    expect(toast.error).toHaveBeenCalledWith('Please fill in both fields', { id: 'signup-error' })
   })
 
   it('validates password strength', async () => {
@@ -48,7 +56,7 @@ describe('SignUp Page', () => {
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'weak' } })
     fireEvent.click(screen.getByRole('button'))
-    expect(window.alert).toHaveBeenCalledWith('Please ensure your password meets all the strength requirements.')
+    expect(toast.error).toHaveBeenCalledWith('Please ensure your password meets all the strength requirements.', { id: 'signup-error' })
   })
 
   it('validates terms agreement', async () => {
@@ -56,7 +64,7 @@ describe('SignUp Page', () => {
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } })
     fireEvent.click(screen.getByRole('button'))
-    expect(window.alert).toHaveBeenCalledWith('You must agree to the Terms of Service and Privacy Policy to create an account.')
+    expect(toast.error).toHaveBeenCalledWith('You must agree to the Terms of Service and Privacy Policy to create an account.', { id: 'signup-error' })
   })
 
   it('submits form successfully', async () => {
@@ -109,7 +117,7 @@ describe('SignUp Page', () => {
     fireEvent.click(screen.getByRole('button'));
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Signup failed');
+      expect(toast.error).toHaveBeenCalledWith('Signup failed', { id: 'signup-error' });
     });
 
     consoleSpy.mockRestore()
@@ -127,7 +135,7 @@ describe('SignUp Page', () => {
     fireEvent.click(screen.getByRole('button'));
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('An error occurred');
+      expect(toast.error).toHaveBeenCalledWith('An error occurred', { id: 'signup-error' });
     });
 
     consoleSpy.mockRestore();

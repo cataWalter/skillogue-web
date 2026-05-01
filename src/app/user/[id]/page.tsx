@@ -97,6 +97,16 @@ const UserProfile: React.FC = () => {
                 profileName: getDisplayName(profileData.first_name, profileData.last_name),
                 isPrivate: Boolean(profileData.is_private),
             });
+            appClient.functions.invoke('send-push', {
+                body: {
+                    receiver_id: profileData.id,
+                    actor_id: currentSession.user.id,
+                    notification_type: 'profile_visit',
+                    title: 'Profile Visit',
+                    body: 'Someone viewed your profile.',
+                    url: `/user/${currentSession.user.id}`,
+                }
+            }).catch(() => undefined);
 
             const [passionRes, languageRes] = await Promise.all([
                 appClient.from('profile_passions').select('passions(name)').eq('profile_id', id),
@@ -176,6 +186,15 @@ const UserProfile: React.FC = () => {
                         profileId: profile.id,
                         source: 'user_profile',
                     });
+                    appClient.functions.invoke('send-push', {
+                        body: {
+                            receiver_id: profile.id,
+                            notification_type: 'new_favorite',
+                            title: 'New Favorite',
+                            body: 'Someone saved your profile.',
+                            url: `/user/${session?.user.id}`,
+                        }
+                    }).catch(() => undefined);
                 } else {
                     toast.error(profilePageCopy.user.saveFavoriteError);
                 }
@@ -244,6 +263,7 @@ const UserProfile: React.FC = () => {
                         onClick={handleToggleSave}
                         className={`flex items-center gap-2 rounded-xl border px-4 py-2 transition-all duration-300 hover:-translate-y-0.5 ${isSaved ? 'border-connection/40 bg-connection text-white shadow-glass-sm' : 'glass-surface text-foreground hover:bg-surface-secondary/80'}`}
                         title={isSaved ? profilePageCopy.user.removeFromFavorites : profilePageCopy.user.addToFavorites}
+                        aria-label={isSaved ? profilePageCopy.user.removeFromFavorites : profilePageCopy.user.addToFavorites}
                     >
                         <Heart size={18} fill={isSaved ? 'currentColor' : 'none'} />
                     </button>
@@ -251,6 +271,7 @@ const UserProfile: React.FC = () => {
                         onClick={() => setReportModalOpen(true)}
                         className="glass-surface flex items-center gap-2 rounded-xl px-4 py-2 text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-surface-secondary/80"
                         title={profilePageCopy.user.reportUser}
+                        aria-label={profilePageCopy.user.reportUser}
                     >
                         <Flag size={18} />
                     </button>
@@ -258,6 +279,7 @@ const UserProfile: React.FC = () => {
                         onClick={handleBlock}
                         className="flex items-center gap-2 rounded-xl bg-danger/10 px-4 py-2 text-danger-soft transition-all duration-300 hover:-translate-y-0.5 hover:bg-danger/15"
                         title={profilePageCopy.user.blockUser}
+                        aria-label={profilePageCopy.user.blockUser}
                     >
                         <ShieldAlert size={18} />
                     </button>

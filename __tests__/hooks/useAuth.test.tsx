@@ -1,5 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useAuth } from '../../src/hooks/useAuth';
+import { AuthProvider } from '../../src/context/AuthContext';
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -21,7 +22,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: null }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
         
         // Initially loading is true before effect runs
         expect(result.current.loading).toBe(true);
@@ -37,7 +38,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: mockSession }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.session).toEqual(mockSession);
@@ -51,7 +52,7 @@ describe('useAuth Hook', () => {
     it('should handle fetch error gracefully', async () => {
         mockFetch.mockRejectedValue(new Error('Network error'));
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -66,7 +67,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: null }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -82,7 +83,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: null }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -98,7 +99,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: null }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -114,7 +115,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: null }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -130,7 +131,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: null }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -146,7 +147,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: mockSession }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -167,7 +168,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ message: 'Invalid credentials' }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -182,7 +183,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({}),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -202,7 +203,7 @@ describe('useAuth Hook', () => {
                 json: () => Promise.resolve({ session: null }),
             });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -223,7 +224,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ user: { id: '123', email: 'test@example.com' } }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -243,7 +244,7 @@ describe('useAuth Hook', () => {
             // no json method
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -260,7 +261,7 @@ describe('useAuth Hook', () => {
             })
             .mockRejectedValueOnce(new Error('Refresh error'));
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -281,7 +282,7 @@ describe('useAuth Hook', () => {
         });
         mockFetch.mockReturnValue(fetchPromise);
 
-        const { result, unmount } = renderHook(() => useAuth());
+        const { result, unmount } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         // Unmount before fetch resolves
         unmount();
@@ -308,7 +309,7 @@ describe('useAuth Hook', () => {
         });
         mockFetch.mockReturnValue(fetchPromise);
 
-        const { result, unmount } = renderHook(() => useAuth());
+        const { result, unmount } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         unmount();
 
@@ -327,7 +328,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ message: 'User already exists' }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -342,7 +343,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({}),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -357,7 +358,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: mockSession }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -386,7 +387,7 @@ describe('useAuth Hook', () => {
                 json: () => Promise.resolve({}),
             });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -414,7 +415,7 @@ describe('useAuth Hook', () => {
                 json: () => Promise.resolve({ message: 'Current password is incorrect' }),
             });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -436,7 +437,7 @@ describe('useAuth Hook', () => {
                 json: () => Promise.resolve({}),
             });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -451,7 +452,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({}),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -470,7 +471,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ message: 'User not found' }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -485,7 +486,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({}),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -500,7 +501,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: mockSession }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.session?.user.email).toBe('test@example.com');
@@ -527,7 +528,7 @@ describe('useAuth Hook', () => {
             json: null, // Invalid
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.session).toBeNull();
@@ -542,7 +543,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: null }),
         });
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.session).toBeNull();
@@ -557,7 +558,7 @@ describe('useAuth Hook', () => {
             json: () => Promise.resolve({ session: mockSession }),
         }).mockRejectedValueOnce(new Error('Refresh error'));
 
-        const { result } = renderHook(() => useAuth());
+        const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         await waitFor(() => {
             expect(result.current.session?.user.email).toBe('test@example.com');
@@ -580,7 +581,7 @@ describe('useAuth Hook', () => {
         });
         mockFetch.mockReturnValue(fetchPromise);
 
-        const { result, unmount } = renderHook(() => useAuth());
+        const { result, unmount } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         // Unmount before fetch resolves
         unmount();
@@ -607,7 +608,7 @@ describe('useAuth Hook', () => {
         });
         mockFetch.mockReturnValue(fetchPromise);
 
-        const { result, unmount } = renderHook(() => useAuth());
+        const { result, unmount } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
         unmount();
 

@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { staticPageCopy } from '../../lib/app-copy';
 
+export const dynamic = 'force-static';
+
 export default function TermsOfService() {
     return (
         <div className="min-h-screen bg-background text-foreground p-6 md:p-12">

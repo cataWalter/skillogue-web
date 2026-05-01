@@ -5,15 +5,23 @@ import { useAuth } from '../hooks/useAuth';
 import { isAdminEmail } from '../lib/admin';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, User, Settings, LogOut, Heart, MessageCircle, Bell, Search, CalendarDays, PartyPopper, ShieldAlert } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { componentCopy } from '../lib/app-copy';
 import ThemeToggle from './ThemeToggle';
 
 const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mobileMenuOpen && mobileMenuRef.current) {
+      const firstFocusable = mobileMenuRef.current.querySelector<HTMLElement>('a, button');
+      firstFocusable?.focus();
+    }
+  }, [mobileMenuOpen]);
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
 
@@ -50,7 +58,7 @@ const Navbar = () => {
 
           <div className="flex items-center gap-3">
             {/* Desktop Navigation */}
-            {user && (
+            {!loading && user && (
               <div className="hidden md:flex items-center space-x-4">
                 {navItems.map((item) => (
                   <Link
@@ -76,7 +84,7 @@ const Navbar = () => {
               </div>
             )}
 
-            {!user && (
+            {!loading && !user && (
               <div className="hidden md:flex items-center">
                 <Link
                   href="/login"
@@ -105,9 +113,9 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div id="mobile-navigation" className="md:hidden bg-surface border-b border-line/30">
+        <div id="mobile-navigation" ref={mobileMenuRef} className="md:hidden bg-surface border-b border-line/30">
           <div className="px-4 py-2 space-y-1">
-            {user ? (
+            {loading ? null : user ? (
               <>
                 {navItems.map((item) => (
                   <Link

@@ -1,14 +1,19 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
-interface Notification {
+const POLL_INTERVAL_MS = 45_000;
+
+export interface Notification {
   id: number;
   type: string;
   read: boolean;
   createdAt: string;
   actorId?: string;
+  title?: string;
+  body?: string;
+  url?: string;
 }
 
 interface NotificationContextType {
@@ -26,7 +31,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!user) {
       setNotifications([]);
       setLoading(false);
@@ -44,12 +49,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const markAsRead = async (id: number | null) => {
     try {
       if (id === null) {
-        // Mark all as read
         const response = await fetch(`/api/notifications/mark-all-read`, {
           method: 'PATCH',
         });
@@ -57,7 +61,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           setNotifications(prev => prev.map(n => ({ ...n, read: true })));
         }
       } else {
-        // Mark specific notification as read
         const response = await fetch(`/api/notifications/${id}`, {
           method: 'PATCH',
         });
@@ -72,11 +75,35 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   };
 
+  // Initial load
   useEffect(() => {
-    fetchNotifications();
-  }, [user]);
+    void fetchNotifications();
+  }, [fetchNotifications]);
+
+  // Background polling — only when tab is visible
+  useEffect(() => {
+    if (!user) return undefined;
+
+    const poll = () => {
+      if (!document.hidden) void fetchNotifications();
+    };
+
+    const intervalId = setInterval(poll, POLL_INTERVAL_MS);
+    document.addEventListener('visibilitychange', poll);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', poll);
+    };
+  }, [user, fetchNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Browser tab badge
+  useEffect(() => {
+    const base = document.title.replace(/^\(\d+\) /, '');
+    document.title = unreadCount > 0 ? `(${unreadCount}) ${base}` : base;
+  }, [unreadCount]);
 
   return (
     <NotificationContext.Provider

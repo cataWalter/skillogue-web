@@ -481,6 +481,15 @@ test.describe('Admin', () => {
           return;
         }
 
+        if (method === 'GET' && url.pathname === '/api/admin/settings') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(dashboardPayload.systemControls),
+          });
+          return;
+        }
+
         if (method === 'PATCH' && url.pathname === '/api/admin/settings') {
           savedSettingsBody = request.postDataJSON() as Record<string, unknown>;
           dashboardPayload.systemControls = {
@@ -509,16 +518,21 @@ test.describe('Admin', () => {
       await page.goto('/admin');
 
       await expect(page.getByRole('heading', { name: 'Admin Command Center' })).toBeVisible();
+
+      // Queue management sub-page
+      await page.goto('/admin/queues');
       await expect(page.getByText('Embedded queues')).toBeVisible();
-      await expect(page.getByText('User investigation')).toBeVisible();
-      await expect(page.getByText('System controls')).toBeVisible();
-      await expect(page.getByRole('heading', { level: 3, name: 'Alice Example' })).toBeVisible();
+      await expect(page.getByText('Alice Example')).toBeVisible();
 
       await page.getByRole('button', { name: 'Mark reviewed' }).click();
 
       await expect(page.getByRole('button', { name: 'Mark reviewed' })).toHaveCount(0);
       expect(dialogMessages).toContain('Mark this report as reviewed?');
       expect(reportUpdateBody).toEqual({ status: 'reviewed' });
+
+      // User investigation sub-page
+      await page.goto('/admin/users');
+      await expect(page.getByText('User investigation')).toBeVisible();
 
       await page.getByPlaceholder('Search by name or user ID').fill('bob');
       await page.getByRole('button', { name: 'Search users' }).click();
@@ -528,6 +542,9 @@ test.describe('Admin', () => {
       expect(userQueries).toContain('bob');
       expect(investigationRequests).toContain('user-2');
 
+      // System controls sub-page
+      await page.goto('/admin/controls');
+      await expect(page.getByText('System controls')).toBeVisible();
       await page.getByLabel('Maintenance banner text').fill('Maintenance starts at 22:00 UTC');
       await page.getByLabel('Auto-refresh cadence (minutes)').fill('30');
       await page.getByRole('checkbox').check();

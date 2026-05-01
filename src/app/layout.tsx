@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import CookieBanner from "../components/CookieBanner";
 import { NotificationProvider } from "../context/NotificationContext";
+import { AuthProvider } from "../context/AuthContext";
 import { Toaster } from 'react-hot-toast';
 import AnalyticsTracker from "../components/AnalyticsTracker";
 import { Suspense } from "react";
@@ -96,19 +97,27 @@ export default function RootLayout({
       <body className="font-sans bg-background text-text flex flex-col min-h-screen selection:bg-primary selection:text-white">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <div className="gradient-mesh" aria-hidden="true" />
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-[200] focus:left-2 focus:top-2 focus:rounded-xl focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        >
+          Skip to main content
+        </a>
         <Suspense fallback={null}>
-          <NotificationProvider>
+          <AuthProvider>
+            <NotificationProvider>
             <Suspense fallback={null}>
               <AnalyticsTracker />
             </Suspense>
             <Navbar />
-            <main className="flex-grow flex flex-col">
+            <main id="main-content" className="flex-grow flex flex-col">
               {children}
             </main>
             <Footer />
             <CookieBanner />
             <Toaster position="top-right" />
           </NotificationProvider>
+          </AuthProvider>
         </Suspense>
       </body>
     </html>

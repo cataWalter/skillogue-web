@@ -73,6 +73,9 @@ jest.mock('../src/lib/appClient', () => ({
       })),
     })),
     rpc: jest.fn(),
+    functions: {
+      invoke: jest.fn().mockResolvedValue({}),
+    },
   },
 }));
 

@@ -156,7 +156,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
     });
 
     // Set some filters
-    const keywordInput = screen.getByPlaceholderText('Name, bio, etc.');
+    const keywordInput = screen.getByPlaceholderText('Search by name or bio…');
     fireEvent.change(keywordInput, { target: { value: 'Test' } });
 
     // Wait for "No profiles found" which contains the clear button
@@ -164,7 +164,7 @@ describe('Search Page Error Handling and Edge Cases', () => {
         expect(screen.getByText('No profiles found matching your criteria.')).toBeInTheDocument();
     });
 
-    const clearButton = screen.getByText('Clear all filters');
+    const clearButton = screen.getAllByText('Clear all filters')[0];
     
     await act(async () => {
         fireEvent.click(clearButton);

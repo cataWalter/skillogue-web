@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { staticPageCopy } from '../../lib/app-copy';
 
+export const dynamic = 'force-static';
+
 const highlightAccentClasses = [
     'border-brand/20 bg-brand/10 text-brand-soft',
     'border-discovery/25 bg-discovery/10 text-discovery-soft',
