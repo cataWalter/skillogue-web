@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { adminCopy } from '../../../lib/app-copy';
+import { formatShortDate } from '@/lib/format-date';
 
 interface VerificationRequest {
     id: number;
@@ -106,7 +107,7 @@ export default function AdminVerification() {
                                         <div className="text-xs text-faint">{req.user_id}</div>
                                     </td>
                                     <td className="p-4 text-faint">
-                                        {new Date(req.created_at).toLocaleDateString()}
+                                        {formatShortDate(req.created_at) ?? '—'}
                                     </td>
                                     <td className="p-4">
                                         <div className="flex gap-2">

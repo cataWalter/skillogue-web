@@ -254,9 +254,9 @@ describe('AdminVerification', () => {
     await renderVerificationPage();
 
     await waitFor(() => {
-      // Dates should be formatted as locale date strings
-      expect(screen.getByText('1/1/2024')).toBeInTheDocument();
-      expect(screen.getByText('1/2/2024')).toBeInTheDocument();
+      // Dates should be formatted as short date strings (e.g. "Jan 1, 2024")
+      expect(screen.getByText('Jan 1, 2024')).toBeInTheDocument();
+      expect(screen.getByText('Jan 2, 2024')).toBeInTheDocument();
     });
   });
 });

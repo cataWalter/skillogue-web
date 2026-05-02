@@ -120,7 +120,7 @@ const PrivacySettings: React.FC = () => {
                 tone="discovery"
             />
 
-            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+            <div className="mt-6">
                 <SettingsSectionCard
                     title={settingsCopy.main.profileVisibilityPrivacy}
                     description={settingsCopy.privacy.saveHint}
@@ -131,7 +131,6 @@ const PrivacySettings: React.FC = () => {
                     <SettingsToggleRow
                         title={settingsCopy.privacy.privateProfileTitle}
                         description={settingsCopy.privacy.privateProfileDescription}
-                        helperText={settingsCopy.privacy.privateProfileHelper}
                         icon={<Eye size={20} />}
                         checked={settings.is_private}
                         checkedLabel={settingsCopy.privacy.privateProfileEnabled}
@@ -144,7 +143,6 @@ const PrivacySettings: React.FC = () => {
                     <SettingsToggleRow
                         title={settingsCopy.privacy.showAgeTitle}
                         description={settingsCopy.privacy.showAgeDescription}
-                        helperText={settingsCopy.privacy.showAgeHelper}
                         icon={<Calendar size={20} />}
                         checked={settings.show_age}
                         checkedLabel={settingsCopy.privacy.showAgeEnabled}
@@ -157,7 +155,6 @@ const PrivacySettings: React.FC = () => {
                     <SettingsToggleRow
                         title={settingsCopy.privacy.showLocationTitle}
                         description={settingsCopy.privacy.showLocationDescription}
-                        helperText={settingsCopy.privacy.showLocationHelper}
                         icon={<MapPin size={20} />}
                         checked={settings.show_location}
                         checkedLabel={settingsCopy.privacy.showLocationEnabled}
@@ -169,16 +166,6 @@ const PrivacySettings: React.FC = () => {
                     />
                 </SettingsSectionCard>
 
-                <div className="space-y-6">
-                    <SettingsStatusBanner
-                        title={settingsCopy.privacy.visibilitySummaryTitle}
-                        description={settingsCopy.privacy.visibilitySummaryDescription}
-                        helperText={settingsCopy.privacy.saveHint}
-                        icon={<Lock className="h-5 w-5" />}
-                        badge={settingsCopy.privacy.title}
-                        tone="discovery"
-                    />
-                </div>
             </div>
         </SettingsPage>
     );

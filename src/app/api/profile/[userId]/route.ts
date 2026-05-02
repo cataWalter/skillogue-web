@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { AppDataService } from '@/lib/server/app-data-service';
+import { getCurrentUserFromRequest } from '@/lib/server/current-user';
 
 export async function GET(
   _request: Request,
@@ -23,11 +24,21 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const { userId } = await params;
+    const currentUser = await getCurrentUserFromRequest(request);
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+    }
+
+    if (currentUser.id !== userId) {
+      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    }
+
     const data = await request.json();
     const service = new AppDataService();
 

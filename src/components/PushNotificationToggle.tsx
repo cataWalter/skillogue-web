@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
-import { Bell, BellOff, Loader2, Sparkles } from 'lucide-react';
+import { Bell, BellOff, Loader2 } from 'lucide-react';
 import { SettingsStatusBanner } from './settings/SettingsShell';
 import { settingsCopy } from '../lib/app-copy';
 
@@ -96,12 +96,6 @@ const PushNotificationToggle: React.FC = () => {
                 </button>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-line/25 bg-surface/70 px-4 py-3">
-                <div className="flex items-start gap-3">
-                    <Sparkles className="mt-0.5 h-4 w-4 text-brand" />
-                    <p className="text-sm leading-6 text-faint">{settingsCopy.pushNotifications.deviceHint}</p>
-                </div>
-            </div>
         </div>
     );
 };

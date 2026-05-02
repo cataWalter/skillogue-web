@@ -97,7 +97,6 @@ const DeleteAccount: React.FC = () => {
                             <label htmlFor="confirmation" className="block text-sm font-medium text-muted">
                                 {settingsCopy.deleteAccount.confirmLabel}
                             </label>
-                            <p className="mt-2 text-sm leading-6 text-faint">{settingsCopy.deleteAccount.confirmationHelp}</p>
                             <input
                                 id="confirmation"
                                 type="text"

@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { appClient } from '../../lib/appClient';
+import { getProfilePassions, getProfileLanguages, getAllLanguages, getAllPassions } from '@/lib/client/profile-client';
+import { getCountries, getRegions, getCities } from '@/lib/client/location-client';
 import MultiSelect from '../../components/MultiSelect';
 import Link from 'next/link';
 import { updateProfile } from '../actions/profile';
@@ -23,15 +25,6 @@ interface LocationState {
     city: string;
     region: string;
     country: string;
-}
-interface Passion {
-    id: number;
-    name: string;
-}
-
-interface Language {
-    id: number;
-    name: string;
 }
 
 const fieldClass = 'w-full rounded-xl border border-line/30 bg-surface-secondary/70 p-3 text-foreground shadow-glass-sm focus:outline-none focus:ring-2 focus:ring-brand';
@@ -54,8 +47,8 @@ const EditProfile: React.FC = () => {
     });
     const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
     const [selectedPassions, setSelectedPassions] = useState<string[]>([]);
-    const [availablePassions, setAvailablePassions] = useState<Passion[]>([]);
-    const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
+    const [availablePassions, setAvailablePassions] = useState<{ id: number; name: string }[]>([]);
+    const [availableLanguages, setAvailableLanguages] = useState<{ id: number; name: string }[]>([]);
     const [countries, setCountries] = useState<string[]>([]);
     const [regions, setRegions] = useState<string[]>([]);
     const [cities, setCities] = useState<string[]>([]);
@@ -74,22 +67,22 @@ const EditProfile: React.FC = () => {
 
             const [
                 profileRes,
-                languageRes,
-                passionRes,
-                allLanguagesRes,
-                allPassionsRes,
-                countriesRes
+                currentLanguages,
+                currentPassions,
+                allLanguages,
+                allPassions,
+                countries,
             ] = await Promise.all([
                 appClient
                     .from('profiles')
                     .select('id, first_name, last_name, about_me, birth_date, gender, locations(*)')
                     .eq('id', user.id)
                     .single(),
-                appClient.from('profile_languages').select('languages(name)').eq('profile_id', user.id),
-                appClient.from('profile_passions').select('passions(name)').eq('profile_id', user.id),
-                appClient.from('languages').select('id, name'),
-                appClient.from('passions').select('id, name'),
-                appClient.rpc('get_distinct_countries')
+                getProfileLanguages(user.id),
+                getProfilePassions(user.id),
+                getAllLanguages(),
+                getAllPassions(),
+                getCountries(),
             ]);
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,16 +93,6 @@ const EditProfile: React.FC = () => {
                 setLoading(false);
                 return;
             }
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const currentLanguages = ((languageRes as any).data as { languages: { name: string } | null }[] | null)
-                ?.map(item => item.languages?.name)
-                .filter((name): name is string => !!name) || [];
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const currentPassions = ((passionRes as any).data as { passions: { name: string } | null }[] | null)
-                ?.map(item => item.passions?.name)
-                .filter((name): name is string => !!name) || [];
 
             if (profileData) {
                 setProfile({
@@ -133,12 +116,9 @@ const EditProfile: React.FC = () => {
 
             setSelectedLanguages(currentLanguages);
             setSelectedPassions(currentPassions);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setAvailableLanguages((allLanguagesRes as any).data || []);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setAvailablePassions((allPassionsRes as any).data || []);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setCountries((countriesRes as any).data?.map((c: { country: string }) => c.country) || []);
+            setAvailableLanguages(allLanguages);
+            setAvailablePassions(allPassions);
+            setCountries(countries);
 
             setLoading(false);
         };
@@ -147,15 +127,11 @@ const EditProfile: React.FC = () => {
     }, [router]);
 
     const fetchRegions = async (country: string) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data } = await (appClient as any).rpc('get_distinct_regions', { p_country: country });
-        setRegions(data?.map((r: { region: string }) => r.region) || []);
+        setRegions(await getRegions(country));
     };
 
     const fetchCities = async (country: string, region: string) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data } = await (appClient as any).rpc('get_distinct_cities', { p_country: country, p_region: region });
-        setCities(data?.map((c: { city: string }) => c.city) || []);
+        setCities(await getCities(country, region));
     };
 
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

@@ -18,7 +18,10 @@ const ConversationItem: React.FC<ConversationItemProps> = React.memo(({ userId, 
 
     return (
         <div
+            role="button"
+            tabIndex={0}
             onClick={() => onClick(userId)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(userId); } }}
             className={`cursor-pointer border-b border-line/20 p-4 transition-all duration-300 hover:bg-surface-secondary/35 ${isSelected ? 'bg-brand/10 border-l-2 border-l-brand shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)]' : ''
                 }`}
         >

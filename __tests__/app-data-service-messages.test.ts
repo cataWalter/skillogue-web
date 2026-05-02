@@ -138,7 +138,8 @@ describe('AppDataService messaging compatibility', () => {
     const listAllDocumentsSpy = jest.spyOn(service as any, 'listAllDocuments');
     const fetchByIdsSpy = jest.spyOn(service as any, 'fetchByIds');
 
-    listAllDocumentsSpy.mockImplementation(async (collection: string, queries: string[] = []) => {
+    listAllDocumentsSpy.mockImplementation(async (collection: unknown, ...rest: unknown[]) => {
+      const queries = (rest[0] as string[] | undefined) ?? [];
       if (collection !== 'messages') {
         return [];
       }

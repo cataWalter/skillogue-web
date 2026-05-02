@@ -1,6 +1,4 @@
 // src/components/Footer.tsx
-'use client';
-
 import React from 'react';
 import { Heart } from 'lucide-react';
 import Link from 'next/link';

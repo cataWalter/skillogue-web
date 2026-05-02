@@ -1,5 +1,6 @@
 import React from 'react';
 import Avatar from './Avatar';
+import { formatMessageDate } from '@/lib/format-date';
 
 interface MessageItemProps {
     content: string;
@@ -11,7 +12,7 @@ interface MessageItemProps {
 
 const MessageItem: React.FC<MessageItemProps> = React.memo(({ content, createdAt, isMe, showAvatar, senderId }) => {
     const formattedTime = new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const formattedDate = new Date(createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const formattedDate = formatMessageDate(createdAt) ?? '';
 
     return (
         <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-3 animate-fade-in-up`}>

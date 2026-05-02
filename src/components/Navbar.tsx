@@ -8,6 +8,7 @@ import { Menu, X, User, Settings, LogOut, Heart, MessageCircle, Bell, Search, Sh
 import { useState, useRef, useEffect } from 'react';
 import { componentCopy } from '../lib/app-copy';
 import ThemeToggle from './ThemeToggle';
+import { useNotifications } from '../context/NotificationContext';
 
 const Navbar = () => {
   const { user, signOut, loading } = useAuth();
@@ -32,14 +33,16 @@ const Navbar = () => {
     router.refresh();
   };
 
+  const { unreadCount } = useNotifications();
+
   const navItems = user ? [
-    ...(isAdminEmail(user.email) ? [{ href: '/admin', icon: ShieldAlert, label: 'Admin' }] : []),
     { href: '/search', icon: Search, label: componentCopy.navbar.search },
     { href: '/favorites', icon: Heart, label: componentCopy.navbar.favorites },
     { href: '/messages', icon: MessageCircle, label: componentCopy.navbar.messages },
-    { href: '/notifications', icon: Bell, label: componentCopy.navbar.notifications },
-    { href: '/profile', icon: User, label: componentCopy.navbar.profile },
-    { href: '/settings', icon: Settings, label: componentCopy.navbar.settings },
+    { href: '/notifications', icon: Bell, label: componentCopy.navbar.notifications, badge: unreadCount, iconOnly: true },
+    { href: '/profile', icon: User, label: componentCopy.navbar.profile, iconOnly: true },
+    { href: '/settings', icon: Settings, label: componentCopy.navbar.settings, iconOnly: true },
+    ...(isAdminEmail(user.email) ? [{ href: '/admin', icon: ShieldAlert, label: 'Admin', iconOnly: true }] : []),
   ] : [];
 
   return (
@@ -62,13 +65,22 @@ const Navbar = () => {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${isActive(item.href)
+                    title={item.iconOnly ? item.label : undefined}
+                    className={`flex items-center gap-2 rounded-lg transition ${'iconOnly' in item && item.iconOnly ? 'px-2 py-2' : 'px-3 py-2'} ${isActive(item.href)
                       ? 'bg-surface-secondary text-foreground'
                       : 'text-faint hover:text-foreground hover:bg-surface-secondary'
                       }`}
                   >
-                    <item.icon size={18} />
-                    <span className="text-sm">{item.label}</span>
+                    <span className="relative">
+                      <item.icon size={18} />
+                      {'badge' in item && item.badge !== undefined && item.badge > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-4 w-4 bg-danger justify-center items-center text-xs text-white">{item.badge}</span>
+                        </span>
+                      )}
+                    </span>
+                    {'iconOnly' in item && item.iconOnly ? null : <span className="text-sm">{item.label}</span>}
                   </Link>
                 ))}
                 <button
@@ -124,7 +136,15 @@ const Navbar = () => {
                       : 'text-faint hover:text-foreground hover:bg-surface-secondary'
                       }`}
                   >
-                    <item.icon size={18} />
+                    <span className="relative">
+                      <item.icon size={18} />
+                      {'badge' in item && item.badge !== undefined && item.badge > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-4 w-4 bg-danger justify-center items-center text-xs text-white">{item.badge}</span>
+                        </span>
+                      )}
+                    </span>
                     <span>{item.label}</span>
                   </Link>
                 ))}

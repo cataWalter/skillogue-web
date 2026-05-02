@@ -12,6 +12,9 @@ import { AppDataService } from '@/lib/server/app-data-service';
 export async function POST(request: NextRequest) {
   try {
     const sessionSecret = getAppwriteSessionSecret(request);
+    if (!sessionSecret) {
+      return NextResponse.json({ message: 'Not authenticated.' }, { status: 401 });
+    }
     const userAgent = request.headers.get('user-agent') ?? undefined;
     const account = createAppwriteSessionAccount(sessionSecret, userAgent);
     const currentUser = await account.get();

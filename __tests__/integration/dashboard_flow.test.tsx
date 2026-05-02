@@ -315,7 +315,7 @@ describe('Dashboard Integration Flow', () => {
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith('Error fetching dashboard data:', expect.any(Error));
       expect(screen.queryByTestId('dashboard-skeleton')).not.toBeInTheDocument();
-      expect(screen.getByText(dashboardCopy.discoverSubtitle)).toBeInTheDocument();
+      expect(screen.getByText(dashboardCopy.discoverTitle)).toBeInTheDocument();
     });
 
     consoleSpy.mockRestore();

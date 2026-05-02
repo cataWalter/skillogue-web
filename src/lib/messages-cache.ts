@@ -62,7 +62,7 @@ export const readMessagesPageCache = (userId: string): MessagesPageCache | null 
             messagesByConversation: parsedCache.messagesByConversation && typeof parsedCache.messagesByConversation === 'object'
                 ? parsedCache.messagesByConversation as Record<string, Message[]>
                 : {},
-            updatedAt: parsedCache.updatedAt,
+            updatedAt: parsedCache.updatedAt as number,
         };
     } catch {
         window.sessionStorage.removeItem(MESSAGES_PAGE_CACHE_KEY);

@@ -12,12 +12,14 @@ const getEnvValue = (...keys: string[]) => {
 
 const toEnvKeySegment = (value: string) => value.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
 
-export const getAppwriteEndpoint = () => getEnvValue('NEXT_PUBLIC_APPWRITE_ENDPOINT');
+export const getAppwriteEndpoint = () =>
+	(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT ?? '').trim();
 
-export const getAppwriteProjectId = () => getEnvValue('NEXT_PUBLIC_APPWRITE_PROJECT_ID');
+export const getAppwriteProjectId = () =>
+	(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID ?? '').trim();
 
 export const getAppwriteDatabaseId = () =>
-	getEnvValue('NEXT_PUBLIC_APPWRITE_DATABASE_ID', 'APPWRITE_DATABASE_ID');
+	(process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID ?? process.env.APPWRITE_DATABASE_ID ?? '').trim();
 
 export const getAppwriteApiKey = () => getEnvValue('APPWRITE_API_KEY');
 

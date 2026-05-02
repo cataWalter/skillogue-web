@@ -1310,8 +1310,9 @@ describe('Messages Page', () => {
 
     // Trigger presence sync
     if (presenceCallback) {
+      const cb = presenceCallback;
       await act(async () => {
-        presenceCallback();
+        cb();
       });
     }
 

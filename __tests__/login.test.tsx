@@ -7,6 +7,7 @@ import { authCopy } from '../src/lib/app-copy';
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+  useSearchParams: jest.fn(() => ({ get: jest.fn().mockReturnValue(null) })),
 }));
 
 const mockSignIn = jest.fn();
@@ -21,6 +22,16 @@ jest.mock('react-hot-toast', () => ({
   default: {
     error: jest.fn(),
   },
+}));
+
+jest.mock('appwrite', () => ({
+  OAuthProvider: { Google: 'google' },
+}));
+
+jest.mock('../src/lib/appwrite/browser', () => ({
+  createAppwriteBrowserAccount: jest.fn(() => ({
+    createOAuth2Token: jest.fn(),
+  })),
 }));
 
 describe('Login Page', () => {

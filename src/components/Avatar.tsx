@@ -97,4 +97,4 @@ const avatarCollections = [
     thumbs,
 ] as const; // 'as const' helps TypeScript treat it as a tuple of specific types
 
-export default Avatar;
+export default React.memo(Avatar);

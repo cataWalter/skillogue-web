@@ -9,6 +9,11 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }))
 
+jest.mock('appwrite', () => ({ OAuthProvider: { Google: 'google' } }))
+jest.mock('../src/lib/appwrite/browser', () => ({
+  createAppwriteBrowserAccount: jest.fn(() => ({ createOAuth2Token: jest.fn() })),
+}))
+
 // Mock react-hot-toast
 jest.mock('react-hot-toast', () => ({
   __esModule: true,
@@ -41,13 +46,12 @@ describe('SignUp Page', () => {
     render(<SignUp />)
     expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Password/i)).toBeInTheDocument()
-    // Note: Button text might be "Sign Up" or similar, checking role button
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign up/i })).toBeInTheDocument()
   })
 
   it('validates empty fields', async () => {
     render(<SignUp />)
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
     expect(toast.error).toHaveBeenCalledWith('Please fill in both fields', { id: 'signup-error' })
   })
 
@@ -55,7 +59,7 @@ describe('SignUp Page', () => {
     render(<SignUp />)
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'weak' } })
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
     expect(toast.error).toHaveBeenCalledWith('Please ensure your password meets all the strength requirements.', { id: 'signup-error' })
   })
 
@@ -63,7 +67,7 @@ describe('SignUp Page', () => {
     render(<SignUp />)
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } })
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
     expect(toast.error).toHaveBeenCalledWith('You must agree to the Terms of Service and Privacy Policy to create an account.', { id: 'signup-error' })
   })
 
@@ -78,7 +82,7 @@ describe('SignUp Page', () => {
     const checkbox = screen.getByRole('checkbox')
     fireEvent.click(checkbox)
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
 
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith('test@example.com', 'StrongP@ssw0rd!')
@@ -114,7 +118,7 @@ describe('SignUp Page', () => {
     const checkbox = screen.getByRole('checkbox');
     fireEvent.click(checkbox);
 
-    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Signup failed', { id: 'signup-error' });
@@ -132,7 +136,7 @@ describe('SignUp Page', () => {
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } });
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('An error occurred', { id: 'signup-error' });

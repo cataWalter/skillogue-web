@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { appClient } from '../../lib/appClient';
+import { getProfilePassions, getProfileLanguages } from '@/lib/client/profile-client';
 import ProfileCard from '../../components/ProfileCard';
 import ProfileSkeleton from '../../components/ProfileSkeleton';
 import { FullProfile } from '../../types';
@@ -42,15 +43,13 @@ const Profile: React.FC = () => {
             }
             setProfile(profileData as FullProfile);
 
-            const [passionRes, languageRes] = await Promise.all([
-                appClient.from('profile_passions').select('passions(name)').eq('profile_id', user.id),
-                appClient.from('profile_languages').select('languages(name)').eq('profile_id', user.id)
+            const [profilePassions, profileLanguages] = await Promise.all([
+                getProfilePassions(user.id),
+                getProfileLanguages(user.id),
             ]);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setPassions(passionRes.data?.map((p: any) => p.passions.name) || []);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setLanguages(languageRes.data?.map((l: any) => l.languages.name) || []);
+            setPassions(profilePassions);
+            setLanguages(profileLanguages);
 
             setLoading(false);
         };

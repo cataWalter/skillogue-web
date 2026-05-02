@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MessageSquare, User, Search, ArrowRight } from 'lucide-react';
+import { MessageSquare, ArrowRight } from 'lucide-react';
 import { appClient } from '../../lib/appClient';
 import Avatar from '../../components/Avatar';
 import ProfileCompletion from '../../components/ProfileCompletion';
@@ -11,6 +11,7 @@ import PassionSpotlight from '../../components/PassionSpotlight';
 import { ProfileData, Conversation, SuggestedProfile, UserPassion } from '../../types';
 import { getDisplayMessagePreview, getDisplayName } from '@/lib/profile-display';
 import { commonLabels, dashboardCopy } from '@/lib/app-copy';
+import { formatShortDate } from '@/lib/format-date';
 import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
@@ -109,34 +110,8 @@ const Dashboard: React.FC = () => {
     }, [router]);
 
     const welcomeName = loading ? 'there' : getDisplayName(profile?.first_name);
-    const introCopy = profile?.about_me || dashboardCopy.discoverSubtitle;
+    const introCopy = profile?.about_me || dashboardCopy.heroIntroFallback;
     const profilePassionsCount = profile?.passions_count ?? 0;
-    const quickActions = [
-        {
-            href: '/messages',
-            icon: MessageSquare,
-            title: commonLabels.messages,
-            subtitle: dashboardCopy.messagesSubtitle,
-            iconClass: 'bg-connection/15 text-connection',
-            borderClass: 'hover:border-connection/40',
-        },
-        {
-            href: '/profile',
-            icon: User,
-            title: dashboardCopy.yourProfileTitle,
-            subtitle: dashboardCopy.profileSubtitle,
-            iconClass: 'bg-brand/15 text-brand',
-            borderClass: 'hover:border-brand/40',
-        },
-        {
-            href: '/search',
-            icon: Search,
-            title: dashboardCopy.discoverTitle,
-            subtitle: dashboardCopy.discoverSubtitle,
-            iconClass: 'bg-discovery/15 text-discovery',
-            borderClass: 'hover:border-discovery/40',
-        },
-    ];
 
     return (
         <div className="editorial-shell py-8 sm:py-12 lg:py-16" data-testid={loading ? 'dashboard-skeleton' : undefined}>
@@ -146,7 +121,7 @@ const Dashboard: React.FC = () => {
                 <div className="relative grid gap-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.85fr)] xl:items-end">
                     <div>
                         <div className="editorial-kicker mb-5 border-brand/20 bg-brand/10 text-brand-soft">
-                            <span>Curated dashboard</span>
+                            <span>{dashboardCopy.heroKicker}</span>
                         </div>
                         <h1 className="text-3xl font-extrabold text-foreground sm:text-4xl md:text-5xl">
                             {dashboardCopy.welcomeBackPrefix} <span className="bg-gradient-to-r from-brand-start to-discovery-end bg-clip-text text-transparent">{welcomeName}</span>!
@@ -173,38 +148,20 @@ const Dashboard: React.FC = () => {
 
                     <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
                         <div className="glass-surface rounded-[1.5rem] p-5">
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">Live conversations</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.conversationsStatLabel}</p>
                             <p className="mt-3 text-4xl font-bold text-foreground">{conversations.length}</p>
                         </div>
                         <div className="glass-surface rounded-[1.5rem] p-5">
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">Fresh matches</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.suggestionsStatLabel}</p>
                             <p className="mt-3 text-4xl font-bold text-foreground">{suggestions.length}</p>
                         </div>
                         <div className="glass-surface rounded-[1.5rem] p-5">
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">Profile passions</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.passionsStatLabel}</p>
                             <p className="mt-3 text-4xl font-bold text-foreground">{profilePassionsCount}</p>
                         </div>
                     </div>
                 </div>
             </section>
-
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5 sm:gap-6">
-                {quickActions.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`glass-surface card-hover-lift flex items-center gap-4 rounded-[1.5rem] p-5 transition-all duration-300 sm:block sm:p-6 ${item.borderClass}`}
-                    >
-                        <div className={`mb-0 inline-flex rounded-2xl p-3 sm:mb-4 ${item.iconClass}`}>
-                            <item.icon className="h-6 w-6 sm:h-8 sm:w-8" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-foreground sm:text-xl">{item.title}</h2>
-                            <p className="mt-1 text-sm text-faint sm:text-base">{item.subtitle}</p>
-                        </div>
-                    </Link>
-                ))}
-            </div>
 
             <div className="mt-8 grid grid-cols-1 gap-6 sm:mt-12 lg:grid-cols-3 sm:gap-8">
                 {/* Main Content Area */}
@@ -240,7 +197,7 @@ const Dashboard: React.FC = () => {
                                                 <p className="text-muted text-sm truncate">{getDisplayMessagePreview(convo.last_message)}</p>
                                             </div>
                                             <span className="text-xs text-faint whitespace-nowrap">
-                                                {convo.last_message_time ? new Date(convo.last_message_time).toLocaleDateString() : ''}
+                                                {convo.last_message_time ? (formatShortDate(convo.last_message_time) ?? '') : ''}
                                             </span>
                                         </div>
                                     </Link>

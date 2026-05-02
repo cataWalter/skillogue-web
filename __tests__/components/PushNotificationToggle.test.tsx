@@ -2,7 +2,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PushNotificationToggle from '../../src/components/PushNotificationToggle';
 
 // Mock the hook
-const mockUsePushNotifications = {
+const mockUsePushNotifications: {
+  isSupported: boolean;
+  subscription: null | { endpoint: string; getKey: jest.Mock; unsubscribe: jest.Mock };
+  subscribe: jest.Mock;
+  unsubscribe: jest.Mock;
+  loading: boolean;
+} = {
   isSupported: true,
   subscription: null,
   subscribe: jest.fn(),

@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { appClient } from '../../lib/appClient';
+import { getAllLanguages, getAllPassions } from '@/lib/client/profile-client';
+import { getCountries, getRegions, getCities } from '@/lib/client/location-client';
 import MultiSelect from '../../components/MultiSelect';
 import { updateProfile } from '../actions/profile';
-import { normalizeGender } from '@/lib/gender';
 import { getBirthDateRange, isBirthDateWithinAgeRange } from '@/lib/profile-age';
 import { onboardingCopy } from '../../lib/app-copy';
 import { Button } from '../../components/Button';
@@ -23,16 +24,6 @@ interface LocationState {
     city: string;
     region: string;
     country: string;
-}
-
-interface Passion {
-    id: number;
-    name: string;
-}
-
-interface Language {
-    id: number;
-    name: string;
 }
 
 const fieldClass = 'w-full rounded-xl border border-line/30 bg-surface-secondary/70 p-3 text-foreground shadow-glass-sm focus:outline-none focus:ring-2 focus:ring-brand';
@@ -55,8 +46,8 @@ const Onboarding: React.FC = () => {
     });
     const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
     const [selectedPassions, setSelectedPassions] = useState<string[]>([]);
-    const [availablePassions, setAvailablePassions] = useState<Passion[]>([]);
-    const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
+    const [availablePassions, setAvailablePassions] = useState<{ id: number; name: string }[]>([]);
+    const [availableLanguages, setAvailableLanguages] = useState<{ id: number; name: string }[]>([]);
     const [countries, setCountries] = useState<string[]>([]);
     const [regions, setRegions] = useState<string[]>([]);
     const [cities, setCities] = useState<string[]>([]);
@@ -73,14 +64,14 @@ const Onboarding: React.FC = () => {
                 return;
             }
 
-            const { data: allLanguages } = await appClient.from('languages').select('id, name');
-            setAvailableLanguages(allLanguages || []);
-
-            const { data: allPassions } = await appClient.from('passions').select('id, name');
-            setAvailablePassions(allPassions || []);
-
-            const { data: countryData } = await appClient.rpc('get_distinct_countries');
-            setCountries(countryData?.map((country: { country: string }) => country.country) || []);
+            const [allLanguages, allPassions, countries] = await Promise.all([
+                getAllLanguages(),
+                getAllPassions(),
+                getCountries(),
+            ]);
+            setAvailableLanguages(allLanguages);
+            setAvailablePassions(allPassions);
+            setCountries(countries);
 
             setLoading(false);
         };
@@ -91,11 +82,10 @@ const Onboarding: React.FC = () => {
     useEffect(() => {
         if (location.country) {
             const fetchRegions = async () => {
-                const { data, error } = await appClient.rpc('get_distinct_regions', { p_country: location.country });
-                if (error) {
-                    console.error('Error fetching regions:', error);
-                } else {
-                    setRegions(data.map((region: { region: string }) => region.region).filter(Boolean));
+                try {
+                    setRegions(await getRegions(location.country));
+                } catch {
+                    console.error('Error fetching regions');
                 }
             };
             fetchRegions();
@@ -107,14 +97,10 @@ const Onboarding: React.FC = () => {
     useEffect(() => {
         if (location.country) {
             const fetchCities = async () => {
-                const { data, error } = await appClient.rpc('get_distinct_cities', {
-                    p_country: location.country,
-                    p_region: location.region || null,
-                });
-                if (error) {
-                    console.error('Error fetching cities:', error);
-                } else {
-                    setCities(data.map((city: { city: string }) => city.city));
+                try {
+                    setCities(await getCities(location.country, location.region || null));
+                } catch {
+                    console.error('Error fetching cities');
                 }
             };
             fetchCities();
@@ -190,14 +176,12 @@ const Onboarding: React.FC = () => {
 
         setLoading(true);
         try {
-            const normalizedGender = normalizeGender(profile.gender);
-
             const result = await updateProfile({
                 first_name: profile.first_name,
                 last_name: profile.last_name,
                 about_me: profile.about_me,
                 birth_date: profile.birth_date,
-                gender: normalizedGender,
+                gender: profile.gender,
                 location: {
                     city: location.city || null,
                     region: location.region || null,

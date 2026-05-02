@@ -75,7 +75,6 @@ describe('ReportModal Component', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          reporterId: 'reporter-123',
           reportedId: 'reported-456',
           reason: 'Spam content',
         }),

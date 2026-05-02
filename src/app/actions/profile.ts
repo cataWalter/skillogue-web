@@ -18,8 +18,6 @@ export async function updateProfile(data: z.input<typeof profileSchema>) {
     const service = new AppDataService();
     await service.saveProfileData(currentUser.id, validatedData);
 
-    console.log('Updating profile with:', validatedData);
-
     revalidatePath('/profile');
     revalidatePath('/dashboard');
     revalidatePath('/settings/privacy');
@@ -47,7 +45,6 @@ export async function getProfile(userId: string) {
       return null;
     }
 
-    console.log('Fetching profile for:', userId);
     return response.json();
   } catch (error) {
     console.error('Profile fetch error:', error);

@@ -57,7 +57,6 @@ describe('profile actions', () => {
       const result = await updateProfile(validData);
 
       expect(result.success).toBe(true);
-      expect(mockConsoleLog).toHaveBeenCalledWith('Updating profile with:', expect.any(Object));
     });
 
     it('should return validation error for empty first_name', async () => {
@@ -186,7 +185,6 @@ describe('profile actions', () => {
 
       expect(result).toBeDefined();
       expect(result?.id).toBe('user-123');
-      expect(mockConsoleLog).toHaveBeenCalledWith('Fetching profile for:', 'user-123');
     });
 
     it('should use the localhost fallback when NEXT_PUBLIC_APP_URL is not configured', async () => {

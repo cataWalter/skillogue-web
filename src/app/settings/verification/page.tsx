@@ -134,7 +134,6 @@ export default function VerificationPage() {
                             <SettingsStatusBanner
                                 title={settingsCopy.verification.noneTitle}
                                 description={settingsCopy.verification.intro}
-                                helperText={settingsCopy.verification.noneHelper}
                                 icon={<ShieldCheck className="h-5 w-5" />}
                                 badge={settingsCopy.verification.noneBadge}
                                 tone="brand"

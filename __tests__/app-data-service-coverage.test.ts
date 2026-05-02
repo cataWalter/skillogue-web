@@ -668,7 +668,7 @@ describe('AppDataService coverage', () => {
 		jest.spyOn(service, 'listLocations').mockResolvedValueOnce([
 			{ id: 'loc-1', city: 'Paris', region: 'Ile-de-France', country: 'France' },
 		] as never);
-		listAllDocumentsSpy.mockImplementation(async (collection: string) => {
+		listAllDocumentsSpy.mockImplementation(async (collection: unknown) => {
 			if (collection === 'passions') {
 				return [
 					{ id: 'passion-1', name: 'Music' },
@@ -1356,7 +1356,8 @@ describe('AppDataService coverage', () => {
 			{ id: 'loc-2', city: 'Berlin', region: 'Berlin', country: 'Germany' },
 		] as never);
 		jest.spyOn(service as any, 'listAllDocuments').mockImplementation(
-			async (collection: string, queries: string[] = []) => {
+			async (collection: unknown, ...rest: unknown[]) => {
+				const queries = (rest[0] as string[] | undefined) ?? [];
 				if (collection === 'passions') {
 					return [
 						{ id: 'passion-1', name: 'Music' },
@@ -1522,7 +1523,7 @@ describe('AppDataService coverage', () => {
 			{ id: 'loc-1', city: 'Paris', region: 'Ile-de-France', country: 'France' },
 		] as never);
 		jest.spyOn(searchPostFilterService as any, 'listAllDocuments').mockImplementation(
-			async (collection: string) => {
+			async (collection: unknown) => {
 				switch (collection) {
 					case 'passions':
 					case 'languages':
@@ -1584,7 +1585,7 @@ describe('AppDataService coverage', () => {
 		] as never);
 		const listAllDocumentsSpy = jest.spyOn(service as any, 'listAllDocuments');
 		listAllDocumentsSpy.mockReset();
-		listAllDocumentsSpy.mockImplementation(async (collection: string) => {
+		listAllDocumentsSpy.mockImplementation(async (collection: unknown) => {
 			if (collection === 'passions') {
 				return [
 					{ id: 'passion-1', name: 'Music' },

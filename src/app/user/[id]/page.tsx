@@ -9,6 +9,8 @@ import Avatar from '../../../components/Avatar';
 import { FullProfile } from '../../../types';
 import { MessageSquare, ShieldAlert, UserX, Flag, Ghost, Lock, Heart } from 'lucide-react';
 import { appClient } from '../../../lib/appClient';
+import { getProfilePassions, getProfileLanguages } from '@/lib/client/profile-client';
+import { isBlocked as checkIsBlocked, isBlockedBy as checkIsBlockedBy, isSaved as checkIsSaved, blockUser as doBlockUser, unblockUser as doUnblockUser, saveProfile as doSaveProfile, unsaveProfile as doUnsaveProfile } from '@/lib/client/social-client';
 import ReportModal from '../../../components/ReportModal';
 import toast from 'react-hot-toast';
 import { profilePageCopy } from '../../../lib/app-copy';
@@ -18,14 +20,6 @@ type Session = {
         id: string;
     };
 } | null;
-
-type NamedRelation = {
-    passions: { name: string } | null;
-};
-
-type LanguageRelation = {
-    languages: { name: string } | null;
-};
 
 const UserProfile: React.FC = () => {
     const params = useParams();
@@ -43,8 +37,7 @@ const UserProfile: React.FC = () => {
     const router = useRouter();
 
     const checkBlockStatus = useCallback(async (profileId: string) => {
-        const { data } = await appClient.rpc('is_blocked', { target_id: profileId });
-        setIsBlocked(!!data);
+        setIsBlocked(await checkIsBlocked(profileId));
     }, []);
 
     useEffect(() => {
@@ -68,8 +61,7 @@ const UserProfile: React.FC = () => {
             }
 
             // Check if I am blocked by this user
-            const { data: blockedByData } = await appClient.rpc('is_blocked_by', { target_id: id });
-            if (blockedByData) {
+            if (await checkIsBlockedBy(id)) {
                 setIsBlockedByProfileUser(true);
                 setLoading(false);
                 return;
@@ -101,16 +93,15 @@ const UserProfile: React.FC = () => {
                 }
             }).catch(() => undefined);
 
-            const [passionRes, languageRes] = await Promise.all([
-                appClient.from('profile_passions').select('passions(name)').eq('profile_id', id),
-                appClient.from('profile_languages').select('languages(name)').eq('profile_id', id)
+            const [profilePassions, profileLanguages] = await Promise.all([
+                getProfilePassions(id),
+                getProfileLanguages(id),
             ]);
 
-            setPassions((passionRes.data as NamedRelation[] | null)?.flatMap((passion) => passion.passions?.name ? [passion.passions.name] : []) || []);
-            setLanguages((languageRes.data as LanguageRelation[] | null)?.flatMap((language) => language.languages?.name ? [language.languages.name] : []) || []);
+            setPassions(profilePassions);
+            setLanguages(profileLanguages);
 
-            const { data: savedData } = await appClient.rpc('is_saved', { target_id: id });
-            setIsSaved(!!savedData);
+            setIsSaved(await checkIsSaved(id));
 
 
             await checkBlockStatus(id);
@@ -123,10 +114,10 @@ const UserProfile: React.FC = () => {
 
     const handleBlock = profile
         ? async () => {
-            if (!confirm(profilePageCopy.user.blockConfirm(profile.first_name))) return;
+            if (!confirm(profilePageCopy.user.blockConfirm(profile.first_name ?? ''))) return;
 
             try {
-                const { error } = await appClient.rpc('block_user', { target_id: profile.id });
+                const { error } = await doBlockUser(profile.id);
 
                 if (error) throw error;
                 setIsBlocked(true);
@@ -141,10 +132,10 @@ const UserProfile: React.FC = () => {
 
     const handleUnblock = profile
         ? async () => {
-            if (!confirm(profilePageCopy.user.unblockConfirm(profile.first_name))) return;
+            if (!confirm(profilePageCopy.user.unblockConfirm(profile.first_name ?? ''))) return;
 
             try {
-                const { error } = await appClient.rpc('unblock_user', { target_id: profile.id });
+                const { error } = await doUnblockUser(profile.id);
 
                 if (error) throw error;
                 setIsBlocked(false);
@@ -159,7 +150,7 @@ const UserProfile: React.FC = () => {
     const handleToggleSave = profile
         ? async () => {
             if (isSaved) {
-                const { error } = await appClient.rpc('unsave_profile', { target_id: profile.id });
+                const { error } = await doUnsaveProfile(profile.id);
                 if (!error) {
                     setIsSaved(false);
                     toast.success(profilePageCopy.user.removedFromFavorites);
@@ -167,7 +158,7 @@ const UserProfile: React.FC = () => {
                     toast.error(profilePageCopy.user.removeFavoriteError);
                 }
             } else {
-                const { error } = await appClient.rpc('save_profile', { target_id: profile.id });
+                const { error } = await doSaveProfile(profile.id);
                 if (!error) {
                     setIsSaved(true);
                     toast.success(profilePageCopy.user.savedToFavorites);
@@ -291,7 +282,7 @@ const UserProfile: React.FC = () => {
                         <Lock size={48} className="text-muted mx-auto mb-4" />
                         <h2 className="text-xl font-semibold mb-2">{profilePageCopy.user.privateTitle}</h2>
                         <p className="text-faint mb-6">
-                            {profilePageCopy.user.privateDescription(profile.first_name)}
+                            {profilePageCopy.user.privateDescription(profile.first_name ?? '')}
                         </p>
                         {actionButton}
                     </div>

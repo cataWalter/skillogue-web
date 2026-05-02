@@ -72,12 +72,7 @@ interface SearchResult {
     show_location?: boolean;
 }
 
-const formatShortDate = (iso: string | null | undefined) => {
-    if (!iso) return null;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return null;
-    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-};
+import { formatShortDate } from '@/lib/format-date';
 
 const mergeUniqueResults = (existing: SearchResult[], incoming: SearchResult[]) => {
     const resultMap = new Map<string, SearchResult>();
@@ -445,7 +440,7 @@ const Search: React.FC = () => {
         }
     };
 
-    const handleSearchResultClick = useCallback((_user?: unknown, _target?: unknown) => { }, []);
+    const handleSearchResultClick = useCallback((_user: SearchResult, _action: 'profile' | 'message') => { }, []);
 
     const loadSavedSearch = (search: SavedSearch) => {
         setQuery(search.query || '');

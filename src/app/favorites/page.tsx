@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { getDisplayBio, getDisplayGender, getDisplayLocation, getDisplayName } from '../../lib/profile-display';
 import { commonLabels, favoritesCopy, profileCopy } from '../../lib/app-copy';
 import { useProfileGate } from '../../hooks/useProfileGate';
+import { formatShortDate } from '@/lib/format-date';
 
 interface SearchResult {
     id: string;
@@ -85,7 +86,7 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
         return [];
     }
 
-    const favoriteIds = favoriteRows.map((row) => row.favorite_id);
+    const favoriteIds = favoriteRows.map((row: { favorite_id: string }) => row.favorite_id);
     const [profilesResponse, passionsResponse, languagesResponse] = await Promise.all([
         appClient
             .from('profiles')
@@ -115,12 +116,12 @@ const loadFavoritesFromTables = async (): Promise<SearchResult[]> => {
 
     const locationIds = Array.from(new Set(
         (profilesResponse.data || [])
-            .map((profile) => profile.location_id)
+            .map((profile: { location_id: unknown }) => profile.location_id)
             .filter(
-                (locationId): locationId is string | number =>
+                (locationId: unknown): locationId is string | number =>
                     typeof locationId === 'string' || typeof locationId === 'number'
             )
-            .map((locationId) => String(locationId))
+            .map((locationId: string | number) => String(locationId))
     ));
 
     const locationsResponse = locationIds.length > 0
@@ -253,8 +254,7 @@ const FavoriteCard: React.FC<{ user: SearchResult; onRemove: (id: string) => voi
     const displayBio = getDisplayBio(user.about_me);
     const displayGender = getDisplayGender(user.gender);
     const displayLocation = getDisplayLocation(user.location);
-    const joinedDate = new Date(user.created_at);
-    const formattedJoinedDate = Number.isNaN(joinedDate.getTime()) ? null : joinedDate.toLocaleDateString();
+    const formattedJoinedDate = formatShortDate(user.created_at);
 
     return (
         <div className="glass-surface card-hover-lift relative rounded-[1.75rem] p-6 transition-all duration-300 hover:border-brand/40 hover:-translate-y-1 group">

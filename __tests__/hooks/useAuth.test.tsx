@@ -276,7 +276,7 @@ describe('useAuth Hook', () => {
     });
 
     it('should not set state if unmounted during session load', async () => {
-        let resolveFetch;
+        let resolveFetch!: (value: unknown) => void;
         const fetchPromise = new Promise((resolve) => {
             resolveFetch = resolve;
         });
@@ -303,7 +303,7 @@ describe('useAuth Hook', () => {
     });
 
     it('should not set state if unmounted during session load error', async () => {
-        let rejectFetch;
+        let rejectFetch!: (reason?: unknown) => void;
         const fetchPromise = new Promise((_, reject) => {
             rejectFetch = reject;
         });
@@ -575,7 +575,7 @@ describe('useAuth Hook', () => {
     });
 
     it('should not set state if unmounted during session load', async () => {
-        let resolveFetch;
+        let resolveFetch!: (value: unknown) => void;
         const fetchPromise = new Promise((resolve) => {
             resolveFetch = resolve;
         });
@@ -602,7 +602,7 @@ describe('useAuth Hook', () => {
     });
 
     it('should not set state if unmounted during session load error', async () => {
-        let rejectFetch;
+        let rejectFetch!: (reason?: unknown) => void;
         const fetchPromise = new Promise((_, reject) => {
             rejectFetch = reject;
         });

@@ -33,7 +33,6 @@ const ReportModal: React.FC<ReportModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          reporterId: user.id,
           reportedId: reportedUserId,
           reason: reason.trim(),
         }),
@@ -64,6 +63,7 @@ const ReportModal: React.FC<ReportModalProps> = ({
           <h2 id="report-modal-title" className="text-xl font-bold text-foreground">{reportModalCopy.title}</h2>
           <button
             onClick={onClose}
+            aria-label="Close report dialog"
             className="text-faint hover:text-foreground transition"
           >
             <X size={20} />

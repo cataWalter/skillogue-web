@@ -106,7 +106,6 @@ const BlockedUsersPage: React.FC = () => {
                 {!loading && blockedUsers.length > 0 ? (
                     <SettingsSectionCard
                         title={settingsCopy.blocked.listTitle}
-                        description={settingsCopy.blocked.rowDescription}
                         icon={<UserX className="h-6 w-6" />}
                         badge={settingsCopy.blocked.countLabel(blockedUsers.length)}
                         tone="danger"
@@ -126,15 +125,11 @@ const BlockedUsersPage: React.FC = () => {
                                             <Avatar seed={item.profile?.id ?? item.blocked_id} className="h-12 w-12 rounded-full" />
                                             <div>
                                                 <h3 className="font-semibold text-foreground">{displayName}</h3>
-                                                <p className="mt-1 text-sm text-faint">
-                                                    {item.profile
-                                                        ? settingsCopy.blocked.unblockHelper
-                                                        : settingsCopy.blocked.missingProfileDescription}
-                                                </p>
                                                 {!item.profile ? (
-                                                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted">
-                                                        {settingsCopy.blocked.missingProfileLabel}
-                                                    </p>
+                                                    <>
+                                                        <p className="mt-1 text-sm text-faint">{settingsCopy.blocked.missingProfileDescription}</p>
+                                                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted">{settingsCopy.blocked.missingProfileLabel}</p>
+                                                    </>
                                                 ) : null}
                                             </div>
                                         </div>

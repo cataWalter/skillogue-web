@@ -67,8 +67,6 @@ describe('PrivacySettings', () => {
       expect(screen.getByRole('checkbox', { name: 'Show Age' })).not.toBeChecked();
       expect(screen.getByRole('checkbox', { name: 'Show Location' })).toBeChecked();
     });
-
-    expect(screen.getByText('How this affects discovery')).toBeInTheDocument();
   });
 
   it('applies default values when loaded privacy fields are falsey or missing', async () => {

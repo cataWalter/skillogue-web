@@ -11,6 +11,7 @@ import {
     getOptionalText,
 } from '@/lib/profile-display';
 import { commonLabels, profileCopy } from '@/lib/app-copy';
+import { formatLongDate } from '@/lib/format-date';
 
 interface ProfileCardProps {
     profile: FullProfile;
@@ -27,32 +28,6 @@ const formatLocation = (location: FullProfile['locations']) => {
 const getAboutHeading = (profile: FullProfile) => {
     const firstName = getOptionalText(profile.first_name);
     return firstName ? `About ${firstName}` : profileCopy.aboutThisUser;
-};
-
-const formatJoinedDate = (createdAt: string | null | undefined) => {
-    if (!createdAt) {
-        return null;
-    }
-
-    const joinedDate = new Date(createdAt);
-    if (Number.isNaN(joinedDate.getTime())) {
-        return null;
-    }
-
-    return joinedDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-};
-
-const formatLastLoginDate = (lastLogin: string | null | undefined) => {
-    if (!lastLogin) {
-        return profileCopy.lastLoginNever;
-    }
-
-    const date = new Date(lastLogin);
-    if (Number.isNaN(date.getTime())) {
-        return profileCopy.lastLoginNever;
-    }
-
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
 const getDisplayAge = (age: number | null | undefined) => {
@@ -82,8 +57,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, passions, languages,
     const aboutHeading = getAboutHeading(profile);
     const aboutText = getDisplayBio(profile.about_me);
     const genderText = getDisplayGender(profile.gender);
-    const joinedDate = formatJoinedDate(profile.created_at);
-    const lastLoginDate = formatLastLoginDate(profile.last_login);
+    const joinedDate = formatLongDate(profile.created_at);
+    const lastLoginDate = formatLongDate(profile.last_login) ?? profileCopy.lastLoginNever;
     const displayAge = getDisplayAge(profile.age);
 
     return (

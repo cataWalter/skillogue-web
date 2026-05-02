@@ -25,7 +25,7 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ message, sender, 
                 <p className="font-semibold">{sender}</p>
                 <p className="text-sm text-muted">{message}</p>
             </div>
-            <button onClick={onClose} className="text-faint hover:text-foreground transition">
+            <button onClick={onClose} aria-label="Dismiss notification" className="text-faint hover:text-foreground transition">
                 <X size={18} />
             </button>
         </div>

@@ -1508,7 +1508,7 @@ export class AppDataService {
           languageLookup.find((language) => lowerCase(language.name) === lowerCase(languageName))
         )
         .filter(Boolean)
-        .map((language) => ({
+        .map((language: { id: string; name: string }) => ({
           profile_id: id,
           language_id: language.id,
         }));
@@ -1528,7 +1528,7 @@ export class AppDataService {
           passionLookup.find((passion) => lowerCase(passion.name) === lowerCase(passionName))
         )
         .filter(Boolean)
-        .map((passion) => ({
+        .map((passion: { id: string; name: string }) => ({
           profile_id: id,
           passion_id: passion.id,
         }));
@@ -1745,6 +1745,7 @@ export class AppDataService {
 
   async updateAdminSettings(patch: {
     maintenanceBannerText?: string;
+    analyticsRefreshMinutes?: number;
     moderationHold?: boolean;
     followUpUserIds?: string[];
   }) {

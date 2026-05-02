@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { adminCopy } from '../../../lib/app-copy';
+import { formatShortDate } from '@/lib/format-date';
 
 interface Report {
     id: number;
@@ -69,7 +70,7 @@ export default function AdminReports() {
                                     {adminCopy.reports.reportAgainstPrefix} {report.reported?.first_name} {report.reported?.last_name}
                                 </div>
                                 <span className="text-sm text-faint">
-                                    {new Date(report.created_at).toLocaleDateString()}
+                                    {formatShortDate(report.created_at) ?? '—'}
                                 </span>
                             </div>
 

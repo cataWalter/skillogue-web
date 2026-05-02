@@ -13,8 +13,12 @@ import {
 	setAppwriteSessionCookie,
 } from '@/lib/appwrite/server';
 import { getAppwriteCollectionId, getAppwriteDatabaseId } from '@/lib/appwrite/config';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
+
+/** Rate limit: 10 attempts per minute per IP per path. */
+const AUTH_RATE_LIMIT = { limit: 10, windowMs: 60_000 } as const;
 
 const jsonError = (message: string, status = 400) =>
 	NextResponse.json({ message }, { status });
@@ -244,6 +248,9 @@ const handleAppwriteChangePassword = async (request: NextRequest) => {
 
 	try {
 		const sessionSecret = getAppwriteSessionSecret(request);
+		if (!sessionSecret) {
+			return jsonError('Not authenticated.', 401);
+		}
 		const account = createAppwriteSessionAccount(sessionSecret, getUserAgent(request));
 		await account.updatePassword(newPassword, oldPassword);
 
@@ -296,6 +303,16 @@ export async function POST(
 	{ params }: { params: Promise<{ all: string[] }> }
 ) {
 	const routePath = await getRoutePath(params);
+
+	switch (routePath) {
+		case 'sign-in/email':
+		case 'sign-up/email':
+		case 'reset-password': {
+			const limited = checkRateLimit(request, AUTH_RATE_LIMIT);
+			if (limited) return limited;
+			break;
+		}
+	}
 
 	switch (routePath) {
 		case 'sign-in/email':

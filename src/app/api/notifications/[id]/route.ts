@@ -6,10 +6,15 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const sessionSecret = getAppwriteSessionSecret(request);
+  if (!sessionSecret) {
+    return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const service = new AppDataService(
-      getAppwriteSessionSecret(request),
+      sessionSecret,
       request.headers.get('user-agent') ?? undefined
     );
     await service.markNotificationRead(id);

@@ -64,7 +64,6 @@ export default function DataExportPage() {
             <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
                 <SettingsSectionCard
                     title={settingsCopy.dataExport.includedTitle}
-                    description={settingsCopy.dataExport.includedLead}
                     icon={<FileJson className="h-6 w-6" />}
                     badge={settingsCopy.dataExport.formatBadge}
                     tone="info"
