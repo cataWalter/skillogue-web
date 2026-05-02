@@ -1,75 +1,28 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { appClient } from '../../lib/appClient';
-import { getProfilePassions, getProfileLanguages } from '@/lib/client/profile-client';
-import ProfileCard from '../../components/ProfileCard';
-import ProfileSkeleton from '../../components/ProfileSkeleton';
-import { FullProfile } from '../../types';
+import { redirect } from 'next/navigation';
 import { Edit } from 'lucide-react';
+import ProfileCard from '../../components/ProfileCard';
+import { FullProfile } from '../../types';
 import { profilePageCopy } from '../../lib/app-copy';
+import { getCurrentUserFromCookies } from '@/lib/server/current-user';
+import { AppDataService } from '@/lib/server/app-data-service';
 
-const Profile: React.FC = () => {
-    const [profile, setProfile] = useState<FullProfile | null>(null);
-    const [passions, setPassions] = useState<string[]>([]);
-    const [languages, setLanguages] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
-
-    useEffect(() => {
-        const loadProfile = async () => {
-            setLoading(true);
-            const { data: { user } } = await appClient.auth.getUser();
-            if (!user) {
-                router.push('/login');
-                return;
-            }
-
-            const { data: profileData, error: profileError } = await appClient
-                .from('profiles')
-                .select('id, created_at, last_login, first_name, last_name, about_me, age, gender, verified, is_private, show_age, show_location, locations(*)')
-                .eq('id', user.id)
-                .single();
-
-            if (profileError) {
-                console.error('Error loading profile:', profileError);
-                if (profileError.code === 'PGRST116') {
-                    router.push('/edit-profile');
-                }
-                setLoading(false);
-                return;
-            }
-            setProfile(profileData as FullProfile);
-
-            const [profilePassions, profileLanguages] = await Promise.all([
-                getProfilePassions(user.id),
-                getProfileLanguages(user.id),
-            ]);
-
-            setPassions(profilePassions);
-            setLanguages(profileLanguages);
-
-            setLoading(false);
-        };
-
-        loadProfile();
-    }, [router]);
-
-    if (loading) {
-        return (
-            <main className="editorial-shell flex-grow py-8 sm:py-12 lg:py-16">
-                <div className="max-w-4xl mx-auto">
-                    <ProfileSkeleton />
-                </div>
-            </main>
-        );
+export default async function Profile() {
+    const currentUser = await getCurrentUserFromCookies();
+    if (!currentUser) {
+        redirect('/login?redirect=/profile');
     }
 
-    if (!profile) {
-        return <div className="editorial-shell py-10 text-center text-foreground">{profilePageCopy.owner.couldNotLoadProfile}</div>;
+    const service = new AppDataService();
+    const profileData = await service.getProfile(currentUser.id);
+
+    if (!profileData?.first_name) {
+        redirect('/edit-profile');
     }
+
+    const profile = profileData as unknown as FullProfile;
+    const passions: string[] = (profileData as any).passions ?? [];
+    const languages: string[] = (profileData as any).languages ?? [];
 
     const actionButton = (
         <Link
@@ -92,6 +45,4 @@ const Profile: React.FC = () => {
             </div>
         </main>
     );
-};
-
-export default Profile;
+}

@@ -5,10 +5,6 @@ jest.mock('react', () => ({
   useEffect: jest.fn((effect: () => void) => effect()),
 }));
 
-jest.mock('../../src/lib/analytics', () => ({
-  trackAnalyticsEvent: jest.fn().mockResolvedValue(undefined),
-}));
-
 import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 
 describe('usePushNotifications in a windowless environment', () => {

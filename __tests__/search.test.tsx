@@ -1,7 +1,6 @@
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import Search from '../src/app/search/page';
 import { appClient } from '../src/lib/appClient';
-import { trackAnalyticsEvent } from '../src/lib/analytics';
 import '@testing-library/jest-dom';
 
 const originalConsoleError = console.error;
@@ -32,10 +31,6 @@ jest.mock('../src/lib/appClient', () => ({
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
-}));
-
-jest.mock('../src/lib/analytics', () => ({
-  trackAnalyticsEvent: jest.fn(),
 }));
 
 // Mock components
@@ -153,7 +148,6 @@ describe('Search Page', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSearchParams.get.mockReset();
-    (trackAnalyticsEvent as jest.Mock).mockReset();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
       const stringArgs = args.filter((value): value is string => typeof value === 'string');
 
@@ -203,9 +197,6 @@ describe('Search Page', () => {
     await renderLoadedSearchPage();
 
     expect(screen.getByText('No profiles found matching your criteria.')).toBeInTheDocument();
-    expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_results_loaded', expect.objectContaining({
-      resultsCount: 0,
-    }));
   });
 
   it('handles performSearch error', async () => {
@@ -323,10 +314,6 @@ describe('Search Page', () => {
         passion_ids: [1],
       }));
     });
-    expect(trackAnalyticsEvent).toHaveBeenCalledWith('saved_search_created', expect.objectContaining({
-      savedPassionCount: 1,
-      nameLength: 'Coding Search'.length,
-    }));
   });
 
   it('does not persist a saved search when the name is blank', async () => {
@@ -573,18 +560,15 @@ describe('Search Page', () => {
     expect(screen.queryByText('Saved Searches')).not.toBeInTheDocument();
   });
 
-  it('tracks zero-result searches', async () => {
+  it('shows zero-results message for empty search results', async () => {
     (appClient.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
 
     await renderLoadedSearchPage();
 
     expect(screen.getByText('No profiles found matching your criteria.')).toBeInTheDocument();
-    expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_zero_results', expect.objectContaining({
-      passions: [],
-    }));
   });
 
-  it('tracks result clicks for public and private profile cards', async () => {
+  it('renders public and private profile cards from search results', async () => {
     (appClient.rpc as jest.Mock).mockResolvedValue({
       data: [
         mockResults[0],
@@ -607,35 +591,6 @@ describe('Search Page', () => {
 
     await renderLoadedSearchPage();
     expect(screen.getByText('Private Profile')).toBeInTheDocument();
-
-    (trackAnalyticsEvent as jest.Mock).mockClear();
-
-    fireEvent.click(screen.getByRole('link', { name: 'John Doe' }));
-    fireEvent.click(screen.getByRole('link', { name: 'Jane Roe' }));
-    fireEvent.click(screen.getAllByRole('link', { name: 'Message' })[0]);
-    fireEvent.click(screen.getAllByRole('link', { name: 'Message' })[1]);
-
-    expect(trackAnalyticsEvent).toHaveBeenCalledTimes(4);
-    expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_result_clicked', {
-      profileId: '1',
-      profileName: 'John Doe',
-      target: 'profile',
-    });
-    expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_result_clicked', {
-      profileId: '2',
-      profileName: 'Jane Roe',
-      target: 'profile',
-    });
-    expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_result_clicked', {
-      profileId: '1',
-      profileName: 'John Doe',
-      target: 'message',
-    });
-    expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_result_clicked', {
-      profileId: '2',
-      profileName: 'Jane Roe',
-      target: 'message',
-    });
   });
 
   it('updates the sort selector after results load', async () => {

@@ -1,5 +1,4 @@
 // Comprehensive stub schema exports to resolve all TypeScript errors
-export const analyticsEvents: any = null;
 export const notifications: any = null;
 export const passions: any = null;
 export const pushSubscriptions: any = null;

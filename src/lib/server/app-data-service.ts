@@ -1623,16 +1623,35 @@ export class AppDataService {
       order: { column: 'created_at', ascending: false },
     });
 
-    return (response.data as any[] | null)?.map((notification) => ({
-      id: notification.id,
-      type: notification.type,
-      read: notification.read ?? false,
-      createdAt: notification.created_at,
-      actorId: notification.actor_id ?? undefined,
-      title: notification.title ?? undefined,
-      body: notification.body ?? undefined,
-      url: notification.url ?? undefined,
-    })) || [];
+    const notifications = (response.data as any[] | null) ?? [];
+
+    const actorIds = [...new Set(
+      notifications.map((n) => n.actor_id).filter(Boolean)
+    )];
+    const profilesById = actorIds.length > 0
+      ? await this.fetchByIds('profiles', actorIds)
+      : new Map();
+
+    return notifications.map((notification) => {
+      const profile = notification.actor_id
+        ? profilesById.get(String(notification.actor_id))
+        : undefined;
+      const actorName = profile
+        ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') || undefined
+        : undefined;
+
+      return {
+        id: notification.id,
+        type: notification.type,
+        read: notification.read ?? false,
+        createdAt: notification.created_at,
+        actorId: notification.actor_id ?? undefined,
+        actorName,
+        title: notification.title ?? undefined,
+        body: notification.body ?? undefined,
+        url: notification.url ?? undefined,
+      };
+    });
   }
 
   async markNotificationRead(notificationId: string) {
@@ -1745,7 +1764,6 @@ export class AppDataService {
 
   async updateAdminSettings(patch: {
     maintenanceBannerText?: string;
-    analyticsRefreshMinutes?: number;
     moderationHold?: boolean;
     followUpUserIds?: string[];
   }) {

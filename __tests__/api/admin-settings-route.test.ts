@@ -42,14 +42,12 @@ describe('/api/admin/settings route', () => {
         jest.clearAllMocks();
         getAdminSettings.mockResolvedValue({
             maintenanceBannerText: '',
-            analyticsRefreshMinutes: 15,
             moderationHold: false,
             followUpUserIds: [],
             updatedAt: null,
         });
         updateAdminSettings.mockResolvedValue({
             maintenanceBannerText: 'Scheduled maintenance at 10pm UTC',
-            analyticsRefreshMinutes: 30,
             moderationHold: true,
             followUpUserIds: ['user-1'],
             updatedAt: '2026-04-26T12:00:00.000Z',
@@ -70,7 +68,6 @@ describe('/api/admin/settings route', () => {
         expect(getAdminSettings).toHaveBeenCalled();
         await expect(response.json()).resolves.toEqual(
             expect.objectContaining({
-                analyticsRefreshMinutes: 15,
                 moderationHold: false,
             })
         );
@@ -99,7 +96,6 @@ describe('/api/admin/settings route', () => {
         const response = await routeHandlers.PATCH(
             createRequest('http://localhost/api/admin/settings', {
                 maintenanceBannerText: 'Scheduled maintenance at 10pm UTC',
-                analyticsRefreshMinutes: 30,
                 moderationHold: true,
                 followUpUserIds: ['user-1'],
             }) as any
@@ -107,7 +103,6 @@ describe('/api/admin/settings route', () => {
 
         expect(updateAdminSettings).toHaveBeenCalledWith({
             maintenanceBannerText: 'Scheduled maintenance at 10pm UTC',
-            analyticsRefreshMinutes: 30,
             moderationHold: true,
             followUpUserIds: ['user-1'],
         });
@@ -118,7 +113,6 @@ describe('/api/admin/settings route', () => {
         await routeHandlers.PATCH(
             createRequest('http://localhost/api/admin/settings', {
                 maintenanceBannerText: 123,
-                analyticsRefreshMinutes: '30',
                 moderationHold: 'yes',
                 followUpUserIds: 'user-1',
             }) as any
@@ -126,7 +120,6 @@ describe('/api/admin/settings route', () => {
 
         expect(updateAdminSettings).toHaveBeenCalledWith({
             maintenanceBannerText: undefined,
-            analyticsRefreshMinutes: undefined,
             moderationHold: undefined,
             followUpUserIds: undefined,
         });

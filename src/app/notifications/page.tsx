@@ -26,7 +26,7 @@ const NotificationsPage: React.FC = () => {
     };
 
     const getNotificationText = (notification: typeof notifications[number]): React.ReactNode => {
-        const actorName = notification.actorId || componentCopy.notificationCenter.genericActorName;
+        const actorName = notification.actorName || componentCopy.notificationCenter.genericActorName;
 
         switch (notification.type) {
             case 'new_message':

@@ -1,5 +1,5 @@
 import { render, waitFor, act } from '@testing-library/react';
-import Dashboard from '../../src/app/dashboard/page';
+import DashboardClient from '../../src/app/dashboard/DashboardClient';
 import { appClient } from '../../src/lib/appClient';
 
 // Mock appClient client
@@ -21,48 +21,24 @@ jest.mock('next/navigation', () => ({
     useRouter: () => mockRouter,
 }));
 
-const createProfileSelectMock = (result: { data: unknown; error: unknown }) => ({
-    select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue(result),
-            maybeSingle: jest.fn().mockResolvedValue(result),
-        })
-    })
-});
-
 describe('Dashboard Error Handling', () => {
-    const mockUser = {
+    const mockInitialProfile = {
         id: 'user-123',
-        email: 'test@example.com',
-    };
-
-    const mockSession = {
-        user: mockUser,
-        access_token: 'token',
+        first_name: 'John',
+        about_me: null,
+        passions_count: 5,
+        languages_count: 2,
     };
 
     beforeEach(() => {
         jest.clearAllMocks();
-        (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
-        (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
     });
 
     it('handles errors in parallel data fetching', async () => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
-        // Mock successful profile fetch
-        const mockProfile = {
-            first_name: 'John',
-            last_name: 'Doe',
-            passions_count: [{ count: 5 }],
-            languages_count: [{ count: 2 }],
-        };
-
         // Mock rpc calls with errors for conversations and suggestions
         (appClient.rpc as jest.Mock).mockImplementation((rpcName) => {
-            if (rpcName === 'get_user_profile_with_counts') {
-                return Promise.resolve({ data: mockProfile, error: null });
-            }
             if (rpcName === 'get_recent_conversations') {
                 return Promise.resolve({ data: null, error: { message: 'Convos Error' } });
             }
@@ -74,9 +50,6 @@ describe('Dashboard Error Handling', () => {
 
         // Mock passions fetch with error
         (appClient.from as jest.Mock).mockImplementation((table) => {
-            if (table === 'profiles') {
-                return createProfileSelectMock({ data: mockProfile, error: null });
-            }
             if (table === 'profile_passions') {
                 return {
                     select: jest.fn().mockReturnValue({
@@ -92,7 +65,7 @@ describe('Dashboard Error Handling', () => {
         });
 
         await act(async () => {
-            render(<Dashboard />);
+            render(<DashboardClient userId="user-123" initialProfile={mockInitialProfile} />);
         });
 
         await waitFor(() => {

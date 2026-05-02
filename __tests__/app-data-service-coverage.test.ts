@@ -460,8 +460,7 @@ describe('AppDataService coverage', () => {
 	it('creates documents with collection defaults and updates or deletes matches', async () => {
 		const service = createService();
 		mockRepo.createDocument
-			.mockResolvedValueOnce({ $id: 'profile-1', first_name: 'Ada' })
-			.mockResolvedValueOnce({ $id: 'analytics-1', properties: '{"source":"test"}' });
+			.mockResolvedValueOnce({ $id: 'profile-1', first_name: 'Ada' });
 
 		await expect(
 			(service as any).createDocuments('profiles', { id: 'profile-1', first_name: 'Ada' })
@@ -472,18 +471,6 @@ describe('AppDataService coverage', () => {
 				first_name: 'Ada',
 			}),
 		]);
-		await expect(
-			(service as any).createDocuments('analytics_events', {
-				event_name: 'page_view',
-				properties: { source: 'test' },
-			})
-		).resolves.toEqual([
-			expect.objectContaining({
-				id: 'analytics-1',
-				properties: '{"source":"test"}',
-			}),
-		]);
-		expect(ID.unique).toHaveBeenCalled();
 
 		jest.spyOn(service as any, 'getMatchingDocuments').mockResolvedValueOnce([
 			{ id: 'profile-1', _appwriteId: 'appwrite-profile-1' },

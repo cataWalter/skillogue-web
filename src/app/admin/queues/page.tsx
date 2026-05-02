@@ -33,7 +33,7 @@ export default function AdminQueuesPage() {
         const loadDashboard = async () => {
             try {
                 setError(null);
-                const payload = await fetchJson<AdminDashboardSnapshot>('/api/admin/analytics');
+                const payload = await fetchJson<AdminDashboardSnapshot>('/api/admin/dashboard');
                 setDashboard(payload);
                 setSettings(payload.systemControls);
             } catch (loadError) {

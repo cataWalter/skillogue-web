@@ -11,6 +11,7 @@ export interface Notification {
   read: boolean;
   createdAt: string;
   actorId?: string;
+  actorName?: string;
   title?: string;
   body?: string;
   url?: string;

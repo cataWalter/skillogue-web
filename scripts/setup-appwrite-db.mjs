@@ -271,7 +271,6 @@ const varchar = (key, size = 255, options = {}) => ({ kind: 'varchar', key, size
 const integer = (key, options = {}) => ({ kind: 'integer', key, ...options });
 const boolean = (key, options = {}) => ({ kind: 'boolean', key, ...options });
 const datetime = (key, options = {}) => ({ kind: 'datetime', key, ...options });
-const analyticsPropertiesSize = 4096;
 const contactMessageSize = 8192;
 
 const collections = [
@@ -503,28 +502,11 @@ const collections = [
     ],
   },
   {
-    id: 'analytics_events',
-    name: 'analytics_events',
-    attributes: [
-      varchar('id', 255, { required: true }),
-      varchar('event_name', 255, { required: true }),
-      // Appwrite counts varchar storage against the collection byte budget, so keep analytics payloads modest.
-      varchar('properties', analyticsPropertiesSize, { required: true }),
-      varchar('path', 2048),
-      datetime('created_at', { required: true }),
-    ],
-    indexes: [
-      { key: 'id_unique', type: 'unique', attributes: ['id'], orders: ['ASC'] },
-      { key: 'created_idx', type: 'key', attributes: ['created_at'], orders: ['DESC'] },
-    ],
-  },
-  {
     id: 'admin_settings',
     name: 'admin_settings',
     attributes: [
       varchar('id', 255, { required: true }),
       varchar('maintenance_banner_text', 2048),
-      integer('analytics_refresh_minutes', { required: true, default: 15 }),
       boolean('moderation_hold', { default: false }),
       varchar('follow_up_user_ids', 4096),
       datetime('updated_at', { required: true }),

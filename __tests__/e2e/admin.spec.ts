@@ -20,151 +20,6 @@ const adminSessionPayload = {
 };
 
 const baseDashboardPayload = {
-  analytics: {
-    range: {
-      days: 30,
-      label: 'Last 30 days',
-      trendWindowDays: 30,
-    },
-    filters: {
-      eventType: null,
-      path: null,
-      availableEventTypes: ['search_submitted', 'message_sent'],
-      availablePaths: ['/search', '/messages'],
-      exportUrl: '/api/admin/analytics?days=30&export=json',
-    },
-    overview: {
-      totalEvents: 42,
-      pageViews: 18,
-      uniquePaths: 6,
-      lastEventAt: '2026-04-26T12:00:00.000Z',
-      totalProfiles: 10,
-      verifiedProfiles: 4,
-      completedProfiles: 7,
-      totalMessages: 12,
-      totalFavorites: 9,
-    },
-    acquisition: {
-      signupCompleted: 6,
-      emailVerified: 5,
-      onboardingCompleted: 4,
-      funnel: [
-        { label: 'Signups completed', value: 6 },
-        { label: 'Emails verified', value: 5 },
-      ],
-    },
-    search: {
-      submitted: 8,
-      resultsLoaded: 7,
-      zeroResults: 1,
-      resultClicks: 5,
-      savedSearches: 3,
-      averageResultsPerSearch: 2.5,
-      topQueries: [{ label: 'hiking', value: 3 }],
-      topPassions: [{ label: 'Travel', value: 4 }],
-      topLocations: [{ label: 'Berlin', value: 2 }],
-      topLanguages: [{ label: 'English', value: 4 }],
-    },
-    engagement: {
-      profileViews: 9,
-      favoritesAdded: 4,
-      favoritesRemoved: 1,
-      messageStarted: 3,
-      messagesSent: 2,
-      funnel: [
-        { label: 'Profile views', value: 9 },
-        { label: 'Favorites added', value: 4 },
-      ],
-    },
-    notifications: {
-      total: 6,
-      unread: 2,
-      activePushSubscriptions: 3,
-      pushEnabled: 2,
-      pushDisabled: 1,
-      notificationOpened: 4,
-    },
-    trustAndSafety: {
-      totalReports: 2,
-      pendingReports: 1,
-      openReports: 2,
-      reportSubmittedTracked: 2,
-      totalVerificationRequests: 3,
-      pendingVerificationRequests: 1,
-      verificationRequestedTracked: 3,
-    },
-    content: {
-      topPaths: [{ label: '/search', value: 10 }],
-      topViewedProfiles: [{ label: 'Alice Example', value: 2 }],
-      topPassions: [{ label: 'Travel', value: 4 }],
-      topLocations: [{ label: 'Berlin', value: 2 }],
-      topLanguages: [{ label: 'English', value: 4 }],
-    },
-    activity: {
-      eventsLast7d: 20,
-      eventsLast30d: 35,
-      activeDaysLast7d: 5,
-      activeDaysLast30d: 12,
-      trendWindowDays: 30,
-      dailySeries: [
-        {
-          date: '2026-04-25',
-          label: 'Apr 25',
-          totalEvents: 10,
-          searches: 3,
-          messages: 2,
-          favorites: 1,
-          profileViews: 2,
-          notifications: 1,
-        },
-        {
-          date: '2026-04-26',
-          label: 'Apr 26',
-          totalEvents: 12,
-          searches: 4,
-          messages: 3,
-          favorites: 2,
-          profileViews: 1,
-          notifications: 2,
-        },
-      ],
-      peakDay: {
-        date: '2026-04-26',
-        label: 'Apr 26',
-        totalEvents: 12,
-      },
-    },
-    rates: {
-      searchClickThroughRate: 62.5,
-      zeroResultRate: 12.5,
-      verificationRate: 83.3,
-      onboardingCompletionRate: 66.7,
-      favoritesToMessageRate: 75,
-      messageCompletionRate: 66.7,
-      pushAdoptionRate: 75,
-      notificationOpenRate: 66.7,
-    },
-    health: {
-      score: 86,
-      items: [
-        {
-          title: 'Analytics feed',
-          status: 'good',
-          detail: '42 events captured in the last 30 days.',
-        },
-      ],
-    },
-    eventLeaderboard: [{ label: 'page_view', value: 18 }],
-    recentEvents: [
-      {
-        id: 'event-1',
-        eventName: 'search_submitted',
-        path: '/search',
-        createdAt: '2026-04-26T12:00:00.000Z',
-        properties: { query: 'hiking' },
-      },
-    ],
-  },
   queues: {
     reports: [
       {
@@ -221,7 +76,6 @@ const baseDashboardPayload = {
   },
   systemControls: {
     maintenanceBannerText: '',
-    analyticsRefreshMinutes: 15,
     moderationHold: false,
     followUpUserIds: ['user-1'],
     updatedAt: '2026-04-26T12:05:00.000Z',
@@ -427,7 +281,7 @@ test.describe('Admin', () => {
         const url = new URL(request.url());
         const method = request.method();
 
-        if (method === 'GET' && url.pathname === '/api/admin/analytics') {
+        if (method === 'GET' && url.pathname === '/api/admin/dashboard') {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -476,7 +330,6 @@ test.describe('Admin', () => {
           dashboardPayload.queues.reports = [];
           dashboardPayload.quickActions.pendingReports = 0;
           dashboardPayload.quickActions.totalQueueItems = 1;
-          dashboardPayload.analytics.trustAndSafety.pendingReports = 0;
 
           await route.fulfill({
             status: 200,
@@ -499,7 +352,6 @@ test.describe('Admin', () => {
           savedSettingsBody = request.postDataJSON() as Record<string, unknown>;
           dashboardPayload.systemControls = {
             maintenanceBannerText: 'Maintenance starts at 22:00 UTC',
-            analyticsRefreshMinutes: 30,
             moderationHold: true,
             followUpUserIds: ['user-1'],
             updatedAt: '2026-04-26T13:00:00.000Z',
@@ -551,16 +403,13 @@ test.describe('Admin', () => {
       await page.goto('/admin/controls');
       await expect(page.getByText('System controls')).toBeVisible();
       await page.getByLabel('Maintenance banner text').fill('Maintenance starts at 22:00 UTC');
-      await page.getByLabel('Auto-refresh cadence (minutes)').fill('30');
       await page.getByRole('checkbox').check();
       await page.getByRole('button', { name: 'Save controls' }).click();
 
       await expect(page.getByLabel('Maintenance banner text')).toHaveValue('Maintenance starts at 22:00 UTC');
-      await expect(page.getByLabel('Auto-refresh cadence (minutes)')).toHaveValue('30');
       expect(savedSettingsBody).toEqual(
         expect.objectContaining({
           maintenanceBannerText: 'Maintenance starts at 22:00 UTC',
-          analyticsRefreshMinutes: 30,
           moderationHold: true,
         })
       );

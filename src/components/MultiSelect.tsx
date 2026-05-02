@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, ChevronDown, Check } from 'lucide-react';
 import { componentCopy } from '../lib/app-copy';

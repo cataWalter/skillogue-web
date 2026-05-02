@@ -1,3 +1,5 @@
+'use client';
+
 // src/components/NotificationIcon.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell } from 'lucide-react';

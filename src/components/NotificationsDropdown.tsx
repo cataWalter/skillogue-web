@@ -1,3 +1,5 @@
+'use client';
+
 // src/components/NotificationsDropdown.tsx
 import React from 'react';
 import Link from 'next/link';
@@ -22,7 +24,7 @@ const NotificationsDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =
     };
 
     const getNotificationText = (notification: typeof notifications[number]): React.ReactNode => {
-        const actorName = notification.actorId || componentCopy.notificationCenter.fallbackActorName;
+        const actorName = notification.actorName || componentCopy.notificationCenter.fallbackActorName;
         switch (notification.type) {
             case 'new_message':
                 return <><strong>{actorName}</strong> {componentCopy.notificationCenter.sentMessage}</>;

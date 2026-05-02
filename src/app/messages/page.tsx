@@ -612,7 +612,7 @@ const Messages: React.FC = () => {
     const currentChatUser = conversations.find(c => c.user_id === selectedChat);
 
     return (
-        <div className="editorial-shell flex h-[calc(100vh-64px)] py-4 sm:py-6">
+        <div className="editorial-shell flex h-[calc(100dvh-64px)] py-4 sm:py-6">
             <div className="glass-panel flex w-full overflow-hidden rounded-[2rem] text-foreground">
                 {/* Sidebar - Conversations List */}
                 <div className={`w-full md:w-1/3 lg:w-1/4 border-r border-line/20 flex flex-col bg-surface/35 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>

@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import Dashboard from '../../src/app/dashboard/page';
+import DashboardClient from '../../src/app/dashboard/DashboardClient';
 import { appClient } from '../../src/lib/appClient';
 import { dashboardCopy } from '../../src/lib/app-copy';
 import '@testing-library/jest-dom';
@@ -21,15 +21,6 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-const createProfileSelectMock = (result: { data: unknown; error: unknown }) => ({
-  select: jest.fn(() => ({
-    eq: jest.fn(() => ({
-      single: jest.fn().mockResolvedValue(result),
-      maybeSingle: jest.fn().mockResolvedValue(result),
-    })),
-  })),
-});
-
 const createDeferred = <T,>() => {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => {
@@ -40,14 +31,14 @@ const createDeferred = <T,>() => {
 };
 
 describe('Dashboard Integration Flow', () => {
-  const mockUser = { id: 'user-123', email: 'test@example.com' };
+  const mockUserId = 'user-123';
 
-  const mockProfile = {
+  const mockInitialProfile = {
     id: 'user-123',
     first_name: 'Integration',
     about_me: 'Testing flows',
-    passions_count: [{ count: 5 }],
-    languages_count: [{ count: 2 }],
+    passions_count: 5,
+    languages_count: 2,
   };
 
   const mockConversations = [
@@ -73,9 +64,6 @@ describe('Dashboard Integration Flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default successful auth
-    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: mockUser }, error: null });
-
     // Mock RPCs
     (appClient.rpc as jest.Mock).mockImplementation((fn) => {
       if (fn === 'get_recent_conversations') return Promise.resolve({ data: mockConversations, error: null });
@@ -85,9 +73,6 @@ describe('Dashboard Integration Flow', () => {
 
     // Mock DB queries
     (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return createProfileSelectMock({ data: mockProfile, error: null });
-      }
       if (table === 'profile_passions') {
         return {
           select: jest.fn(() => ({
@@ -104,17 +89,13 @@ describe('Dashboard Integration Flow', () => {
   });
 
   it('loads and displays dashboard data correctly', async () => {
-    render(<Dashboard />);
+    render(<DashboardClient userId={mockUserId} initialProfile={mockInitialProfile} />);
 
-    // Check loading state
-    expect(screen.getByTestId('dashboard-skeleton')).toBeInTheDocument();
+    // Hero section renders immediately from server-provided profile data
+    expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    expect(screen.getByText('Integration')).toBeInTheDocument();
 
-    // Check loaded data
-    await waitFor(() => {
-      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
-      expect(screen.getByText('Integration')).toBeInTheDocument();
-    });
-
+    // Wait for panel data to load
     await waitFor(() => {
       expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
       expect(screen.getByText('Hi')).toBeInTheDocument();
@@ -136,16 +117,6 @@ describe('Dashboard Integration Flow', () => {
     });
 
     (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return createProfileSelectMock({
-          data: {
-            ...mockProfile,
-            passions_count: [{ count: 0 }],
-            languages_count: [{ count: 0 }],
-          },
-          error: null,
-        });
-      }
       if (table === 'profile_passions') {
         return {
           select: jest.fn(() => ({
@@ -158,7 +129,7 @@ describe('Dashboard Integration Flow', () => {
 
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
-    render(<Dashboard />);
+    render(<DashboardClient userId={mockUserId} initialProfile={mockInitialProfile} />);
 
     await waitFor(() => {
       expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
@@ -178,7 +149,7 @@ describe('Dashboard Integration Flow', () => {
       return Promise.resolve({ data: [], error: null });
     });
 
-    render(<Dashboard />);
+    render(<DashboardClient userId={mockUserId} initialProfile={mockInitialProfile} />);
 
     await waitFor(() => {
       expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
@@ -214,61 +185,13 @@ describe('Dashboard Integration Flow', () => {
       return Promise.resolve({ data: [], error: null });
     });
 
-    render(<Dashboard />);
+    render(<DashboardClient userId={mockUserId} initialProfile={mockInitialProfile} />);
 
     await waitFor(() => {
       expect(screen.getAllByText('Skillogue user')).toHaveLength(2);
     });
 
     expect(screen.getByText('No messages yet')).toBeInTheDocument();
-  });
-
-  it('redirects to onboarding if profile is incomplete', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-    // Mock incomplete profile
-    (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return createProfileSelectMock({ data: { ...mockProfile, first_name: null }, error: null });
-      }
-      return {
-        select: jest.fn(() => ({
-          eq: jest.fn().mockResolvedValue({ data: [], error: null }),
-        })),
-      };
-    });
-
-    render(<Dashboard />);
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/onboarding');
-    });
-
-    consoleSpy.mockRestore();
-  });
-
-  it('redirects to onboarding if the profile gate returns an error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-    (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return createProfileSelectMock({ data: null, error: { message: 'profile failed' } });
-      }
-
-      return {
-        select: jest.fn(() => ({
-          eq: jest.fn().mockResolvedValue({ data: [], error: null }),
-        })),
-      };
-    });
-
-    render(<Dashboard />);
-
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Profile incomplete or error fetching:', { message: 'profile failed' });
-      expect(mockPush).toHaveBeenCalledWith('/onboarding');
-      expect(appClient.rpc).not.toHaveBeenCalled();
-    });
-
-    consoleSpy.mockRestore();
   });
 
   it('falls back to empty secondary panels when follow-up payloads are null', async () => {
@@ -279,10 +202,6 @@ describe('Dashboard Integration Flow', () => {
     });
 
     (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return createProfileSelectMock({ data: mockProfile, error: null });
-      }
-
       if (table === 'profile_passions') {
         return {
           select: jest.fn(() => ({
@@ -298,7 +217,7 @@ describe('Dashboard Integration Flow', () => {
       };
     });
 
-    render(<Dashboard />);
+    render(<DashboardClient userId={mockUserId} initialProfile={mockInitialProfile} />);
 
     await waitFor(() => {
       expect(screen.getByText(dashboardCopy.noConversationsTitle)).toBeInTheDocument();
@@ -306,15 +225,14 @@ describe('Dashboard Integration Flow', () => {
     });
   });
 
-  it('clears the skeleton when the initial dashboard fetch throws', async () => {
+  it('shows error toast when panels fetch throws', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-    (appClient.auth.getUser as jest.Mock).mockRejectedValueOnce(new Error('dashboard failed'));
+    (appClient.rpc as jest.Mock).mockRejectedValueOnce(new Error('panels failed'));
 
-    render(<Dashboard />);
+    render(<DashboardClient userId={mockUserId} initialProfile={mockInitialProfile} />);
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Error fetching dashboard data:', expect.any(Error));
-      expect(screen.queryByTestId('dashboard-skeleton')).not.toBeInTheDocument();
+      expect(consoleSpy).toHaveBeenCalledWith('Error fetching dashboard panels:', expect.any(Error));
       expect(screen.getByText(dashboardCopy.discoverTitle)).toBeInTheDocument();
     });
 
@@ -333,10 +251,6 @@ describe('Dashboard Integration Flow', () => {
     });
 
     (appClient.from as jest.Mock).mockImplementation((table) => {
-      if (table === 'profiles') {
-        return createProfileSelectMock({ data: mockProfile, error: null });
-      }
-
       if (table === 'profile_passions') {
         return {
           select: jest.fn(() => ({
@@ -352,12 +266,10 @@ describe('Dashboard Integration Flow', () => {
       };
     });
 
-    const { unmount } = render(<Dashboard />);
+    const { unmount } = render(<DashboardClient userId={mockUserId} initialProfile={mockInitialProfile} />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
-      expect(screen.getByText('Integration')).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    expect(screen.getByText('Integration')).toBeInTheDocument();
 
     unmount();
 
@@ -369,15 +281,5 @@ describe('Dashboard Integration Flow', () => {
     });
 
     expect(mockPush).not.toHaveBeenCalled();
-  });
-
-  it('redirects to login if not authenticated', async () => {
-    (appClient.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null }, error: null });
-
-    render(<Dashboard />);
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/login');
-    });
   });
 });

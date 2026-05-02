@@ -32,7 +32,6 @@ export async function PATCH(request: NextRequest) {
         const service = new AppDataService(undefined, admin.userAgent);
         const settings = await service.updateAdminSettings({
             maintenanceBannerText: typeof body.maintenanceBannerText === 'string' ? body.maintenanceBannerText : undefined,
-            analyticsRefreshMinutes: typeof body.analyticsRefreshMinutes === 'number' ? body.analyticsRefreshMinutes : undefined,
             moderationHold: typeof body.moderationHold === 'boolean' ? body.moderationHold : undefined,
             followUpUserIds: Array.isArray(body.followUpUserIds) ? body.followUpUserIds : undefined,
         });
