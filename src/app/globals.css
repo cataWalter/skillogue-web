@@ -34,7 +34,7 @@ body::before {
     pointer-events: none;
     z-index: -2;
     animation: ambient-drift 20s ease-in-out infinite alternate;
-    will-change: transform;
+    /* will-change removed: premature GPU layer promotion hurts mobile LCP */
 }
 
 @keyframes ambient-drift {
@@ -116,15 +116,13 @@ textarea:focus:not(:focus-visible) {
     animation: float 6s ease-in-out infinite;
 }
 
-/* Fade in up animation */
+/* Fade in up animation — opacity omitted so LCP candidates remain visible to Lighthouse */
 @keyframes fadeInUp {
     from {
-        opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(16px);
     }
 
     to {
-        opacity: 1;
         transform: translateY(0);
     }
 }

@@ -415,6 +415,14 @@ body::before {
     opacity: 0.4;
 }
 
+/* Mobile: skip expensive blur to avoid it becoming the LCP bottleneck */
+@media (max-width: 1024px) {
+    .gradient-mesh {
+        filter: blur(24px);
+        opacity: 0.18;
+    }
+}
+
 .light body::before {
     background:
         radial-gradient(ellipse at 18% 18%, rgb(var(--color-hero-mesh-brand-rgb) / 0.12) 0%, transparent 50%),

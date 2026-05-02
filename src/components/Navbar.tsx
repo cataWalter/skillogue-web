@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '../hooks/useAuth';
 import { isAdminEmail } from '../lib/admin';
 import { usePathname, useRouter } from 'next/navigation';
@@ -55,19 +56,21 @@ const Navbar = () => {
             aria-label="Skillogue — home"
           >
             {/* Wordmark on wider screens, icon-only mark on small screens */}
-            <img
+            <Image
               src="/logo-wordmark.svg"
               alt="Skillogue"
               width={140}
               height={35}
               className="hidden sm:block h-8 w-auto"
+              priority
             />
-            <img
+            <Image
               src="/logo.svg"
               alt="Skillogue"
               width={32}
               height={35}
               className="sm:hidden h-8 w-auto"
+              priority
             />
           </Link>
 

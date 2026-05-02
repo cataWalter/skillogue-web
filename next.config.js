@@ -25,8 +25,9 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      // Next.js requires 'unsafe-inline' for its hydration scripts and the theme init script
-      "script-src 'self' 'unsafe-inline'",
+      // Next.js requires 'unsafe-inline' for its hydration scripts and the theme init script.
+      // 'unsafe-eval' is only added in development (React needs it for call-stack reconstruction).
+      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
       // Tailwind / CSS-in-JS inline styles
       "style-src 'self' 'unsafe-inline'",
       // DiceBear avatars; data: for inline SVGs; blob: for generated content
@@ -45,6 +46,9 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  experimental: {
+    optimizeCss: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -54,14 +58,18 @@ const nextConfig = {
     ],
   },
   async headers() {
-    return [
+    const rules = [
       {
         // Apply security headers to all routes
         source: '/(.*)',
         headers: securityHeaders,
       },
-      {
-        // Override cache-control for Next.js static assets (immutable hashed chunks)
+    ];
+
+    // Only set immutable cache headers for static chunks in production.
+    // Next.js dev server manages its own caching and warns about overrides.
+    if (process.env.NODE_ENV === 'production') {
+      rules.push({
         source: '/_next/static/(.*)',
         headers: [
           {
@@ -69,8 +77,10 @@ const nextConfig = {
             value: 'public, max-age=31536000, immutable',
           },
         ],
-      },
-    ];
+      });
+    }
+
+    return rules;
   },
   ...(process.env.E2E_MODE
     ? {

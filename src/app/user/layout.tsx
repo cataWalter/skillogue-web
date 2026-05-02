@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import ProtectedRoute from '../../components/ProtectedRoute';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
-  return <ProtectedRoute>{children}</ProtectedRoute>;
+  return <>{children}</>;
 }

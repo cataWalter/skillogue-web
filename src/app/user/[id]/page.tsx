@@ -48,26 +48,27 @@ const UserProfile: React.FC = () => {
             const { data: { session: currentSession } } = await appClient.auth.getSession();
             setSession(currentSession);
 
-            if (!id || !currentSession?.user) {
-                setError(!id ? profilePageCopy.user.noUserId : profilePageCopy.user.mustBeLoggedIn);
-                setLoading(false);
-                if (!currentSession?.user) router.push('/login');
-                return;
-            }
-
-            if (id === currentSession.user.id) {
-                router.push('/profile');
-                return;
-            }
-
-            // Check if I am blocked by this user
-            if (await checkIsBlockedBy(id)) {
-                setIsBlockedByProfileUser(true);
+            if (!id) {
+                setError(profilePageCopy.user.noUserId);
                 setLoading(false);
                 return;
             }
 
-            checkBlockStatus(id);
+            if (currentSession?.user) {
+                if (id === currentSession.user.id) {
+                    router.push('/profile');
+                    return;
+                }
+
+                // Check if I am blocked by this user
+                if (await checkIsBlockedBy(id)) {
+                    setIsBlockedByProfileUser(true);
+                    setLoading(false);
+                    return;
+                }
+
+                checkBlockStatus(id);
+            }
 
             const { data: profileData, error: profileError } = await appClient
                 .from('profiles')
@@ -82,16 +83,18 @@ const UserProfile: React.FC = () => {
                 return;
             }
             setProfile(profileData as FullProfile);
-            appClient.functions.invoke('send-push', {
-                body: {
-                    receiver_id: profileData.id,
-                    actor_id: currentSession.user.id,
-                    notification_type: 'profile_visit',
-                    title: 'Profile Visit',
-                    body: 'Someone viewed your profile.',
-                    url: `/user/${currentSession.user.id}`,
-                }
-            }).catch(() => undefined);
+            if (currentSession?.user) {
+                appClient.functions.invoke('send-push', {
+                    body: {
+                        receiver_id: profileData.id,
+                        actor_id: currentSession.user.id,
+                        notification_type: 'profile_visit',
+                        title: 'Profile Visit',
+                        body: 'Someone viewed your profile.',
+                        url: `/user/${currentSession.user.id}`,
+                    }
+                }).catch(() => undefined);
+            }
 
             const [profilePassions, profileLanguages] = await Promise.all([
                 getProfilePassions(id),
@@ -101,10 +104,10 @@ const UserProfile: React.FC = () => {
             setPassions(profilePassions);
             setLanguages(profileLanguages);
 
-            setIsSaved(await checkIsSaved(id));
-
-
-            await checkBlockStatus(id);
+            if (currentSession?.user) {
+                setIsSaved(await checkIsSaved(id));
+                await checkBlockStatus(id);
+            }
 
             setLoading(false);
         };
@@ -216,7 +219,15 @@ const UserProfile: React.FC = () => {
         );
     }
 
-    const actionButton = (
+    const actionButton = !session?.user ? (
+        <Link
+            href="/login"
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-4 py-2 text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover hover:shadow-glass-md"
+        >
+            <MessageSquare size={18} />
+            <span>Sign in to connect</span>
+        </Link>
+    ) : (
         <div className="flex flex-wrap gap-3 justify-center sm:justify-end">
             {!isBlocked ? (
                 <>
