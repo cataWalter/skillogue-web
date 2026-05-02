@@ -4,10 +4,24 @@ import React from 'react';
 import Link from 'next/link';
 import { useNotifications } from '../../context/NotificationContext';
 import Avatar from '../../components/Avatar';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, MessageCircle, Heart, Eye, Sparkles, Megaphone } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { componentCopy } from '../../lib/app-copy';
 import { useProfileGate } from '../../hooks/useProfileGate';
+import type { LucideIcon } from 'lucide-react';
+
+type TypeIconConfig = {
+    icon: LucideIcon;
+    bg: string;
+};
+
+const typeIconConfig: Record<string, TypeIconConfig> = {
+    new_message:   { icon: MessageCircle, bg: 'bg-blue-500' },
+    new_favorite:  { icon: Heart,         bg: 'bg-rose-500' },
+    profile_visit: { icon: Eye,           bg: 'bg-violet-500' },
+    new_match:     { icon: Sparkles,      bg: 'bg-amber-500' },
+    admin_notice:  { icon: Megaphone,     bg: 'bg-orange-500' },
+};
 
 const NotificationsPage: React.FC = () => {
     const { notifications, unreadCount, markAsRead } = useNotifications();
@@ -15,7 +29,9 @@ const NotificationsPage: React.FC = () => {
 
     const getNotificationLink = (notification: typeof notifications[number]): string => {
         if (notification.url) return notification.url;
-        if (!notification.actorId) return '#';
+        if (!notification.actorId) {
+            return notification.type === 'admin_notice' ? '/notifications' : '#';
+        }
         switch (notification.type) {
             case 'new_message': return `/messages?conversation=${notification.actorId}`;
             case 'new_favorite':
@@ -26,21 +42,30 @@ const NotificationsPage: React.FC = () => {
     };
 
     const getNotificationText = (notification: typeof notifications[number]): React.ReactNode => {
-        const actorName = notification.actorName || componentCopy.notificationCenter.genericActorName;
+        const nc = componentCopy.notificationCenter;
+        const actorName = notification.actorName || nc.genericActorName;
 
         switch (notification.type) {
             case 'new_message':
-                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.sentMessage}</>;
+                return <><strong>{actorName}</strong> {nc.sentMessage}</>;
             case 'new_favorite':
-                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.savedYourProfile}</>;
+                return <><strong>{actorName}</strong> {nc.savedYourProfile}</>;
             case 'profile_visit':
-                return <><strong>{actorName}</strong> {componentCopy.notificationCenter.viewedYourProfile}</>;
+                return <><strong>{actorName}</strong> {nc.viewedYourProfile}</>;
             case 'new_match':
-                return componentCopy.notificationCenter.youMatchedWith(actorName);
-            case 'admin_notice':
-                return notification.body || componentCopy.notificationCenter.defaultNotification;
+                return <><strong>{actorName}</strong> {nc.isAMatch}</>;
+            case 'admin_notice': {
+                if (notification.title) {
+                    return notification.body
+                        ? <><strong>{notification.title}</strong> — {notification.body}</>
+                        : <strong>{notification.title}</strong>;
+                }
+                return notification.body || nc.defaultNotification;
+            }
             default:
-                return componentCopy.notificationCenter.defaultNotification;
+                return notification.title
+                    ? <strong>{notification.title}</strong>
+                    : nc.defaultNotification;
         }
     };
 
@@ -83,31 +108,42 @@ const NotificationsPage: React.FC = () => {
                     </div>
                 ) : (
                     <ul className="divide-y divide-line/30">
-                        {notifications.map(n => (
-                            <li key={n.id}>
-                                <Link
-                                    href={getNotificationLink(n)}
-                                    onClick={() => handleNotificationOpen(n)}
-                                    className={`flex items-start gap-4 p-4 transition-all duration-300 ${n.read ? 'hover:bg-surface-secondary/35' : 'bg-brand/12 hover:bg-brand/18'
-                                        }`}
-                                >
-                                    {n.actorId ? (
-                                        <Avatar seed={n.actorId} className="w-12 h-12 rounded-full flex-shrink-0 mt-1" />
-                                    ) : (
-                                        <div className="glass-surface mt-1 h-12 w-12 flex-shrink-0 rounded-full" />
-                                    )}
-                                    <div className="flex-1">
-                                        <p className="text-muted">{getNotificationText(n)}</p>
-                                        <p className="text-sm text-faint mt-1">
-                                            {formatDistanceToNow(new Date(n.createdAt))} {componentCopy.notificationCenter.ago}
-                                        </p>
-                                    </div>
-                                    {!n.read && (
-                                        <div className="w-3 h-3 bg-brand rounded-full mt-2 flex-shrink-0" title={componentCopy.notificationCenter.unreadTitle}></div>
-                                    )}
-                                </Link>
-                            </li>
-                        ))}
+                        {notifications.map(n => {
+                            const iconCfg = typeIconConfig[n.type] ?? { icon: Bell, bg: 'bg-muted' };
+                            const TypeIcon = iconCfg.icon;
+
+                            return (
+                                <li key={n.id}>
+                                    <Link
+                                        href={getNotificationLink(n)}
+                                        onClick={() => handleNotificationOpen(n)}
+                                        className={`flex items-start gap-4 p-4 transition-all duration-300 ${n.read ? 'hover:bg-surface-secondary/35' : 'bg-brand/12 hover:bg-brand/18'}`}
+                                    >
+                                        <div className="relative flex-shrink-0 mt-1">
+                                            {n.actorId ? (
+                                                <Avatar seed={n.actorId} className="w-12 h-12 rounded-full" />
+                                            ) : (
+                                                <div className="glass-surface h-12 w-12 rounded-full flex items-center justify-center">
+                                                    <TypeIcon size={22} className="text-faint" />
+                                                </div>
+                                            )}
+                                            <div className={`absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center ${iconCfg.bg}`}>
+                                                <TypeIcon size={10} className="text-white" />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-muted">{getNotificationText(n)}</p>
+                                            <p className="text-sm text-faint mt-1">
+                                                {formatDistanceToNow(new Date(n.createdAt))} {componentCopy.notificationCenter.ago}
+                                            </p>
+                                        </div>
+                                        {!n.read && (
+                                            <div className="w-3 h-3 bg-brand rounded-full mt-2 flex-shrink-0" title={componentCopy.notificationCenter.unreadTitle}></div>
+                                        )}
+                                    </Link>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </div>

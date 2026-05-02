@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Discover People',
   description: 'Search for people who share your passions. Filter by interests, city, age, and language.',

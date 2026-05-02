@@ -5,3 +5,7 @@ Disallow: /settings/
 Disallow: /messages/
 Disallow: /dashboard/
 Disallow: /edit-profile/
+Disallow: /favorites/
+Disallow: /notifications/
+Disallow: /onboarding/
+Disallow: /profile/

@@ -3,9 +3,9 @@
  */
 
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
-import FavoritesPage from '../src/app/favorites/page';
+import FavoritesClient from '../src/app/favorites/FavoritesClient';
 import NotificationsPage from '../src/app/notifications/page';
-import SettingsPage from '../src/app/settings/page';
+import SettingsPageContent from '../src/app/settings/SettingsPageContent';
 import { appClient } from '../src/lib/appClient';
 
 const mockPush = jest.fn();
@@ -15,6 +15,7 @@ const mockNotificationsState: {
     id: string;
     type: string;
     actorId: string | null;
+    actorName?: string;
     read: boolean;
     createdAt: string;
   }>;
@@ -40,9 +41,6 @@ jest.mock('../src/lib/appClient', () => ({
   },
 }));
 
-jest.mock('../src/hooks/useProfileGate', () => ({
-  useProfileGate: jest.fn(),
-}));
 
 jest.mock('../src/components/Avatar', () => ({
   __esModule: true,
@@ -63,14 +61,16 @@ jest.mock('../src/components/PushNotificationToggle', () => ({
   default: () => <div>Push Notifications Toggle</div>,
 }));
 
+jest.mock('../src/hooks/useProfileGate', () => ({
+  useProfileGate: jest.fn(),
+}));
+
 jest.mock('react-hot-toast', () => ({
   success: jest.fn(),
   error: jest.fn(),
 }));
 
 describe('Favorites integration tests', () => {
-  const mockUser = { id: 'user-123', email: 'test@example.com' };
-  const mockGetUser = appClient.auth.getUser as jest.Mock;
   const mockRpc = appClient.rpc as jest.Mock;
 
   const mockFavorites = [
@@ -97,49 +97,26 @@ describe('Favorites integration tests', () => {
     window.confirm = jest.fn();
   });
 
-  it('loads and displays favorites', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: mockUser } });
-    mockRpc.mockResolvedValue({ data: mockFavorites, error: null });
-
-    render(<FavoritesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
-      expect(screen.getByText('Explorer')).toBeInTheDocument();
-    });
+  it('loads and displays favorites', () => {
+    render(<FavoritesClient initialFavorites={mockFavorites} />);
+    expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
+    expect(screen.getByText('Explorer')).toBeInTheDocument();
   });
 
-  it('displays empty state when no favorites', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: mockUser } });
-    mockRpc.mockResolvedValue({ data: [], error: null });
-
-    render(<FavoritesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/haven't saved any profiles/i)).toBeInTheDocument();
-      expect(screen.getByText(/Find People/i)).toBeInTheDocument();
-    });
+  it('displays empty state when no favorites', () => {
+    render(<FavoritesClient initialFavorites={[]} />);
+    expect(screen.getByText(/haven't saved any profiles/i)).toBeInTheDocument();
+    expect(screen.getByText(/Find People/i)).toBeInTheDocument();
   });
 
-  it('handles loading error', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: mockUser } });
-    mockRpc.mockResolvedValue({ data: null, error: { message: 'Error loading' } });
-
-    render(<FavoritesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Favorite Profiles/i)).toBeInTheDocument();
-    });
+  it('renders page header', () => {
+    render(<FavoritesClient initialFavorites={[]} />);
+    expect(screen.getByText(/Favorite Profiles/i)).toBeInTheDocument();
   });
 
   it('removes a user from favorites', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: mockUser } });
-
     let unsaveCalled = false;
     mockRpc.mockImplementation((fn: string) => {
-      if (fn === 'get_saved_profiles') {
-        return Promise.resolve({ data: mockFavorites, error: null });
-      }
       if (fn === 'unsave_profile') {
         unsaveCalled = true;
         return Promise.resolve({ data: null, error: null });
@@ -149,11 +126,8 @@ describe('Favorites integration tests', () => {
 
     (window.confirm as jest.Mock).mockReturnValue(true);
 
-    render(<FavoritesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
-    });
+    render(<FavoritesClient initialFavorites={mockFavorites} />);
+    expect(screen.getByText('Alice Wonderland')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle(/Remove from Favorites/i));
 
@@ -162,18 +136,9 @@ describe('Favorites integration tests', () => {
     });
   });
 
-  it('shows a private profile badge for private profiles', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: mockUser } });
-    mockRpc.mockResolvedValue({
-      data: [{ ...mockFavorites[0], is_private: true, about_me: null }],
-      error: null,
-    });
-
-    render(<FavoritesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Private Profile/i)).toBeInTheDocument();
-    });
+  it('shows a private profile badge for private profiles', () => {
+    render(<FavoritesClient initialFavorites={[{ ...mockFavorites[0], is_private: true, about_me: null }]} />);
+    expect(screen.getByText(/Private Profile/i)).toBeInTheDocument();
   });
 });
 
@@ -200,6 +165,7 @@ describe('Notifications integration tests', () => {
         id: 'notification-1',
         type: 'new_message',
         actorId: 'actor-1',
+        actorName: 'actor-1',
         read: false,
         createdAt: '2026-04-26T12:00:00.000Z',
       },
@@ -233,6 +199,7 @@ describe('Notifications integration tests', () => {
         id: 'notification-1',
         type: 'new_message',
         actorId: 'actor-1',
+        actorName: 'actor-1',
         read: false,
         createdAt: '2026-04-26T12:00:00.000Z',
       },
@@ -264,22 +231,19 @@ describe('Settings integration tests', () => {
   });
 
   it('renders settings page with all sections', () => {
-    render(<SettingsPage />);
+    render(<SettingsPageContent />);
 
     expect(screen.getByRole('heading', { name: /^Settings$/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Start with the outcome you want/i })).toBeInTheDocument();
-    expect(screen.getByText(/Profile and presence/i)).toBeInTheDocument();
-    expect(screen.getByText(/Privacy and boundaries/i)).toBeInTheDocument();
-    expect(screen.getByText(/Account changes/i)).toBeInTheDocument();
+    expect(screen.getByText(/Settings overview/i)).toBeInTheDocument();
+    expect(screen.getByText(/Manage your profile, account, privacy, and notifications/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /^Profile$/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /^Account$/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /^Privacy$/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /^Notifications$/i })).toBeInTheDocument();
-    expect(screen.getByText(/Why some settings open elsewhere/i)).toBeInTheDocument();
   });
 
   it('keeps the expected settings navigation links', () => {
-    render(<SettingsPage />);
+    render(<SettingsPageContent />);
 
     const viewProfileLinks = screen.getAllByRole('link', { name: /View My Profile/i });
     const editProfileLinks = screen.getAllByRole('link', { name: /Edit Profile Details/i });

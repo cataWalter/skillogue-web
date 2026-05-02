@@ -1,6 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { staticPageCopy } from '../../lib/app-copy';
+
+export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
+  title: 'Cookie Policy',
+  description: 'Learn how Skillogue uses cookies and browser storage to keep the service working and remember your preferences.',
+};
 
 export default function CookiePolicyPage() {
     return (

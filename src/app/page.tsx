@@ -1,6 +1,20 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { marketingPageCopy } from '../lib/app-copy';
+
+export const metadata: Metadata = {
+  title: {
+    absolute: 'Skillogue — Connect Through Shared Passions',
+  },
+  description: 'Find and connect with people who share your passions and skills. Join Skillogue today to discover your community.',
+  openGraph: {
+    title: 'Skillogue — Connect Through Shared Passions',
+    description: 'Find and connect with people who share your passions and skills.',
+    url: 'https://skillogue.com',
+    type: 'website',
+  },
+};
 
 const PASSION_TAGS: { label: string; color: string }[] = [
   { label: 'Hiking', color: 'bg-discovery/15 text-discovery border-discovery/25' },

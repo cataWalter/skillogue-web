@@ -1,6 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { staticPageCopy } from '../../lib/app-copy';
+
+export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: 'Read the Skillogue Privacy Policy to understand how we collect, use, and protect your personal information.',
+};
 
 export default function PrivacyPolicy() {
     return (

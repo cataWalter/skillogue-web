@@ -12,7 +12,7 @@ import { Suspense } from "react";
 
 // Force all pages to be dynamically rendered (SSR)
 // This is needed because the app uses real-time features and authentication
-export const dynamic = 'force-dynamic';
+// export const dynamic = 'force-dynamic';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -95,6 +95,19 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${spaceGrotesk.variable} ${outfit.variable}`}>
       <body className="font-sans bg-background text-text flex flex-col min-h-screen selection:bg-primary selection:text-white">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'Skillogue',
+              url: 'https://skillogue.com',
+              description: 'Skillogue is the premier platform to connect with people who share your passions and skills.',
+              logo: 'https://skillogue.com/logo512.png',
+            }),
+          }}
+        />
         <div className="gradient-mesh" aria-hidden="true" />
         <a
           href="#main-content"

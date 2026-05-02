@@ -1,8 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { staticPageCopy } from '../../lib/app-copy';
 
 export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description: 'Review the Skillogue Terms of Service governing your use of the platform.',
+};
 
 export default function TermsOfService() {
     return (

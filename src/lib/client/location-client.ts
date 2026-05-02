@@ -1,26 +1,29 @@
-'use client';
+import staticMasterData from '@/lib/static-master-data';
 
-import { appClient } from '@/lib/appClient';
-
-/** Returns distinct countries that have at least one location record. */
+/** Returns distinct countries from static location data, sorted alphabetically. */
 export const getCountries = async (): Promise<string[]> => {
-    const { data } = await appClient.rpc('get_distinct_countries');
-    return (data as Array<{ country: string }> | null)?.map((c) => c.country) ?? [];
+    return [...new Set(staticMasterData.locations.map((l: { country: string }) => l.country))].sort();
 };
 
-/** Returns distinct regions for a given country. */
+/** Returns distinct regions for a given country from static location data, sorted alphabetically. */
 export const getRegions = async (country: string): Promise<string[]> => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (appClient as any).rpc('get_distinct_regions', { p_country: country });
-    return (data as Array<{ region: string }> | null)?.map((r) => r.region).filter(Boolean) ?? [];
+    return [
+        ...new Set(
+            staticMasterData.locations
+                .filter((l: { country: string }) => l.country === country)
+                .map((l: { region: string }) => l.region)
+                .filter(Boolean)
+        ),
+    ].sort();
 };
 
-/** Returns distinct cities for a given country and optional region. */
+/** Returns distinct cities for a given country and optional region from static location data, sorted alphabetically. */
 export const getCities = async (country: string, region?: string | null): Promise<string[]> => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (appClient as any).rpc('get_distinct_cities', {
-        p_country: country,
-        p_region: region ?? null,
-    });
-    return (data as Array<{ city: string }> | null)?.map((c) => c.city) ?? [];
+    return staticMasterData.locations
+        .filter(
+            (l: { country: string; region: string }) =>
+                l.country === country && (!region || l.region === region)
+        )
+        .map((l: { city: string }) => l.city)
+        .sort();
 };

@@ -1,8 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { staticPageCopy } from '../../lib/app-copy';
 
 export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
+  title: 'FAQ',
+  description: 'Answers to common questions about how Skillogue works — matching, privacy, messaging, and safety.',
+};
 
 const highlightAccentClasses = [
     'border-brand/20 bg-brand/10 text-brand-soft',
@@ -17,8 +23,25 @@ const itemNumberAccentClasses = [
 ] as const;
 
 export default function FAQPage() {
+    const faqJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: staticPageCopy.faq.items.map((item) => ({
+            '@type': 'Question',
+            name: item.question,
+            acceptedAnswer: {
+                '@type': 'Answer',
+                text: item.answer,
+            },
+        })),
+    };
+
     return (
         <main className="editorial-shell min-h-screen py-8 text-foreground sm:py-12 lg:py-16">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+            />
             <div className="mx-auto max-w-5xl space-y-8">
                 <Link href="/" className="mb-8 inline-flex items-center gap-2 text-faint transition hover:text-foreground">
                     <ArrowLeft size={20} />

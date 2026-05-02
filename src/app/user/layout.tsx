@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Profile',
   description: 'View this member\'s passions, bio, and connect with them on Skillogue.',

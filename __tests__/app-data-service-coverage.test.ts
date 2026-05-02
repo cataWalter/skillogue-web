@@ -1011,6 +1011,7 @@ describe('AppDataService coverage', () => {
 			.mockResolvedValueOnce({ data: null, error: null })
 			.mockResolvedValueOnce({ data: null, error: null });
 		fetchByIdsSpy
+			.mockResolvedValueOnce(new Map([['actor-1', { id: 'actor-1', first_name: 'Bob', last_name: 'Smith' }]]))
 			.mockResolvedValueOnce(
 				new Map([
 					['me', { id: 'me', first_name: 'Ada' }],
@@ -1026,6 +1027,7 @@ describe('AppDataService coverage', () => {
 				read: false,
 				createdAt: '2024-01-01T00:00:00.000Z',
 				actorId: 'actor-1',
+				actorName: 'Bob Smith',
 				title: 'Hello',
 				body: 'World',
 				url: '/messages',

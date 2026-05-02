@@ -5,9 +5,16 @@ import { useAuth } from '../hooks/useAuth';
 
 const POLL_INTERVAL_MS = 45_000;
 
+export type NotificationType =
+  | 'new_message'
+  | 'new_favorite'
+  | 'profile_visit'
+  | 'new_match'
+  | 'admin_notice';
+
 export interface Notification {
   id: number;
-  type: string;
+  type: NotificationType | string;
   read: boolean;
   createdAt: string;
   actorId?: string;
