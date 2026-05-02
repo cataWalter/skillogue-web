@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 54" role="img" aria-label="Skillogue">
+  <title>Skillogue</title>
+  <defs>
+    <!--
+      Icon gradient: diagonal across the 50×54 icon region.
+      Matches logo.svg colors exactly (brand-start → brand → brand-end → discovery).
+    -->
+    <linearGradient id="ig" x1="3.07" y1="1.5" x2="46.93" y2="52.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#1d4ed8"/>
+      <stop offset="35%"  stop-color="#2563eb"/>
+      <stop offset="65%"  stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+    <!-- Wordmark gradient: horizontal left → right -->
+    <linearGradient id="tg" x1="58" y1="0" x2="196" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#1d4ed8"/>
+      <stop offset="50%"  stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+
+  <!--
+    Icon mark at 0.5× scale (original logo.svg ÷ 2).
+    Cell circumradius r=8, lattice r_grid=10 → ~1.5 px gap between cells.
+
+    Centers (scaled):
+      Top       (25, 9.5)   Top-right  (40, 18.5)
+      Top-left  (10, 18.5)  Center     (25, 27)
+      Bot-left  (10, 35.5)  Bot-right  (40, 35.5)
+      Bottom    (25, 44.5)
+  -->
+
+  <!-- Top-left -->
+  <polygon fill="url(#ig)" points="10,10.5 16.93,14.5 16.93,22.5 10,26.5 3.07,22.5 3.07,14.5"/>
+  <!-- Top -->
+  <polygon fill="url(#ig)" points="25,1.5 31.93,5.5 31.93,13.5 25,17.5 18.07,13.5 18.07,5.5"/>
+  <!-- Top-right -->
+  <polygon fill="url(#ig)" points="40,10.5 46.93,14.5 46.93,22.5 40,26.5 33.07,22.5 33.07,14.5"/>
+  <!-- Center -->
+  <polygon fill="url(#ig)" points="25,19 31.93,23 31.93,31 25,35 18.07,31 18.07,23"/>
+  <!-- Bottom-right -->
+  <polygon fill="url(#ig)" points="40,27.5 46.93,31.5 46.93,39.5 40,43.5 33.07,39.5 33.07,31.5"/>
+  <!-- Bottom -->
+  <polygon fill="url(#ig)" points="25,36.5 31.93,40.5 31.93,48.5 25,52.5 18.07,48.5 18.07,40.5"/>
+  <!-- Bottom-left -->
+  <polygon fill="url(#ig)" points="10,27.5 16.93,31.5 16.93,39.5 10,43.5 3.07,39.5 3.07,31.5"/>
+
+  <!-- Wordmark -->
+  <text
+    x="58"
+    y="27"
+    dominant-baseline="middle"
+    font-family="'Space Grotesk', system-ui, -apple-system, sans-serif"
+    font-size="27"
+    font-weight="600"
+    letter-spacing="-0.4"
+    fill="url(#tg)"
+  >Skillogue</text>
+</svg>

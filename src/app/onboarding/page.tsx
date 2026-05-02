@@ -46,8 +46,8 @@ const Onboarding: React.FC = () => {
     });
     const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
     const [selectedPassions, setSelectedPassions] = useState<string[]>([]);
-    const [availablePassions, setAvailablePassions] = useState<{ id: string; name: string }[]>([]);
-    const [availableLanguages, setAvailableLanguages] = useState<{ id: string; name: string }[]>([]);
+    const [availablePassions, setAvailablePassions] = useState<{ id: number; name: string }[]>([]);
+    const [availableLanguages, setAvailableLanguages] = useState<{ id: number; name: string }[]>([]);
     const [countries, setCountries] = useState<string[]>([]);
     const [regions, setRegions] = useState<string[]>([]);
     const [cities, setCities] = useState<string[]>([]);

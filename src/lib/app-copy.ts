@@ -25,19 +25,30 @@ export const profileCopy = {
 
 export const dashboardCopy = {
   conversationsStatLabel: 'Conversations',
+  conversationsSubLabel: 'active threads',
   discoverTitle: 'Discover',
   fetchError: 'Failed to load dashboard data. Please refresh the page.',
-  heroIntroFallback: 'Discover people who share your passions, start conversations, and build meaningful connections.',
+  heroIntroFallback: 'Ready to meet your next connection? Browse people nearby, spark new conversations, and let your passions lead the way.',
   heroKicker: 'Your home',
   noConversationsTitle: 'No conversations yet.',
   passionsStatLabel: 'Your passions',
+  passionsSubLabel: 'interests added',
   recentConversationsTitle: 'Recent Conversations',
   sharedPassions: (count?: number) => `${count ?? 0} shared passions`,
   startExploring: 'Start exploring',
   suggestedForYouTitle: 'Suggested for You',
   suggestionsEmpty: 'Complete your profile to get suggestions!',
   suggestionsStatLabel: 'Suggested people',
+  suggestionsSubLabel: 'waiting for you',
   welcomeBackPrefix: 'Welcome back,',
+} as const;
+
+export const passionSpotlightCopy = {
+  title: 'Passion Spotlight',
+  intro: "You're passionate about",
+  cta: 'Find people who love this',
+  emptyText: 'Add passions to your profile to unlock personalized suggestions here.',
+  emptyCta: 'Add your passions',
 } as const;
 
 export const searchCopy = {

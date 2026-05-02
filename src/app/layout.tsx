@@ -49,7 +49,7 @@ const themeInitScript = `
 `;
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://skillogue.com'),
+  metadataBase: new URL('https://skillogue.vercel.app'),
   title: {
     default: "Skillogue - Connect by Passion",
     template: "%s | Skillogue"
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Skillogue - Connect by Passion",
     description: "Connect with people who share your passions and skills.",
-    url: "https://skillogue.com",
+    url: "https://skillogue.vercel.app",
     siteName: "Skillogue",
     images: [
       {
@@ -79,7 +79,10 @@ export const metadata: Metadata = {
     images: ["/og-image.jpg"],
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/logo.svg', type: 'image/svg+xml' },
+    ],
     shortcut: '/favicon.ico',
     apple: '/logo192.png',
   },
@@ -102,9 +105,9 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'Organization',
               name: 'Skillogue',
-              url: 'https://skillogue.com',
+              url: 'https://skillogue.vercel.app',
               description: 'Skillogue is the premier platform to connect with people who share your passions and skills.',
-              logo: 'https://skillogue.com/logo512.png',
+              logo: 'https://skillogue.vercel.app/logo512.png',
             }),
           }}
         />

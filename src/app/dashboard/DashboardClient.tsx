@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { MessageSquare, ArrowRight } from 'lucide-react';
+import { MessageSquare, ArrowRight, Users, Sparkles } from 'lucide-react';
 import { appClient } from '../../lib/appClient';
 import Avatar from '../../components/Avatar';
 import ProfileCompletion from '../../components/ProfileCompletion';
@@ -107,16 +107,28 @@ export default function DashboardClient({ userId, initialProfile }: DashboardCli
 
                     <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
                         <div className="glass-surface rounded-[1.5rem] p-5">
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.conversationsStatLabel}</p>
-                            <p className="mt-3 text-4xl font-bold text-foreground">{conversations.length}</p>
+                            <div className="mb-3 inline-flex rounded-full bg-brand/15 p-2">
+                                <MessageSquare size={16} className="text-brand" />
+                            </div>
+                            <p className="text-4xl font-bold text-foreground">{conversations.length}</p>
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.conversationsStatLabel}</p>
+                            <p className="mt-0.5 text-xs text-muted">{dashboardCopy.conversationsSubLabel}</p>
                         </div>
                         <div className="glass-surface rounded-[1.5rem] p-5">
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.suggestionsStatLabel}</p>
-                            <p className="mt-3 text-4xl font-bold text-foreground">{suggestions.length}</p>
+                            <div className="mb-3 inline-flex rounded-full bg-connection/15 p-2">
+                                <Users size={16} className="text-connection" />
+                            </div>
+                            <p className="text-4xl font-bold text-foreground">{suggestions.length}</p>
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.suggestionsStatLabel}</p>
+                            <p className="mt-0.5 text-xs text-muted">{dashboardCopy.suggestionsSubLabel}</p>
                         </div>
                         <div className="glass-surface rounded-[1.5rem] p-5">
-                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.passionsStatLabel}</p>
-                            <p className="mt-3 text-4xl font-bold text-foreground">{profilePassionsCount}</p>
+                            <div className="mb-3 inline-flex rounded-full bg-discovery/15 p-2">
+                                <Sparkles size={16} className="text-discovery" />
+                            </div>
+                            <p className="text-4xl font-bold text-foreground">{profilePassionsCount}</p>
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-faint">{dashboardCopy.passionsStatLabel}</p>
+                            <p className="mt-0.5 text-xs text-muted">{dashboardCopy.passionsSubLabel}</p>
                         </div>
                     </div>
                 </div>

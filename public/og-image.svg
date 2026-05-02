@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <!-- Background gradient: dark navy matching dark theme background -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#090d18"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+
+    <!-- Hero mesh blobs — brand, connection, discovery, approval (same as colors.css) -->
+    <radialGradient id="blob1" cx="0" cy="0" r="1">
+      <stop offset="0%"   stop-color="#1d4ed8" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blob2" cx="0" cy="0" r="1">
+      <stop offset="0%"   stop-color="#f472b6" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blob3" cx="0" cy="0" r="1">
+      <stop offset="0%"   stop-color="#2dd4bf" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Icon gradient: brand-start → brand-end → discovery -->
+    <linearGradient id="ig" x1="64" y1="144" x2="256" y2="492" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#1d4ed8"/>
+      <stop offset="40%"  stop-color="#2563eb"/>
+      <stop offset="70%"  stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+
+    <!-- Wordmark gradient: horizontal -->
+    <linearGradient id="tg" x1="344" y1="0" x2="1136" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#93c5fd"/>
+      <stop offset="50%"  stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2dd4bf"/>
+    </linearGradient>
+
+    <!-- Tagline gradient -->
+    <linearGradient id="sg" x1="344" y1="0" x2="900" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#60a5fa" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Mesh blobs -->
+  <ellipse cx="220" cy="150" rx="420" ry="340" fill="url(#blob1)" transform="translate(-80,-60)"/>
+  <ellipse cx="1050" cy="520" rx="380" ry="300" fill="url(#blob2)" transform="translate(40,40)"/>
+  <ellipse cx="680" cy="350" rx="320" ry="260" fill="url(#blob3)" transform="translate(20,-40)"/>
+
+  <!--
+    7-cell honeycomb icon.
+    Pointy-top hexagons, circumradius r=72, lattice step=90.
+    Centers at a 1:1 scale to fill roughly 300×330px left-side block.
+
+    Hex vertices: (cx, cy−r) (cx+r·cos30, cy−r·sin30) … etc
+    r=72 → r·cos30=62.35  r·sin30=36
+
+    Centers (scaled to sit in bounding box ~[64..256] x [144..492]):
+      Top        (160, 171)
+      Top-left   ( 70, 225)    Top-right  (250, 225)
+      Center     (160, 279)
+      Bot-left   ( 70, 333)    Bot-right  (250, 333)
+      Bottom     (160, 387)
+  -->
+
+  <!-- Top-left -->
+  <polygon fill="url(#ig)" fill-opacity="1" points="
+    70,153 132.35,189 132.35,261 70,297 7.65,261 7.65,189
+  "/>
+  <!-- Top -->
+  <polygon fill="url(#ig)" points="
+    160,99 222.35,135 222.35,207 160,243 97.65,207 97.65,135
+  "/>
+  <!-- Top-right -->
+  <polygon fill="url(#ig)" points="
+    250,153 312.35,189 312.35,261 250,297 187.65,261 187.65,189
+  "/>
+  <!-- Center -->
+  <polygon fill="url(#ig)" points="
+    160,207 222.35,243 222.35,315 160,351 97.65,315 97.65,243
+  "/>
+  <!-- Bottom-left -->
+  <polygon fill="url(#ig)" points="
+    70,261 132.35,297 132.35,369 70,405 7.65,369 7.65,297
+  "/>
+  <!-- Bottom -->
+  <polygon fill="url(#ig)" points="
+    160,315 222.35,351 222.35,423 160,459 97.65,423 97.65,351
+  "/>
+  <!-- Bottom-right -->
+  <polygon fill="url(#ig)" points="
+    250,261 312.35,297 312.35,369 250,405 187.65,369 187.65,297
+  "/>
+
+  <!-- Wordmark: "Skillogue" -->
+  <text
+    x="344"
+    y="318"
+    dominant-baseline="middle"
+    font-family="'Inter', 'Space Grotesk', system-ui, -apple-system, sans-serif"
+    font-size="164"
+    font-weight="700"
+    letter-spacing="-4"
+    fill="url(#tg)"
+  >Skillogue</text>
+
+  <!-- Tagline -->
+  <text
+    x="348"
+    y="430"
+    dominant-baseline="middle"
+    font-family="'Inter', system-ui, -apple-system, sans-serif"
+    font-size="38"
+    font-weight="400"
+    letter-spacing="0.5"
+    fill="url(#sg)"
+  >Connect through shared passions</text>
+</svg>

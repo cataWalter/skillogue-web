@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Skillogue — Connect Through Shared Passions',
     description: 'Find and connect with people who share your passions and skills.',
-    url: 'https://skillogue.com',
+    url: 'https://skillogue.vercel.app',
     type: 'website',
   },
 };

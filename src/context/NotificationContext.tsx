@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { appClient } from '../lib/appClient';
 
-const POLL_INTERVAL_MS = 45_000;
+const POLL_INTERVAL_MS = 300_000; // 5-min fallback — real-time subscription handles live updates
 
 export type NotificationType =
   | 'new_message'
@@ -88,7 +89,28 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     void fetchNotifications();
   }, [fetchNotifications]);
 
-  // Background polling — only when tab is visible
+  // Real-time subscription — fires fetchNotifications on new notification INSERT
+  useEffect(() => {
+    if (!user) return undefined;
+
+    const channel = appClient
+      .channel(`notifications:${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `receiver_id=eq.${user.id}`,
+      }, () => {
+        void fetchNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      appClient.removeChannel(channel);
+    };
+  }, [user, fetchNotifications]);
+
+  // Background polling fallback — only when tab is visible
   useEffect(() => {
     if (!user) return undefined;
 

@@ -54,19 +54,13 @@ const nextConfig = {
     ],
   },
   async headers() {
-    const rules = [
+    return [
       {
         // Apply security headers to all routes
         source: '/(.*)',
         headers: securityHeaders,
       },
-    ];
-
-    // Only apply immutable caching for static assets in production.
-    // In dev, Next.js manages Cache-Control for /_next/static itself and
-    // a custom header breaks HMR.
-    if (process.env.NODE_ENV === 'production') {
-      rules.push({
+      {
         // Override cache-control for Next.js static assets (immutable hashed chunks)
         source: '/_next/static/(.*)',
         headers: [
@@ -75,10 +69,8 @@ const nextConfig = {
             value: 'public, max-age=31536000, immutable',
           },
         ],
-      });
-    }
-
-    return rules;
+      },
+    ];
   },
   ...(process.env.E2E_MODE
     ? {

@@ -1,29 +1,26 @@
-import staticMasterData from '@/lib/static-master-data';
+'use client';
 
-/** Returns distinct countries from static location data, sorted alphabetically. */
+import { appClient } from '@/lib/appClient';
+
+/** Returns distinct countries that have at least one location record. */
 export const getCountries = async (): Promise<string[]> => {
-    return [...new Set(staticMasterData.locations.map((l: { country: string }) => l.country))].sort();
+    const { data } = await appClient.rpc('get_distinct_countries');
+    return (data as Array<{ country: string }> | null)?.map((c) => c.country) ?? [];
 };
 
-/** Returns distinct regions for a given country from static location data, sorted alphabetically. */
+/** Returns distinct regions for a given country. */
 export const getRegions = async (country: string): Promise<string[]> => {
-    return [
-        ...new Set(
-            staticMasterData.locations
-                .filter((l: { country: string }) => l.country === country)
-                .map((l: { region: string }) => l.region)
-                .filter(Boolean)
-        ),
-    ].sort();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (appClient as any).rpc('get_distinct_regions', { p_country: country });
+    return (data as Array<{ region: string }> | null)?.map((r) => r.region).filter(Boolean) ?? [];
 };
 
-/** Returns distinct cities for a given country and optional region from static location data, sorted alphabetically. */
+/** Returns distinct cities for a given country and optional region. */
 export const getCities = async (country: string, region?: string | null): Promise<string[]> => {
-    return staticMasterData.locations
-        .filter(
-            (l: { country: string; region: string }) =>
-                l.country === country && (!region || l.region === region)
-        )
-        .map((l: { city: string }) => l.city)
-        .sort();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (appClient as any).rpc('get_distinct_cities', {
+        p_country: country,
+        p_region: region ?? null,
+    });
+    return (data as Array<{ city: string }> | null)?.map((c) => c.city) ?? [];
 };

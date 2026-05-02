@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 108" role="img" aria-label="Skillogue logo mark">
+  <title>Skillogue</title>
+  <defs>
+    <!--
+      Gradient runs diagonally top-left → bottom-right across the full cluster.
+      Colors match brand-start → brand → brand-end → discovery from colors.css.
+    -->
+    <linearGradient id="g" x1="6" y1="3" x2="94" y2="105" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#1d4ed8"/>
+      <stop offset="35%"  stop-color="#2563eb"/>
+      <stop offset="65%"  stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+
+  <!--
+    7-cell honeycomb cluster, pointy-top hexagons.
+    Each cell: circumradius r=16, spaced on a r_grid=20 lattice → ~3 px gap between cells.
+
+    Vertex formula for center (cx, cy), r=16:
+      (cx, cy−16)  (cx+13.86, cy−8)  (cx+13.86, cy+8)
+      (cx, cy+16)  (cx−13.86, cy+8)  (cx−13.86, cy−8)
+
+    Centers:
+      Top       (50, 19)   Top-right  (80, 37)
+      Top-left  (20, 37)   Center     (50, 54)
+      Bot-left  (20, 71)   Bot-right  (80, 71)
+      Bottom    (50, 89)
+  -->
+
+  <!-- Top-left -->
+  <polygon fill="url(#g)" points="20,21 33.86,29 33.86,45 20,53 6.14,45 6.14,29"/>
+  <!-- Top -->
+  <polygon fill="url(#g)" points="50,3 63.86,11 63.86,27 50,35 36.14,27 36.14,11"/>
+  <!-- Top-right -->
+  <polygon fill="url(#g)" points="80,21 93.86,29 93.86,45 80,53 66.14,45 66.14,29"/>
+  <!-- Center -->
+  <polygon fill="url(#g)" points="50,38 63.86,46 63.86,62 50,70 36.14,62 36.14,46"/>
+  <!-- Bottom-right -->
+  <polygon fill="url(#g)" points="80,55 93.86,63 93.86,79 80,87 66.14,79 66.14,63"/>
+  <!-- Bottom -->
+  <polygon fill="url(#g)" points="50,73 63.86,81 63.86,97 50,105 36.14,97 36.14,81"/>
+  <!-- Bottom-left -->
+  <polygon fill="url(#g)" points="20,55 33.86,63 33.86,79 20,87 6.14,79 6.14,63"/>
+</svg>

@@ -263,9 +263,10 @@ const Messages: React.FC = () => {
 
         const cachedState = readMessagesPageCache(user.id);
         loadConversations({ showLoading: !cachedState?.conversations.length });
+        // 60s fallback poll — real-time INSERT subscription handles live updates
         const intervalId = window.setInterval(() => {
             loadConversations();
-        }, 10000);
+        }, 60000);
 
         // Subscribe to new messages to update conversation list
         const channel = appClient
@@ -368,15 +369,15 @@ const Messages: React.FC = () => {
             return () => { };
         }
 
+        // 60s fallback poll — real-time subscription handles live updates
         const intervalId = window.setInterval(() => {
             refreshActiveConversation();
-            loadConversations();
-        }, 5000);
+        }, 60000);
 
         return () => {
             window.clearInterval(intervalId);
         };
-    }, [loadConversations, refreshActiveConversation, selectedChat, user]);
+    }, [refreshActiveConversation, selectedChat, user]);
 
     // Presence
     useEffect(() => {
@@ -408,6 +409,31 @@ const Messages: React.FC = () => {
     useEffect(() => {
         if (!selectedChat || !user) return () => { };
 
+        const fetchAndMergeMessage = (messageId: string | number) => {
+            appClient
+                .from('messages')
+                .select(`
+                    id,
+                    created_at,
+                    sender_id,
+                    receiver_id,
+                    content,
+                    sender:profiles!sender_id(id, first_name, last_name),
+                    receiver:profiles!receiver_id(id, first_name, last_name)
+                `)
+                .eq('id', messageId)
+                .single()
+                .then(({ data }) => {
+                    if (data) {
+                        setMessages(prev => {
+                            const mergedMessages = mergeUniqueMessages(prev, [data as unknown as Message]);
+                            cacheConversationMessages(user.id, selectedChat, mergedMessages);
+                            return mergedMessages;
+                        });
+                    }
+                });
+        };
+
         const channel = appClient
             .channel(`chat:${selectedChat}`)
             .on('postgres_changes', {
@@ -417,30 +443,19 @@ const Messages: React.FC = () => {
                 filter: `receiver_id=eq.${user.id}`,
             }, (payload) => {
                 if (payload.new.sender_id === selectedChat) {
-                    // Fetch the full message with relations
-                    appClient
-                        .from('messages')
-                        .select(`
-                            id,
-                            created_at,
-                            sender_id,
-                            receiver_id,
-                            content,
-                            sender:profiles!sender_id(id, first_name, last_name),
-                            receiver:profiles!receiver_id(id, first_name, last_name)
-                        `)
-                        .eq('id', payload.new.id)
-                        .single()
-                        .then(({ data }) => {
-                            if (data) {
-                                setMessages(prev => {
-                                    const mergedMessages = mergeUniqueMessages(prev, [data as unknown as Message]);
-                                    cacheConversationMessages(user.id, selectedChat, mergedMessages);
-                                    return mergedMessages;
-                                });
-                                markMessagesAsRead();
-                            }
-                        });
+                    fetchAndMergeMessage(payload.new.id);
+                    markMessagesAsRead();
+                }
+            })
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `sender_id=eq.${user.id}`,
+            }, (payload) => {
+                // Covers messages sent from another tab/device in this conversation
+                if (payload.new.receiver_id === selectedChat) {
+                    fetchAndMergeMessage(payload.new.id);
                 }
             })
             .subscribe();

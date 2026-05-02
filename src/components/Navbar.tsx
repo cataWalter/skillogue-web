@@ -52,9 +52,23 @@ const Navbar = () => {
           {/* Logo */}
           <Link
             href={user ? '/dashboard' : '/'}
-            className="text-xl font-bold bg-gradient-to-r from-brand-start to-brand-end bg-clip-text text-transparent"
+            aria-label="Skillogue — home"
           >
-            Skillogue
+            {/* Wordmark on wider screens, icon-only mark on small screens */}
+            <img
+              src="/logo-wordmark.svg"
+              alt="Skillogue"
+              width={140}
+              height={35}
+              className="hidden sm:block h-8 w-auto"
+            />
+            <img
+              src="/logo.svg"
+              alt="Skillogue"
+              width={32}
+              height={35}
+              className="sm:hidden h-8 w-auto"
+            />
           </Link>
 
           <div className="flex items-center gap-3">
