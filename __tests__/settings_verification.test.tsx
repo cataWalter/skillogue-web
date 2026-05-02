@@ -4,7 +4,6 @@ import VerificationPage from '../src/app/settings/verification/page';
 import { appClient } from '../src/lib/appClient';
 import { settingsCopy } from '../src/lib/app-copy';
 import { toast } from 'react-hot-toast';
-import { trackAnalyticsEvent } from '../src/lib/analytics';
 
 const mockInsert = jest.fn();
 let mockVerificationRequest: { status: 'pending' | 'approved' | 'rejected' } | null = null;
@@ -26,9 +25,6 @@ jest.mock('react-hot-toast', () => ({
   },
 }));
 
-jest.mock('../src/lib/analytics', () => ({
-  trackAnalyticsEvent: jest.fn().mockResolvedValue(undefined),
-}));
 
 describe('VerificationPage', () => {
   beforeEach(() => {
@@ -113,7 +109,6 @@ describe('VerificationPage', () => {
     await waitFor(() => {
       expect(mockInsert).toHaveBeenCalledWith({ user_id: 'user-1' });
       expect(toast.success).toHaveBeenCalledWith('Verification request submitted!');
-      expect(trackAnalyticsEvent).toHaveBeenCalledWith('verification_requested');
     });
   });
 
@@ -190,7 +185,6 @@ describe('VerificationPage', () => {
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error requesting verification:', { message: 'plain failure' });
       expect(toast.error).toHaveBeenCalledWith(settingsCopy.verification.submitError);
-      expect(trackAnalyticsEvent).not.toHaveBeenCalled();
     });
 
     consoleErrorSpy.mockRestore();

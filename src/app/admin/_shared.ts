@@ -26,27 +26,5 @@ export const fetchJson = async <T,>(url: string, init?: RequestInit): Promise<T>
     return payload as T;
 };
 
-export const buildAnalyticsUrl = (
-    days: number | null,
-    eventType: string,
-    path: string
-) => {
-    const params = new URLSearchParams();
-
-    if (days) {
-        params.set('days', String(days));
-    }
-
-    if (eventType) {
-        params.set('eventType', eventType);
-    }
-
-    if (path) {
-        params.set('path', path);
-    }
-
-    return `/api/admin/analytics${params.toString() ? `?${params.toString()}` : ''}`;
-};
-
 export const createLastUpdatedLabel = (value: string | null) =>
     `Last updated: ${formatDateTime(value)}`;

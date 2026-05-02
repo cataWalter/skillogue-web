@@ -102,26 +102,6 @@ export default function AdminControlsPage() {
                         />
                     </label>
 
-                    <label className="block text-sm text-muted">
-                        <span>{adminCopy.dashboard.analyticsRefreshLabel}</span>
-                        <input
-                            type="number"
-                            min={5}
-                            max={120}
-                            value={settings.analyticsRefreshMinutes}
-                            onChange={(event) =>
-                                setSettings((current) => ({
-                                    ...current,
-                                    analyticsRefreshMinutes: Math.min(
-                                        Math.max(Number(event.target.value || 15), 5),
-                                        120
-                                    ),
-                                }))
-                            }
-                            className={`mt-2 ${adminFieldClassName}`}
-                        />
-                    </label>
-
                     <label
                         className={`flex items-start gap-3 ${adminCardClassName} cursor-pointer text-sm text-muted`}
                     >

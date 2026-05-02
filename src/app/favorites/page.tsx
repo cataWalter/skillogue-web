@@ -18,7 +18,6 @@ import Avatar from '../../components/Avatar';
 import toast from 'react-hot-toast';
 import { getDisplayBio, getDisplayGender, getDisplayLocation, getDisplayName } from '../../lib/profile-display';
 import { commonLabels, favoritesCopy, profileCopy } from '../../lib/app-copy';
-import { trackAnalyticsEvent } from '../../lib/analytics';
 import { useProfileGate } from '../../hooks/useProfileGate';
 
 interface SearchResult {
@@ -370,10 +369,6 @@ const FavoritesPage = () => {
         if (!error) {
             setFavorites(prev => prev.filter(f => f.id !== id));
             toast.success(favoritesCopy.removeSuccess);
-            void trackAnalyticsEvent('favorite_removed', {
-                profileId: id,
-                source: 'favorites',
-            });
         } else {
             toast.error(favoritesCopy.removeError);
         }

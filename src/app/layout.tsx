@@ -8,7 +8,6 @@ import CookieBanner from "../components/CookieBanner";
 import { NotificationProvider } from "../context/NotificationContext";
 import { AuthProvider } from "../context/AuthContext";
 import { Toaster } from 'react-hot-toast';
-import AnalyticsTracker from "../components/AnalyticsTracker";
 import { Suspense } from "react";
 
 // Force all pages to be dynamically rendered (SSR)
@@ -106,9 +105,6 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <AuthProvider>
             <NotificationProvider>
-              <Suspense fallback={null}>
-                <AnalyticsTracker />
-              </Suspense>
               <Navbar />
               <main id="main-content" className="flex-grow flex flex-col">
                 {children}

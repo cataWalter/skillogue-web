@@ -84,13 +84,6 @@ export default function AdminQueuesPage() {
                     pendingReports: Math.max(current.quickActions.pendingReports - 1, 0),
                     totalQueueItems: Math.max(current.quickActions.totalQueueItems - 1, 0),
                 },
-                analytics: {
-                    ...current.analytics,
-                    trustAndSafety: {
-                        ...current.analytics.trustAndSafety,
-                        pendingReports: Math.max(current.analytics.trustAndSafety.pendingReports - 1, 0),
-                    },
-                },
             });
             toast.success(adminCopy.dashboard.actionMessages.reportUpdated);
             refreshDashboard();
@@ -141,16 +134,6 @@ export default function AdminQueuesPage() {
                         0
                     ),
                     totalQueueItems: Math.max(current.quickActions.totalQueueItems - 1, 0),
-                },
-                analytics: {
-                    ...current.analytics,
-                    trustAndSafety: {
-                        ...current.analytics.trustAndSafety,
-                        pendingVerificationRequests: Math.max(
-                            current.analytics.trustAndSafety.pendingVerificationRequests - 1,
-                            0
-                        ),
-                    },
                 },
             });
             toast.success(adminCopy.dashboard.actionMessages.verificationUpdated);

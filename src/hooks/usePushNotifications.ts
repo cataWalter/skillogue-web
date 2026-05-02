@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { trackAnalyticsEvent } from '../lib/analytics';
 
 type PushSupportOverride = 'supported' | 'unsupported';
 
@@ -151,9 +150,6 @@ export const usePushNotifications = () => {
       }
 
       setSubscription(sub);
-      void trackAnalyticsEvent('push_enabled', {
-        source: existingSubscription ? 'restore' : 'subscribe',
-      });
     } catch (error) {
       console.error('Error subscribing to push notifications:', error);
     } finally {
@@ -170,7 +166,6 @@ export const usePushNotifications = () => {
 
       // Remove from server
       await fetch('/api/push-subscription', { method: 'DELETE' });
-      void trackAnalyticsEvent('push_disabled');
     } catch (error) {
       console.error('Error unsubscribing from push notifications:', error);
     }

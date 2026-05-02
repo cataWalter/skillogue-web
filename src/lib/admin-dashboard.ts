@@ -1,138 +1,18 @@
-export type LeaderboardEntry = {
-  label: string;
-  value: number;
-};
 
-export type DailySeriesPoint = {
-  date: string;
-  label: string;
-  totalEvents: number;
-  searches: number;
-  messages: number;
-  favorites: number;
-  profileViews: number;
-  notifications: number;
-};
 
-export type HealthItem = {
-  title: string;
-  status: 'good' | 'watch' | 'critical';
-  detail: string;
-};
-
-export type RecentEvent = {
-  id: string;
-  eventName: string;
-  path: string | null;
-  createdAt: string | null;
-  properties: Record<string, unknown>;
-};
-
-export type AdminAnalyticsFilters = {
-  eventType: string | null;
-  path: string | null;
-  availableEventTypes: string[];
-  availablePaths: string[];
-  exportUrl: string;
-};
-
-export type AnalyticsOverview = {
-  range: {
-    days: number | null;
-    label: string;
-    trendWindowDays: number;
-  };
-  filters: AdminAnalyticsFilters;
-  overview: {
-    totalEvents: number;
-    pageViews: number;
-    uniquePaths: number;
-    lastEventAt: string | null;
-    totalProfiles: number;
-    verifiedProfiles: number;
-    completedProfiles: number;
-    totalMessages: number;
-    totalFavorites: number;
-  };
-  acquisition: {
-    signupCompleted: number;
-    emailVerified: number;
-    onboardingCompleted: number;
-    funnel: LeaderboardEntry[];
-  };
-  search: {
-    submitted: number;
-    resultsLoaded: number;
-    zeroResults: number;
-    resultClicks: number;
-    savedSearches: number;
-    averageResultsPerSearch: number;
-    topQueries: LeaderboardEntry[];
-    topPassions: LeaderboardEntry[];
-    topLocations: LeaderboardEntry[];
-    topLanguages: LeaderboardEntry[];
-  };
-  engagement: {
-    profileViews: number;
-    favoritesAdded: number;
-    favoritesRemoved: number;
-    messageStarted: number;
-    messagesSent: number;
-    funnel: LeaderboardEntry[];
-  };
-  notifications: {
-    total: number;
-    unread: number;
-    activePushSubscriptions: number;
-    pushEnabled: number;
-    pushDisabled: number;
-    notificationOpened: number;
-  };
-  trustAndSafety: {
-    totalReports: number;
-    pendingReports: number;
-    openReports: number;
-    reportSubmittedTracked: number;
-    totalVerificationRequests: number;
-    pendingVerificationRequests: number;
-    verificationRequestedTracked: number;
-  };
-  content: {
-    topPaths: LeaderboardEntry[];
-    topViewedProfiles: LeaderboardEntry[];
-    topPassions: LeaderboardEntry[];
-    topLocations: LeaderboardEntry[];
-    topLanguages: LeaderboardEntry[];
-  };
-  activity: {
-    eventsLast7d: number;
-    eventsLast30d: number;
-    activeDaysLast7d: number;
-    activeDaysLast30d: number;
-    trendWindowDays: number;
-    dailySeries: DailySeriesPoint[];
-    peakDay: {
-      date: string;
-      label: string;
-      totalEvents: number;
-    } | null;
-  };
-  rates: {
-    searchClickThroughRate: number;
-    zeroResultRate: number;
-    verificationRate: number;
-    onboardingCompletionRate: number;
-    favoritesToMessageRate: number;
-    messageCompletionRate: number;
-    pushAdoptionRate: number;
-    notificationOpenRate: number;
-  };
-  health: {
-    score: number;
-    items: HealthItem[];
-  };
-  eventLeaderboard: LeaderboardEntry[];
-  recentEvents: RecentEvent[];
+export type AdminDashboardOverview = {
+  totalProfiles: number;
+  verifiedProfiles: number;
+  completedProfiles: number;
+  totalMessages: number;
+  totalFavorites: number;
+  totalNotifications: number;
+  unreadNotifications: number;
+  activePushSubscriptions: number;
+  totalReports: number;
+  pendingReports: number;
+  totalVerificationRequests: number;
+  pendingVerificationRequests: number;
 };
 
 export type AdminQueueUser = {
@@ -174,7 +54,6 @@ export type AdminQuickActions = {
 
 export type AdminSystemControls = {
   maintenanceBannerText: string;
-  analyticsRefreshMinutes: number;
   moderationHold: boolean;
   followUpUserIds: string[];
   updatedAt: string | null;
@@ -182,14 +61,13 @@ export type AdminSystemControls = {
 
 export const DEFAULT_ADMIN_SYSTEM_CONTROLS: AdminSystemControls = {
   maintenanceBannerText: '',
-  analyticsRefreshMinutes: 15,
   moderationHold: false,
   followUpUserIds: [],
   updatedAt: null,
 };
 
 export type AdminDashboardSnapshot = {
-  analytics: AnalyticsOverview;
+  overview: AdminDashboardOverview;
   queues: {
     reports: AdminReportQueueItem[];
     verificationRequests: AdminVerificationQueueItem[];
@@ -295,15 +173,4 @@ export type AdminOutreachRequest = {
   url?: string;
   verified?: boolean;
   followUp?: boolean;
-};
-
-export type AdminAnalyticsExport = {
-  exportedAt: string;
-  filters: {
-    days: number | null;
-    eventType: string | null;
-    path: string | null;
-  };
-  totalEvents: number;
-  events: RecentEvent[];
 };

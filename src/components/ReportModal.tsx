@@ -5,7 +5,6 @@ import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { reportModalCopy } from '../lib/app-copy';
-import { trackAnalyticsEvent } from '../lib/analytics';
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -44,9 +43,6 @@ const ReportModal: React.FC<ReportModalProps> = ({
         onClose();
         setReason('');
         toast.success(reportModalCopy.success);
-        void trackAnalyticsEvent('report_submitted', {
-          reportedUserId,
-        });
       }
     } catch (error) {
       console.error('Error submitting report:', error);

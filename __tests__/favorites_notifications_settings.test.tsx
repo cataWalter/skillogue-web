@@ -7,7 +7,6 @@ import FavoritesPage from '../src/app/favorites/page';
 import NotificationsPage from '../src/app/notifications/page';
 import SettingsPage from '../src/app/settings/page';
 import { appClient } from '../src/lib/appClient';
-import { trackAnalyticsEvent } from '../src/lib/analytics';
 
 const mockPush = jest.fn();
 const mockMarkAsRead = jest.fn();
@@ -41,6 +40,10 @@ jest.mock('../src/lib/appClient', () => ({
   },
 }));
 
+jest.mock('../src/hooks/useProfileGate', () => ({
+  useProfileGate: jest.fn(),
+}));
+
 jest.mock('../src/components/Avatar', () => ({
   __esModule: true,
   default: ({ seed }: { seed: string }) => <div data-testid="avatar">{seed}</div>,
@@ -54,9 +57,6 @@ jest.mock('../src/context/NotificationContext', () => ({
   }),
 }));
 
-jest.mock('../src/lib/analytics', () => ({
-  trackAnalyticsEvent: jest.fn(),
-}));
 
 jest.mock('../src/components/PushNotificationToggle', () => ({
   __esModule: true,
@@ -252,18 +252,6 @@ describe('Notifications integration tests', () => {
     fireEvent.click(links[0]);
     fireEvent.click(links[1]);
 
-    expect(trackAnalyticsEvent).toHaveBeenNthCalledWith(1, 'notification_opened', {
-      notificationId: 'notification-1',
-      type: 'new_message',
-      actorId: 'actor-1',
-      wasRead: false,
-    });
-    expect(trackAnalyticsEvent).toHaveBeenNthCalledWith(2, 'notification_opened', {
-      notificationId: 'notification-2',
-      type: 'new_message',
-      actorId: null,
-      wasRead: true,
-    });
     expect(mockMarkAsRead).toHaveBeenCalledTimes(1);
     expect(mockMarkAsRead).toHaveBeenCalledWith('notification-1');
   });

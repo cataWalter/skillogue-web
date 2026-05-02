@@ -1,7 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import UserProfile from '../src/app/user/[id]/page';
 import { appClient } from '../src/lib/appClient';
-import { trackAnalyticsEvent } from '../src/lib/analytics';
 import '@testing-library/jest-dom';
 
 const originalConsoleError = console.error;
@@ -93,9 +92,6 @@ jest.mock('react-hot-toast', () => ({
   },
 }));
 
-jest.mock('../src/lib/analytics', () => ({
-  trackAnalyticsEvent: jest.fn(),
-}));
 
 jest.mock('../src/components/ReportModal', () => ({
   __esModule: true,
@@ -162,7 +158,6 @@ describe('UserProfile', () => {
 
       originalConsoleError(...(args as Parameters<typeof console.error>));
     });
-    (trackAnalyticsEvent as jest.Mock).mockReset();
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
 
     // Mock profile fetch
@@ -462,12 +457,6 @@ describe('UserProfile', () => {
     expect(screen.getByTestId('report-modal')).toHaveAttribute('data-open', 'false');
 
     fireEvent.click(screen.getByRole('link', { name: 'Message' }));
-    expect(trackAnalyticsEvent).toHaveBeenCalledWith('search_result_clicked', {
-      profileId: 'user-123',
-      profileName: 'Jane Doe',
-      target: 'message',
-      source: 'user_profile',
-    });
   });
 
   it('handles passions fetch error', async () => {

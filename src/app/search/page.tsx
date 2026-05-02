@@ -26,7 +26,6 @@ import { DiscoveryHeader } from '@/components/discovery/DiscoveryHeader';
 import { DiscoveryEmptyState } from '@/components/discovery/DiscoveryEmptyState';
 import Avatar from '../../components/Avatar';
 import SearchSkeleton from '../../components/SearchSkeleton';
-import { trackAnalyticsEvent } from '../../lib/analytics';
 import {
     getDisplayBio,
     getDisplayGender,
@@ -347,24 +346,9 @@ const Search: React.FC = () => {
         loadInitialData();
     }, []);
 
-    const buildSearchAnalyticsProperties = useCallback(() => ({
-        query: query.trim() || null,
-        location: location.trim() || null,
-        minAge: minAge ? parseInt(minAge, 10) : null,
-        maxAge: maxAge ? parseInt(maxAge, 10) : null,
-        language: language.trim() || null,
-        gender: gender || null,
-        passions: selectedPassions,
-        sortBy,
-    }), [query, location, minAge, maxAge, language, gender, selectedPassions, sortBy]);
-
     const performSearch = useCallback(async (pageNumber = 1) => {
         setLoading(true);
         try {
-            if (pageNumber === 1) {
-                void trackAnalyticsEvent('search_submitted', buildSearchAnalyticsProperties());
-            }
-
             const { data: { session } } = await appClient.auth.getSession();
             const currentUserId = session?.user?.id;
 
@@ -393,15 +377,6 @@ const Search: React.FC = () => {
             }
 
             const newResults = (data as SearchResult[]) || [];
-            void trackAnalyticsEvent('search_results_loaded', {
-                ...buildSearchAnalyticsProperties(),
-                page: pageNumber,
-                resultsCount: newResults.length,
-            });
-
-            if (pageNumber === 1 && newResults.length === 0) {
-                void trackAnalyticsEvent('search_zero_results', buildSearchAnalyticsProperties());
-            }
 
             setError(null);
 
@@ -420,7 +395,7 @@ const Search: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [query, location, minAge, maxAge, language, gender, selectedPassions, availablePassions, buildSearchAnalyticsProperties]);
+    }, [query, location, minAge, maxAge, language, gender, selectedPassions, availablePassions]);
 
     // Initial search
     useEffect(() => {
@@ -467,21 +442,10 @@ const Search: React.FC = () => {
             setSavedSearches([...savedSearches, data]);
             setIsSaveModalOpen(false);
             setSaveSearchName('');
-            void trackAnalyticsEvent('saved_search_created', {
-                ...buildSearchAnalyticsProperties(),
-                savedPassionCount: passionIds.length,
-                nameLength: saveSearchName.trim().length,
-            });
         }
     };
 
-    const handleSearchResultClick = useCallback((user: SearchResult, target: 'profile' | 'message') => {
-        void trackAnalyticsEvent('search_result_clicked', {
-            profileId: user.id,
-            profileName: getDisplayName(user.first_name, user.last_name),
-            target,
-        });
-    }, []);
+    const handleSearchResultClick = useCallback((_user?: unknown, _target?: unknown) => { }, []);
 
     const loadSavedSearch = (search: SavedSearch) => {
         setQuery(search.query || '');

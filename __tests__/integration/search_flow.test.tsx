@@ -15,6 +15,10 @@ jest.mock('../../src/lib/appClient', () => ({
   },
 }));
 
+jest.mock('../../src/hooks/useProfileGate', () => ({
+  useProfileGate: jest.fn(),
+}));
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: jest.fn() }),

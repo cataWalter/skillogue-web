@@ -9,7 +9,6 @@ import { updateProfile } from '../actions/profile';
 import { normalizeGender } from '@/lib/gender';
 import { getBirthDateRange, isBirthDateWithinAgeRange } from '@/lib/profile-age';
 import { onboardingCopy } from '../../lib/app-copy';
-import { trackAnalyticsEvent } from '../../lib/analytics';
 import { Button } from '../../components/Button';
 
 interface ProfileState {
@@ -216,13 +215,6 @@ const Onboarding: React.FC = () => {
 
                 throw new Error(result.error);
             }
-
-            void trackAnalyticsEvent('onboarding_completed', {
-                languages: selectedLanguages,
-                passions: selectedPassions,
-                locationCountry: location.country || null,
-                hasBio: Boolean(profile.about_me.trim()),
-            });
 
             router.push('/dashboard');
         } catch (err: unknown) {

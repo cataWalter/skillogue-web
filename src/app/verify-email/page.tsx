@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { createAppwriteBrowserAccount } from '@/lib/appwrite/browser';
 import { authCopy } from '../../lib/app-copy';
-import { trackAnalyticsEvent } from '../../lib/analytics';
 
 const VerifyEmailPage = () => {
   const searchParams = useSearchParams();
@@ -30,7 +29,6 @@ const VerifyEmailPage = () => {
 
         setStatus('success');
         setMessage(authCopy.verifyEmail.successMessage);
-        void trackAnalyticsEvent('email_verified');
       } catch (error) {
         setStatus('error');
         setMessage(

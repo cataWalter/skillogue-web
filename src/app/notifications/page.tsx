@@ -7,7 +7,6 @@ import Avatar from '../../components/Avatar';
 import { Bell, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { componentCopy } from '../../lib/app-copy';
-import { trackAnalyticsEvent } from '../../lib/analytics';
 import { useProfileGate } from '../../hooks/useProfileGate';
 
 const NotificationsPage: React.FC = () => {
@@ -46,13 +45,6 @@ const NotificationsPage: React.FC = () => {
     };
 
     const handleNotificationOpen = (notification: typeof notifications[number]) => {
-        void trackAnalyticsEvent('notification_opened', {
-            notificationId: notification.id,
-            type: notification.type,
-            actorId: notification.actorId ?? null,
-            wasRead: notification.read === true,
-        });
-
         if (!notification.read) {
             markAsRead(notification.id);
         }

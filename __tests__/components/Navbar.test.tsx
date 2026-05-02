@@ -72,7 +72,6 @@ describe('Navbar', () => {
 
     expect(screen.getByRole('link', { name: /^search$/i })).toHaveAttribute('href', '/search');
     expect(screen.getByRole('link', { name: /^search$/i })).toHaveClass('bg-surface-secondary');
-    expect(screen.getByRole('link', { name: /events/i })).toHaveClass('text-faint');
     expect(screen.getByRole('link', { name: /skillogue/i })).toHaveAttribute('href', '/dashboard');
 
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }));

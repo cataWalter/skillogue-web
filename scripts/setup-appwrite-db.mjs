@@ -321,30 +321,6 @@ const collections = [
     ],
   },
   {
-    id: 'passions',
-    name: 'passions',
-    attributes: [
-      varchar('id', 255, { required: true }),
-      varchar('name', 255, { required: true }),
-    ],
-    indexes: [
-      { key: 'id_unique', type: 'unique', attributes: ['id'], orders: ['ASC'] },
-      { key: 'name_idx', type: 'key', attributes: ['name'], orders: ['ASC'] },
-    ],
-  },
-  {
-    id: 'languages',
-    name: 'languages',
-    attributes: [
-      varchar('id', 255, { required: true }),
-      varchar('name', 255, { required: true }),
-    ],
-    indexes: [
-      { key: 'id_unique', type: 'unique', attributes: ['id'], orders: ['ASC'] },
-      { key: 'name_idx', type: 'key', attributes: ['name'], orders: ['ASC'] },
-    ],
-  },
-  {
     id: 'profile_passions',
     name: 'profile_passions',
     attributes: [

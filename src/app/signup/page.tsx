@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
 import { signUpCopy } from '../../lib/app-copy';
-import { trackAnalyticsEvent } from '../../lib/analytics';
 import FormCard from '../../components/FormCard';
 import Input from '../../components/Input';
 import { Button } from '../../components/Button';
@@ -53,10 +52,6 @@ const SignUp: React.FC = () => {
         try {
             setLoading(true);
             await signUp(email, password);
-            void trackAnalyticsEvent('signup_completed', {
-                emailDomain: email.includes('@') ? email.split('@')[1] : null,
-            });
-
             toast.success(signUpCopy.successAlert, { duration: 6000 });
             router.push('/login');
         } catch (error: unknown) {

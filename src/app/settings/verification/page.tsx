@@ -14,7 +14,6 @@ import {
     SettingsStatusBanner,
 } from '../../../components/settings/SettingsShell';
 import { settingsCopy } from '../../../lib/app-copy';
-import { trackAnalyticsEvent } from '../../../lib/analytics';
 
 export default function VerificationPage() {
     const [status, setStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
@@ -77,7 +76,6 @@ export default function VerificationPage() {
 
             setStatus('pending');
             toast.success(settingsCopy.verification.requestSubmitted);
-            void trackAnalyticsEvent('verification_requested');
         } catch (error: unknown) {
             console.error('Error requesting verification:', error);
             const message = error instanceof Error ? error.message : settingsCopy.verification.submitError;

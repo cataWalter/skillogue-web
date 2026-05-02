@@ -38,7 +38,6 @@ const collectionIds = {
   languages: getCollectionId('languages'),
   profilePassions: getCollectionId('profile_passions'),
   profileLanguages: getCollectionId('profile_languages'),
-  events: getCollectionId('events'),
 };
 
 const getBirthDateFromAge = (age) => {
@@ -372,166 +371,6 @@ const ensureDemoUser = async (demoUser) => {
   return appwriteUser.$id;
 };
 
-// Returns an ISO datetime string offset by the given days/hours from now
-const futureDate = (daysFromNow, hour = 18, minute = 0) => {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  d.setHours(hour, minute, 0, 0);
-  return d.toISOString();
-};
-
-const buildFakeEvents = (userIds) => [
-  {
-    title: 'Photography Walk in Paris',
-    description: 'Join us for a guided photography walk through the streets of Paris. Bring your camera and capture the magic of the city.',
-    location_id: 'location-paris-ile-de-france-france',
-    starts_at: futureDate(7, 10, 0),
-    ends_at: futureDate(7, 13, 0),
-    timezone: 'Europe/Paris',
-    capacity: 20,
-    status: 'published',
-    creator_id: userIds[0],
-  },
-  {
-    title: 'Berlin Tech Meetup',
-    description: 'Monthly meetup for tech enthusiasts in Berlin. Share projects, discuss trends, and network with fellow developers.',
-    location_id: 'location-berlin-berlin-germany',
-    starts_at: futureDate(10, 19, 0),
-    ends_at: futureDate(10, 22, 0),
-    timezone: 'Europe/Berlin',
-    capacity: 50,
-    status: 'published',
-    creator_id: userIds[1],
-  },
-  {
-    title: 'Yoga on the Beach – Barcelona',
-    description: 'Start your weekend with an energising yoga session on the beach. All levels welcome. Mats provided.',
-    location_id: 'location-barcelona-catalonia-spain',
-    starts_at: futureDate(14, 8, 0),
-    ends_at: futureDate(14, 9, 30),
-    timezone: 'Europe/Madrid',
-    capacity: 30,
-    status: 'published',
-    creator_id: userIds[2],
-  },
-  {
-    title: 'Italian Cooking Class – Rome',
-    description: 'Learn to make authentic Roman pasta from scratch. Ingredients and aprons included. Wine pairing to follow.',
-    location_id: 'location-rome-lazio-italy',
-    starts_at: futureDate(18, 17, 0),
-    ends_at: futureDate(18, 20, 0),
-    timezone: 'Europe/Rome',
-    capacity: 12,
-    status: 'published',
-    creator_id: userIds[3],
-  },
-  {
-    title: 'Fado Night in Lisbon',
-    description: 'An intimate evening of live Fado music in a traditional Alfama venue. Doors open at 20:00.',
-    location_id: 'location-lisbon-lisbon-portugal',
-    starts_at: futureDate(21, 20, 30),
-    ends_at: null,
-    timezone: 'Europe/Lisbon',
-    capacity: 40,
-    status: 'published',
-    creator_id: userIds[4],
-  },
-  {
-    title: 'Milan Fashion & Art Tour',
-    description: "Explore Milan's fashion district and contemporary art galleries with a local guide.",
-    location_id: 'location-milan-lombardy-italy',
-    starts_at: futureDate(25, 11, 0),
-    ends_at: futureDate(25, 15, 0),
-    timezone: 'Europe/Rome',
-    capacity: null,
-    status: 'published',
-    creator_id: userIds[5],
-  },
-  {
-    title: 'Berlin Board Game Night',
-    description: 'A relaxed evening of board games, snacks, and great company. Bring your favourite game or choose from our collection.',
-    location_id: 'location-berlin-berlin-germany',
-    starts_at: futureDate(28, 18, 30),
-    ends_at: futureDate(28, 22, 30),
-    timezone: 'Europe/Berlin',
-    capacity: 24,
-    status: 'published',
-    creator_id: userIds[6],
-  },
-  {
-    title: 'Paris Language Exchange',
-    description: 'Practice French, English, Spanish, or any language you are learning. Friendly and informal atmosphere.',
-    location_id: 'location-paris-ile-de-france-france',
-    starts_at: futureDate(32, 19, 0),
-    ends_at: futureDate(32, 21, 0),
-    timezone: 'Europe/Paris',
-    capacity: 30,
-    status: 'published',
-    creator_id: userIds[7],
-  },
-];
-
-const upsertEvent = async (event) => {
-  const timestamp = new Date().toISOString();
-  const eventId = randomUUID();
-
-  const existing = await databases.listDocuments(appwriteDatabaseId, collectionIds.events, [
-    Query.equal('title', [event.title]),
-    Query.equal('creator_id', [event.creator_id]),
-    Query.limit(1),
-  ]);
-
-  if (existing.documents.length > 0) {
-    const doc = existing.documents[0];
-    await databases.updateDocument(appwriteDatabaseId, collectionIds.events, doc.$id, {
-      title: event.title,
-      description: event.description,
-      location_id: event.location_id,
-      starts_at: event.starts_at,
-      ends_at: event.ends_at ?? null,
-      timezone: event.timezone,
-      capacity: event.capacity,
-      status: event.status,
-      updated_at: timestamp,
-    });
-    return 'updated';
-  }
-
-  await databases.createDocument(appwriteDatabaseId, collectionIds.events, eventId, {
-    id: eventId,
-    creator_id: event.creator_id,
-    title: event.title,
-    description: event.description,
-    location_id: event.location_id,
-    starts_at: event.starts_at,
-    ends_at: event.ends_at ?? null,
-    timezone: event.timezone,
-    capacity: event.capacity,
-    status: event.status,
-    created_at: timestamp,
-    updated_at: timestamp,
-  });
-  return 'created';
-};
-
-const seedEvents = async (userIds) => {
-  const fakeEvents = buildFakeEvents(userIds);
-  let created = 0;
-  let updated = 0;
-
-  for (const event of fakeEvents) {
-    const status = await upsertEvent(event);
-    console.log(`  ${status} event: "${event.title}"`);
-    if (status === 'created') {
-      created += 1;
-    } else {
-      updated += 1;
-    }
-  }
-
-  console.log(`events: ${created} created, ${updated} updated`);
-};
-
 async function seedDemoData() {
   console.log('Seeding Appwrite demo data...');
 
@@ -541,13 +380,9 @@ async function seedDemoData() {
   console.log(`locations: using ${referenceData.locations.length} static entries from code`);
   console.log(`passions: using ${referenceData.passions.length} static entries from code`);
 
-  const userIds = [];
   for (const demoUser of demoUsers) {
-    const userId = await ensureDemoUser(demoUser);
-    userIds.push(userId);
+    await ensureDemoUser(demoUser);
   }
-
-  await seedEvents(userIds);
 
   console.log('\nDemo data is ready.');
   console.log('Example login: alice@example.com / Test1234!');

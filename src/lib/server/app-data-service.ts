@@ -208,25 +208,6 @@ const compareValues = (left: unknown, right: unknown) => {
   return String(left ?? '').localeCompare(String(right ?? ''));
 };
 
-const parseAnalyticsProperties = (value: unknown): Record<string, unknown> => {
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-
-  if (typeof value !== 'string' || !value.trim()) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-};
-
 const getStringValue = (value: unknown) =>
   typeof value === 'string' && value.trim() ? value.trim() : null;
 
@@ -254,16 +235,6 @@ const getNumberValue = (value: unknown) => {
   return null;
 };
 
-const normalizeRefreshMinutes = (value: unknown) => {
-  const parsed = getNumberValue(value);
-
-  if (parsed === null) {
-    return DEFAULT_ADMIN_SYSTEM_CONTROLS.analyticsRefreshMinutes;
-  }
-
-  return Math.min(Math.max(Math.round(parsed), 5), 120);
-};
-
 const isTruthy = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
 const parseStoredStringArray = (value: unknown) => {
@@ -286,34 +257,6 @@ const parseStoredStringArray = (value: unknown) => {
       .map((entry) => entry.trim())
       .filter(Boolean);
   }
-};
-
-const incrementCount = (map: Map<string, number>, key: string | null, amount = 1) => {
-  if (!key) {
-    return;
-  }
-
-  map.set(key, (map.get(key) ?? 0) + amount);
-};
-
-const toLeaderboard = (map: Map<string, number>, limit = 5) =>
-  Array.from(map.entries())
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
-    .slice(0, limit)
-    .map(([label, value]) => ({ label, value }));
-
-const toDayKey = (value: string | null | undefined) => {
-  if (!value) {
-    return null;
-  }
-
-  const timestamp = Date.parse(value);
-
-  if (Number.isNaN(timestamp)) {
-    return null;
-  }
-
-  return new Date(timestamp).toISOString().slice(0, 10);
 };
 
 const buildDisplayName = (profile: any) => {
@@ -382,112 +325,10 @@ const normalizeAdminSystemControls = (document: any) => ({
     getStringValue(document?.maintenance_banner_text) ??
     getStringValue(document?.maintenanceBannerText) ??
     DEFAULT_ADMIN_SYSTEM_CONTROLS.maintenanceBannerText,
-  analyticsRefreshMinutes: normalizeRefreshMinutes(
-    document?.analytics_refresh_minutes ?? document?.analyticsRefreshMinutes
-  ),
   moderationHold: isTruthy(document?.moderation_hold ?? document?.moderationHold),
   followUpUserIds: parseStoredStringArray(document?.follow_up_user_ids ?? document?.followUpUserIds),
   updatedAt: getStringValue(document?.updated_at) ?? getStringValue(document?.updatedAt) ?? null,
 });
-
-const toPercentage = (numerator: number, denominator: number) =>
-  denominator > 0 ? Number(((numerator / denominator) * 100).toFixed(1)) : 0;
-
-const buildDailySeries = (
-  rows: any[],
-  days: number
-): Array<{
-  date: string;
-  label: string;
-  totalEvents: number;
-  searches: number;
-  messages: number;
-  favorites: number;
-  profileViews: number;
-  notifications: number;
-}> => {
-  const series = new Map<
-    string,
-    {
-      date: string;
-      label: string;
-      totalEvents: number;
-      searches: number;
-      messages: number;
-      favorites: number;
-      profileViews: number;
-      notifications: number;
-    }
-  >();
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-
-  for (let index = days - 1; index >= 0; index -= 1) {
-    const current = new Date(today);
-    current.setUTCDate(today.getUTCDate() - index);
-    const date = current.toISOString().slice(0, 10);
-
-    series.set(date, {
-      date,
-      label: current.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      totalEvents: 0,
-      searches: 0,
-      messages: 0,
-      favorites: 0,
-      profileViews: 0,
-      notifications: 0,
-    });
-  }
-
-  for (const row of rows) {
-    const date = toDayKey(getStringValue(row.created_at));
-
-    if (!date || !series.has(date)) {
-      continue;
-    }
-
-    const point = series.get(date);
-    const eventName = getStringValue(row.event_name) ?? 'unknown_event';
-
-    if (!point) {
-      continue;
-    }
-
-    point.totalEvents += 1;
-
-    switch (eventName) {
-      case 'search_submitted':
-        point.searches += 1;
-        break;
-      case 'message_sent':
-        point.messages += 1;
-        break;
-      case 'favorite_added':
-      case 'favorite_removed':
-        point.favorites += 1;
-        break;
-      case 'profile_viewed':
-        point.profileViews += 1;
-        break;
-      case 'notification_opened':
-        point.notifications += 1;
-        break;
-      default:
-        break;
-    }
-  }
-
-  return Array.from(series.values());
-};
-
-const isOnOrAfter = (value: string | null | undefined, cutoff: number) => {
-  if (!value) {
-    return false;
-  }
-
-  const timestamp = Date.parse(value);
-  return !Number.isNaN(timestamp) && timestamp >= cutoff;
-};
 
 function getStaticCollectionData(collection: 'locations'): StaticLocation[];
 function getStaticCollectionData(collection: 'passions'): StaticPassion[];
@@ -1215,12 +1056,6 @@ export class AppDataService {
           data.created_at ??= createdAt;
           data.status ??= 'pending';
           break;
-        case 'analytics_events':
-          data.created_at ??= createdAt;
-          if (typeof data.properties !== 'string') {
-            data.properties = JSON.stringify(data.properties ?? {});
-          }
-          break;
         default:
           break;
       }
@@ -1894,548 +1729,6 @@ export class AppDataService {
     return { success: true };
   }
 
-  async getAdminAnalyticsOverview(options?: { days?: number | null; eventType?: string | null; path?: string | null }) {
-    const [
-      analyticsResponse,
-      reportsResponse,
-      verificationResponse,
-      favoritesResponse,
-      messagesResponse,
-      notificationsResponse,
-      pushSubscriptionsResponse,
-      profilesResponse,
-      savedSearchesResponse,
-    ] = await Promise.all([
-      this.executeCollectionOperation('analytics_events', {
-        action: 'select',
-        order: { column: 'created_at', ascending: false },
-        limit: 1000,
-      }),
-      this.executeCollectionOperation('reports', { action: 'select' }),
-      this.executeCollectionOperation('verification_requests', { action: 'select' }),
-      this.executeCollectionOperation('favorites', { action: 'select' }),
-      this.executeCollectionOperation('messages', { action: 'select' }),
-      this.executeCollectionOperation('notifications', { action: 'select' }),
-      this.executeCollectionOperation('push_subscriptions', { action: 'select' }),
-      this.executeCollectionOperation('profiles', { action: 'select' }),
-      this.executeCollectionOperation('saved_searches', { action: 'select' }),
-    ]);
-
-    const analyticsRows = (analyticsResponse.data as any[]) ?? [];
-    const reports = (reportsResponse.data as any[]) ?? [];
-    const verificationRequests = (verificationResponse.data as any[]) ?? [];
-    const favorites = (favoritesResponse.data as any[]) ?? [];
-    const messages = (messagesResponse.data as any[]) ?? [];
-    const notifications = (notificationsResponse.data as any[]) ?? [];
-    const pushSubscriptions = (pushSubscriptionsResponse.data as any[]) ?? [];
-    const profiles = (profilesResponse.data as any[]) ?? [];
-    const savedSearches = (savedSearchesResponse.data as any[]) ?? [];
-
-    const now = Date.now();
-    const normalizedDays =
-      typeof options?.days === 'number' && Number.isFinite(options.days) && options.days > 0
-        ? Math.min(Math.max(Math.floor(options.days), 1), 365)
-        : null;
-    const normalizedEventType = getStringValue(options?.eventType);
-    const normalizedPath = getStringValue(options?.path);
-    const rangeCutoff = normalizedDays ? now - normalizedDays * 24 * 60 * 60 * 1000 : null;
-    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-    const trendWindowDays = normalizedDays ?? 30;
-    const rangeFilteredAnalyticsRows = rangeCutoff
-      ? analyticsRows.filter((row) => isOnOrAfter(getStringValue(row.created_at), rangeCutoff))
-      : analyticsRows;
-    const matchesDrillDown = (row: any) => {
-      const eventName = getStringValue(row.event_name);
-      const eventPath = getStringValue(row.path);
-
-      if (normalizedEventType && eventName !== normalizedEventType) {
-        return false;
-      }
-
-      if (normalizedPath && eventPath !== normalizedPath) {
-        return false;
-      }
-
-      return true;
-    };
-    const filteredAnalyticsRows = rangeFilteredAnalyticsRows.filter(matchesDrillDown);
-    const activityAnalyticsRows = analyticsRows.filter(matchesDrillDown);
-    const availableEventTypes = unique(
-      rangeFilteredAnalyticsRows
-        .map((row) => getStringValue(row.event_name))
-        .filter((value): value is string => Boolean(value))
-    ).sort((left, right) => left.localeCompare(right));
-    const availablePaths = unique(
-      rangeFilteredAnalyticsRows
-        .map((row) => getStringValue(row.path))
-        .filter((value): value is string => Boolean(value))
-    ).sort((left, right) => left.localeCompare(right));
-
-    const eventCountByName = new Map<string, number>();
-    const pathCounts = new Map<string, number>();
-    const queryCounts = new Map<string, number>();
-    const passionCounts = new Map<string, number>();
-    const locationCounts = new Map<string, number>();
-    const languageCounts = new Map<string, number>();
-    const viewedProfileCounts = new Map<string, number>();
-    const activeDaysLast7d = new Set<string>();
-    const activeDaysLast30d = new Set<string>();
-
-    let pageViews = 0;
-    let searchSubmitted = 0;
-    let searchResultsLoaded = 0;
-    let zeroResults = 0;
-    let searchResultClicks = 0;
-    let trackedSavedSearches = 0;
-    let totalSearchResults = 0;
-    let signupCompleted = 0;
-    let emailVerified = 0;
-    let onboardingCompleted = 0;
-    let profileViews = 0;
-    let favoritesAdded = 0;
-    let favoritesRemoved = 0;
-    let messageStarted = 0;
-    let messagesSent = 0;
-    let pushEnabled = 0;
-    let pushDisabled = 0;
-    let notificationOpened = 0;
-    let reportSubmittedTracked = 0;
-    let verificationRequestedTracked = 0;
-    let eventsLast7d = 0;
-    let eventsLast30d = 0;
-
-    const recentEvents = filteredAnalyticsRows.slice(0, 20).map((event) => ({
-      id: String(event.id ?? event._appwriteId ?? ''),
-      eventName: getStringValue(event.event_name) ?? 'unknown_event',
-      path: getStringValue(event.path),
-      createdAt: getStringValue(event.created_at),
-      properties: parseAnalyticsProperties(event.properties),
-    }));
-
-    for (const row of activityAnalyticsRows) {
-      const eventName = getStringValue(row.event_name) ?? 'unknown_event';
-      const createdAt = getStringValue(row.created_at);
-
-      if (isOnOrAfter(createdAt, sevenDaysAgo)) {
-        eventsLast7d += 1;
-        const dayKey = toDayKey(createdAt);
-        if (dayKey) {
-          activeDaysLast7d.add(dayKey);
-        }
-      }
-
-      if (isOnOrAfter(createdAt, thirtyDaysAgo)) {
-        eventsLast30d += 1;
-        const dayKey = toDayKey(createdAt);
-        if (dayKey) {
-          activeDaysLast30d.add(dayKey);
-        }
-      }
-
-      if (rangeCutoff && !isOnOrAfter(createdAt, rangeCutoff)) {
-        continue;
-      }
-
-      const properties = parseAnalyticsProperties(row.properties);
-      const eventPath = getStringValue(row.path);
-
-      incrementCount(eventCountByName, eventName);
-      incrementCount(pathCounts, eventPath);
-
-      switch (eventName) {
-        case 'page_view':
-          pageViews += 1;
-          break;
-        case 'search_submitted':
-          searchSubmitted += 1;
-          incrementCount(queryCounts, getStringValue(properties.query));
-          incrementCount(locationCounts, getStringValue(properties.location));
-          incrementCount(languageCounts, getStringValue(properties.language));
-          for (const passion of getStringArray(properties.passions)) {
-            incrementCount(passionCounts, passion);
-          }
-          break;
-        case 'search_results_loaded': {
-          searchResultsLoaded += 1;
-          const resultsCount = getNumberValue(properties.resultsCount);
-          if (resultsCount !== null) {
-            totalSearchResults += resultsCount;
-          }
-          break;
-        }
-        case 'search_zero_results':
-          zeroResults += 1;
-          break;
-        case 'search_result_clicked':
-          searchResultClicks += 1;
-          incrementCount(
-            viewedProfileCounts,
-            getStringValue(properties.profileName) ?? getStringValue(properties.profileId)
-          );
-          break;
-        case 'saved_search_created':
-          trackedSavedSearches += 1;
-          break;
-        case 'signup_completed':
-          signupCompleted += 1;
-          break;
-        case 'email_verified':
-          emailVerified += 1;
-          break;
-        case 'onboarding_completed':
-          onboardingCompleted += 1;
-          for (const language of getStringArray(properties.languages)) {
-            incrementCount(languageCounts, language);
-          }
-          for (const passion of getStringArray(properties.passions)) {
-            incrementCount(passionCounts, passion);
-          }
-          break;
-        case 'profile_viewed':
-          profileViews += 1;
-          incrementCount(
-            viewedProfileCounts,
-            getStringValue(properties.profileName) ?? getStringValue(properties.profileId)
-          );
-          break;
-        case 'favorite_added':
-          favoritesAdded += 1;
-          break;
-        case 'favorite_removed':
-          favoritesRemoved += 1;
-          break;
-        case 'message_started':
-          messageStarted += 1;
-          break;
-        case 'message_sent':
-          messagesSent += 1;
-          break;
-        case 'push_enabled':
-          pushEnabled += 1;
-          break;
-        case 'push_disabled':
-          pushDisabled += 1;
-          break;
-        case 'notification_opened':
-          notificationOpened += 1;
-          break;
-        case 'report_submitted':
-          reportSubmittedTracked += 1;
-          break;
-        case 'verification_requested':
-          verificationRequestedTracked += 1;
-          break;
-        default:
-          break;
-      }
-    }
-
-    const completedProfiles = profiles.filter(
-      (profile) =>
-        getStringValue(profile.first_name) &&
-        getStringValue(profile.last_name) &&
-        getStringValue(profile.birth_date) &&
-        getStringValue(profile.gender)
-    ).length;
-    const verifiedProfiles = profiles.filter((profile) => profile.verified === true).length;
-    const unreadNotifications = notifications.filter((notification) => notification.read !== true).length;
-    const pendingReports = reports.filter((report) => report.status === 'pending').length;
-    const openReports = reports.filter((report) => report.status !== 'resolved').length;
-    const pendingVerificationRequests = verificationRequests.filter(
-      (request) => request.status === 'pending'
-    ).length;
-    const searchClickThroughRate = toPercentage(searchResultClicks, searchSubmitted);
-    const zeroResultRate = toPercentage(zeroResults, searchSubmitted);
-    const verificationRate = toPercentage(emailVerified, signupCompleted);
-    const onboardingCompletionRate = toPercentage(onboardingCompleted, signupCompleted);
-    const favoritesToMessageRate = toPercentage(messageStarted, favoritesAdded);
-    const messageCompletionRate = toPercentage(messagesSent, messageStarted);
-    const pushAdoptionRate = toPercentage(pushSubscriptions.length, verifiedProfiles);
-    const notificationOpenRate = toPercentage(notificationOpened, notifications.length);
-    const dailySeries = buildDailySeries(
-      activityAnalyticsRows.filter((row) =>
-        isOnOrAfter(getStringValue(row.created_at), now - trendWindowDays * 24 * 60 * 60 * 1000)
-      ),
-      trendWindowDays
-    );
-    const peakDay = dailySeries.reduce(
-      (current, entry) => (entry.totalEvents > current.totalEvents ? entry : current),
-      dailySeries[0] ?? {
-        date: '',
-        label: '',
-        totalEvents: 0,
-        searches: 0,
-        messages: 0,
-        favorites: 0,
-        profileViews: 0,
-        notifications: 0,
-      }
-    );
-    const healthItems: Array<{
-      title: string;
-      status: 'good' | 'watch' | 'critical';
-      detail: string;
-    }> = [];
-
-    if (filteredAnalyticsRows.length === 0) {
-      healthItems.push({
-        title: 'Analytics feed',
-        status: 'critical',
-        detail: `No analytics events were captured in ${normalizedDays ? `the last ${normalizedDays} days` : 'the available dataset'}.`,
-      });
-    } else {
-      healthItems.push({
-        title: 'Analytics feed',
-        status: 'good',
-        detail: `${filteredAnalyticsRows.length} events captured in ${normalizedDays ? `the last ${normalizedDays} days` : 'the current dataset'}.`,
-      });
-    }
-
-    if (searchSubmitted >= 5 && zeroResultRate >= 30) {
-      healthItems.push({
-        title: 'Search quality',
-        status: 'watch',
-        detail: `${zeroResultRate}% of tracked searches ended with zero results.`,
-      });
-    } else {
-      healthItems.push({
-        title: 'Search quality',
-        status: 'good',
-        detail: `${searchClickThroughRate}% of tracked searches progressed to a result click.`,
-      });
-    }
-
-    if (signupCompleted >= 3 && onboardingCompletionRate < 50) {
-      healthItems.push({
-        title: 'Onboarding funnel',
-        status: 'watch',
-        detail: `Only ${onboardingCompletionRate}% of tracked signups completed onboarding.`,
-      });
-    } else {
-      healthItems.push({
-        title: 'Onboarding funnel',
-        status: 'good',
-        detail: `${verificationRate}% email verification rate and ${onboardingCompletionRate}% onboarding completion rate.`,
-      });
-    }
-
-    if (pendingReports > 0 || pendingVerificationRequests > 3) {
-      healthItems.push({
-        title: 'Admin queue',
-        status: pendingReports > 3 || pendingVerificationRequests > 6 ? 'critical' : 'watch',
-        detail: `${pendingReports} pending reports and ${pendingVerificationRequests} pending verification requests need review.`,
-      });
-    } else {
-      healthItems.push({
-        title: 'Admin queue',
-        status: 'good',
-        detail: 'Moderation and verification queues are under control.',
-      });
-    }
-
-    if (verifiedProfiles > 0 && pushAdoptionRate < 25) {
-      healthItems.push({
-        title: 'Push adoption',
-        status: 'watch',
-        detail: `Only ${pushAdoptionRate}% of verified profiles currently have an active push subscription.`,
-      });
-    } else {
-      healthItems.push({
-        title: 'Push adoption',
-        status: 'good',
-        detail: `${pushAdoptionRate}% of verified profiles currently have an active push subscription.`,
-      });
-    }
-
-    const healthScore =
-      healthItems.length > 0
-        ? Math.round(
-          healthItems.reduce((total, item) => {
-            if (item.status === 'good') {
-              return total + 100;
-            }
-
-            if (item.status === 'watch') {
-              return total + 65;
-            }
-
-            return total + 25;
-          }, 0) / healthItems.length
-        )
-        : 100;
-
-    return {
-      range: {
-        days: normalizedDays,
-        label: normalizedDays ? `Last ${normalizedDays} days` : 'All time',
-        trendWindowDays,
-      },
-      filters: {
-        eventType: normalizedEventType,
-        path: normalizedPath,
-        availableEventTypes,
-        availablePaths,
-        exportUrl: '',
-      },
-      overview: {
-        totalEvents: filteredAnalyticsRows.length,
-        pageViews,
-        uniquePaths: pathCounts.size,
-        lastEventAt: filteredAnalyticsRows[0] ? getStringValue(filteredAnalyticsRows[0].created_at) : null,
-        totalProfiles: profiles.length,
-        verifiedProfiles,
-        completedProfiles,
-        totalMessages: messages.length,
-        totalFavorites: favorites.length,
-      },
-      acquisition: {
-        signupCompleted,
-        emailVerified,
-        onboardingCompleted,
-        funnel: [
-          { label: 'Signups completed', value: signupCompleted },
-          { label: 'Emails verified', value: emailVerified },
-          { label: 'Onboarding completed', value: onboardingCompleted },
-          { label: 'Verified profiles', value: verifiedProfiles },
-        ],
-      },
-      search: {
-        submitted: searchSubmitted,
-        resultsLoaded: searchResultsLoaded,
-        zeroResults,
-        resultClicks: searchResultClicks,
-        savedSearches: Math.max(savedSearches.length, trackedSavedSearches),
-        averageResultsPerSearch:
-          searchResultsLoaded > 0 ? Number((totalSearchResults / searchResultsLoaded).toFixed(1)) : 0,
-        topQueries: toLeaderboard(queryCounts),
-        topPassions: toLeaderboard(passionCounts),
-        topLocations: toLeaderboard(locationCounts),
-        topLanguages: toLeaderboard(languageCounts),
-      },
-      engagement: {
-        profileViews,
-        favoritesAdded,
-        favoritesRemoved,
-        messageStarted,
-        messagesSent,
-        funnel: [
-          { label: 'Profile views', value: profileViews },
-          { label: 'Favorites added', value: favoritesAdded },
-          { label: 'Message starts', value: messageStarted },
-          { label: 'Messages sent', value: messagesSent },
-        ],
-      },
-      notifications: {
-        total: notifications.length,
-        unread: unreadNotifications,
-        activePushSubscriptions: pushSubscriptions.length,
-        pushEnabled,
-        pushDisabled,
-        notificationOpened,
-      },
-      trustAndSafety: {
-        totalReports: reports.length,
-        pendingReports,
-        openReports,
-        reportSubmittedTracked,
-        totalVerificationRequests: verificationRequests.length,
-        pendingVerificationRequests,
-        verificationRequestedTracked,
-      },
-      content: {
-        topPaths: toLeaderboard(pathCounts, 8),
-        topViewedProfiles: toLeaderboard(viewedProfileCounts),
-        topPassions: toLeaderboard(passionCounts),
-        topLocations: toLeaderboard(locationCounts),
-        topLanguages: toLeaderboard(languageCounts),
-      },
-      activity: {
-        eventsLast7d,
-        eventsLast30d,
-        activeDaysLast7d: activeDaysLast7d.size,
-        activeDaysLast30d: activeDaysLast30d.size,
-        trendWindowDays,
-        dailySeries,
-        peakDay: peakDay.date
-          ? {
-            date: peakDay.date,
-            label: peakDay.label,
-            totalEvents: peakDay.totalEvents,
-          }
-          : null,
-      },
-      rates: {
-        searchClickThroughRate,
-        zeroResultRate,
-        verificationRate,
-        onboardingCompletionRate,
-        favoritesToMessageRate,
-        messageCompletionRate,
-        pushAdoptionRate,
-        notificationOpenRate,
-      },
-      health: {
-        score: healthScore,
-        items: healthItems,
-      },
-      eventLeaderboard: toLeaderboard(eventCountByName, 12),
-      recentEvents,
-    };
-  }
-
-  async exportAdminAnalyticsEvents(options?: { days?: number | null; eventType?: string | null; path?: string | null }) {
-    const response = await this.executeCollectionOperation('analytics_events', {
-      action: 'select',
-      order: { column: 'created_at', ascending: false },
-      limit: 1000,
-    });
-    const analyticsRows = (response.data as any[]) ?? [];
-    const normalizedDays =
-      typeof options?.days === 'number' && Number.isFinite(options.days) && options.days > 0
-        ? Math.min(Math.max(Math.floor(options.days), 1), 365)
-        : null;
-    const normalizedEventType = getStringValue(options?.eventType);
-    const normalizedPath = getStringValue(options?.path);
-    const rangeCutoff = normalizedDays ? Date.now() - normalizedDays * 24 * 60 * 60 * 1000 : null;
-    const filteredRows = analyticsRows.filter((row) => {
-      const createdAt = getStringValue(row.created_at);
-      const eventName = getStringValue(row.event_name);
-      const eventPath = getStringValue(row.path);
-
-      if (rangeCutoff && !isOnOrAfter(createdAt, rangeCutoff)) {
-        return false;
-      }
-
-      if (normalizedEventType && eventName !== normalizedEventType) {
-        return false;
-      }
-
-      if (normalizedPath && eventPath !== normalizedPath) {
-        return false;
-      }
-
-      return true;
-    });
-
-    return {
-      exportedAt: new Date().toISOString(),
-      filters: {
-        days: normalizedDays,
-        eventType: normalizedEventType,
-        path: normalizedPath,
-      },
-      totalEvents: filteredRows.length,
-      events: filteredRows.map((event) => ({
-        id: String(event.id ?? event._appwriteId ?? ''),
-        eventName: getStringValue(event.event_name) ?? 'unknown_event',
-        path: getStringValue(event.path),
-        createdAt: getStringValue(event.created_at),
-        properties: parseAnalyticsProperties(event.properties),
-      })),
-    };
-  }
-
   async getAdminSettings() {
     const response = await this.executeCollectionOperation('admin_settings', {
       action: 'select',
@@ -2452,7 +1745,6 @@ export class AppDataService {
 
   async updateAdminSettings(patch: {
     maintenanceBannerText?: string;
-    analyticsRefreshMinutes?: number;
     moderationHold?: boolean;
     followUpUserIds?: string[];
   }) {
@@ -2462,8 +1754,6 @@ export class AppDataService {
       ...current,
       maintenanceBannerText:
         patch.maintenanceBannerText !== undefined ? patch.maintenanceBannerText : current.maintenanceBannerText,
-      analyticsRefreshMinutes:
-        patch.analyticsRefreshMinutes !== undefined ? patch.analyticsRefreshMinutes : current.analyticsRefreshMinutes,
       moderationHold: patch.moderationHold !== undefined ? patch.moderationHold : current.moderationHold,
       followUpUserIds: patch.followUpUserIds ?? current.followUpUserIds,
       updatedAt,
@@ -2474,7 +1764,6 @@ export class AppDataService {
       payload: {
         id: ADMIN_SETTINGS_DOCUMENT_ID,
         maintenance_banner_text: next.maintenanceBannerText,
-        analytics_refresh_minutes: next.analyticsRefreshMinutes,
         moderation_hold: next.moderationHold,
         follow_up_user_ids: JSON.stringify(next.followUpUserIds),
         updated_at: updatedAt,
@@ -2792,13 +2081,17 @@ export class AppDataService {
     };
   }
 
-  async getAdminDashboardSnapshot(options?: { days?: number | null; eventType?: string | null; path?: string | null }) {
-    const [analytics, reports, verificationRequests, settings, locations] = await Promise.all([
-      this.getAdminAnalyticsOverview(options),
+  async getAdminDashboardSnapshot() {
+    const [reports, verificationRequests, settings, locations, favorites, messages, notifications, pushSubscriptions, profiles] = await Promise.all([
       this.listReports(),
       this.listVerificationRequests(),
       this.getAdminSettings(),
       this.listLocations(),
+      this.executeCollectionOperation('favorites', { action: 'select' }),
+      this.executeCollectionOperation('messages', { action: 'select' }),
+      this.executeCollectionOperation('notifications', { action: 'select' }),
+      this.executeCollectionOperation('push_subscriptions', { action: 'select' }),
+      this.executeCollectionOperation('profiles', { action: 'select' }),
     ]);
 
     const locationsById = new Map(locations.map((location: any) => [String(location.id), location]));
@@ -2811,18 +2104,47 @@ export class AppDataService {
       .slice(0, 5)
       .map((request) => mapAdminVerificationQueueItem(request, locationsById));
 
+    const profileList = (profiles.data as any[]) ?? [];
+    const notificationList = (notifications.data as any[]) ?? [];
+    const verifiedProfiles = profileList.filter((p) => p.verified === true).length;
+    const completedProfiles = profileList.filter(
+      (p) =>
+        getStringValue(p.first_name) &&
+        getStringValue(p.last_name) &&
+        getStringValue(p.birth_date) &&
+        getStringValue(p.gender)
+    ).length;
+    const unreadNotifications = notificationList.filter((n) => n.read !== true).length;
+    const pendingReportCount = reports.filter((r) => getStringValue(r.status) === 'pending').length;
+    const pendingVerificationCount = verificationRequests.filter((r) => getStringValue(r.status) === 'pending').length;
+
+    const overview = {
+      totalProfiles: profileList.length,
+      verifiedProfiles,
+      completedProfiles,
+      totalMessages: ((messages.data as any[]) ?? []).length,
+      totalFavorites: ((favorites.data as any[]) ?? []).length,
+      totalNotifications: notificationList.length,
+      unreadNotifications,
+      activePushSubscriptions: ((pushSubscriptions.data as any[]) ?? []).length,
+      totalReports: reports.length,
+      pendingReports: pendingReportCount,
+      totalVerificationRequests: verificationRequests.length,
+      pendingVerificationRequests: pendingVerificationCount,
+    };
+
     return {
-      analytics,
+      overview,
       queues: {
         reports: pendingReports,
         verificationRequests: pendingVerificationRequests,
       },
       quickActions: {
-        pendingReports: analytics.trustAndSafety.pendingReports,
-        pendingVerificationRequests: analytics.trustAndSafety.pendingVerificationRequests,
+        pendingReports: pendingReportCount,
+        pendingVerificationRequests: pendingVerificationCount,
         flaggedUsers: settings.followUpUserIds.length,
-        unreadNotifications: analytics.notifications.unread,
-        totalQueueItems: analytics.trustAndSafety.pendingReports + analytics.trustAndSafety.pendingVerificationRequests,
+        unreadNotifications,
+        totalQueueItems: pendingReportCount + pendingVerificationCount,
       },
       systemControls: settings,
       lastUpdatedAt: new Date().toISOString(),
@@ -2871,20 +2193,6 @@ export class AppDataService {
     await this.executeCollectionOperation('push_subscriptions', {
       action: 'delete',
       filters,
-    });
-
-    return { success: true };
-  }
-
-  async trackAnalyticsEvent(payload: { eventName: string; properties?: Record<string, unknown>; path?: string }) {
-    await this.executeCollectionOperation('analytics_events', {
-      action: 'insert',
-      payload: {
-        event_name: payload.eventName,
-        properties: payload.properties ?? {},
-        path: payload.path ?? null,
-        created_at: new Date().toISOString(),
-      },
     });
 
     return { success: true };

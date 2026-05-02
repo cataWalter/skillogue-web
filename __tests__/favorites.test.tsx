@@ -2,7 +2,6 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import FavoritesPage from '../src/app/favorites/page';
 import { appClient } from '../src/lib/appClient';
 import { favoritesCopy, profileCopy } from '../src/lib/app-copy';
-import { trackAnalyticsEvent } from '../src/lib/analytics';
 import toast from 'react-hot-toast';
 import '@testing-library/jest-dom';
 
@@ -17,6 +16,10 @@ jest.mock('../src/lib/appClient', () => ({
   },
 }));
 
+jest.mock('../src/hooks/useProfileGate', () => ({
+  useProfileGate: jest.fn(),
+}));
+
 // Mock toast
 jest.mock('react-hot-toast', () => ({
   __esModule: true,
@@ -24,10 +27,6 @@ jest.mock('react-hot-toast', () => ({
     success: jest.fn(),
     error: jest.fn(),
   },
-}));
-
-jest.mock('../src/lib/analytics', () => ({
-  trackAnalyticsEvent: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('FavoritesPage', () => {
@@ -980,7 +979,7 @@ describe('FavoritesPage', () => {
     expect((appClient.from as jest.Mock).mock.calls.filter(([table]) => table === 'locations')).toHaveLength(0);
   });
 
-  it('removes a private favorite and tracks the removal analytics event', async () => {
+  it('removes a private favorite', async () => {
     const mockFavorites = [
       {
         id: 'private-1',
@@ -1012,10 +1011,6 @@ describe('FavoritesPage', () => {
     await waitFor(() => {
       expect(appClient.rpc).toHaveBeenCalledWith('unsave_profile', { target_id: 'private-1' });
       expect(toast.success).toHaveBeenCalledWith(favoritesCopy.removeSuccess);
-      expect(trackAnalyticsEvent).toHaveBeenCalledWith('favorite_removed', {
-        profileId: 'private-1',
-        source: 'favorites',
-      });
       expect(screen.queryByText('Private Person')).not.toBeInTheDocument();
     });
   });

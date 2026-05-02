@@ -12,8 +12,6 @@ import { appClient } from '../../../lib/appClient';
 import ReportModal from '../../../components/ReportModal';
 import toast from 'react-hot-toast';
 import { profilePageCopy } from '../../../lib/app-copy';
-import { trackAnalyticsEvent } from '../../../lib/analytics';
-import { getDisplayName } from '../../../lib/profile-display';
 
 type Session = {
     user: {
@@ -92,11 +90,6 @@ const UserProfile: React.FC = () => {
                 return;
             }
             setProfile(profileData as FullProfile);
-            void trackAnalyticsEvent('profile_viewed', {
-                profileId: profileData.id,
-                profileName: getDisplayName(profileData.first_name, profileData.last_name),
-                isPrivate: Boolean(profileData.is_private),
-            });
             appClient.functions.invoke('send-push', {
                 body: {
                     receiver_id: profileData.id,
@@ -170,10 +163,6 @@ const UserProfile: React.FC = () => {
                 if (!error) {
                     setIsSaved(false);
                     toast.success(profilePageCopy.user.removedFromFavorites);
-                    void trackAnalyticsEvent('favorite_removed', {
-                        profileId: profile.id,
-                        source: 'user_profile',
-                    });
                 } else {
                     toast.error(profilePageCopy.user.removeFavoriteError);
                 }
@@ -182,10 +171,6 @@ const UserProfile: React.FC = () => {
                 if (!error) {
                     setIsSaved(true);
                     toast.success(profilePageCopy.user.savedToFavorites);
-                    void trackAnalyticsEvent('favorite_added', {
-                        profileId: profile.id,
-                        source: 'user_profile',
-                    });
                     appClient.functions.invoke('send-push', {
                         body: {
                             receiver_id: profile.id,
@@ -246,14 +231,6 @@ const UserProfile: React.FC = () => {
                 <>
                     <Link
                         href={`/messages?conversation=${profile.id}`}
-                        onClick={() => {
-                            void trackAnalyticsEvent('search_result_clicked', {
-                                profileId: profile.id,
-                                profileName: getDisplayName(profile.first_name, profile.last_name),
-                                target: 'message',
-                                source: 'user_profile',
-                            });
-                        }}
                         className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-4 py-2 text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover hover:shadow-glass-md"
                     >
                         <MessageSquare size={18} />

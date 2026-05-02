@@ -10,7 +10,6 @@ import ReportModal from '../../components/ReportModal';
 import ConversationItem from '../../components/ConversationItem';
 import MessageItem from '../../components/MessageItem';
 import Skeleton from '../../components/Skeleton';
-import { trackAnalyticsEvent } from '../../lib/analytics';
 import { getDisplayFullName, getDisplayName } from '@/lib/profile-display';
 import { commonLabels, messagesCopy } from '@/lib/app-copy';
 import { useProfileGate } from '@/hooks/useProfileGate';
@@ -495,10 +494,6 @@ const Messages: React.FC = () => {
         }
 
         trackedConversationIds.current.add(selectedChat);
-        void trackAnalyticsEvent('message_started', {
-            conversationUserId: selectedChat,
-            source: chatWith ? 'deep_link' : 'messages',
-        });
     }, [chatWith, selectedChat, user]);
 
     const blockUser = async () => {
@@ -587,11 +582,6 @@ const Messages: React.FC = () => {
                 });
                 await refreshActiveConversation();
             }
-
-            void trackAnalyticsEvent('message_sent', {
-                conversationUserId: activeChatId,
-                contentLength: content.length,
-            });
 
             loadConversations();
 
