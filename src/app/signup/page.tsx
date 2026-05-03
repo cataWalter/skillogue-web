@@ -12,8 +12,7 @@ import Input from '../../components/Input';
 import { Button } from '../../components/Button';
 import Spinner from '../../components/Spinner';
 import toast from 'react-hot-toast';
-import { OAuthProvider } from 'appwrite';
-import { createAppwriteBrowserAccount } from '../../lib/appwrite/browser';
+import { useSignIn } from '@clerk/nextjs/legacy';
 
 const SignUp: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
@@ -23,16 +22,16 @@ const SignUp: React.FC = () => {
     const [agreed, setAgreed] = useState<boolean>(false);
     const { signUp } = useAuth();
     const router = useRouter();
+    const { signIn: clerkSignIn } = useSignIn();
 
-    const handleGoogleSignUp = () => {
+    const handleGoogleSignUp = async () => {
         setGoogleLoading(true);
         try {
-            const account = createAppwriteBrowserAccount();
-            account.createOAuth2Token(
-                OAuthProvider.Google,
-                `${window.location.origin}/api/auth/oauth/callback`,
-                `${window.location.origin}/login?error=oauth`,
-            );
+            await clerkSignIn?.authenticateWithRedirect({
+                strategy: 'oauth_google',
+                redirectUrl: `${window.location.origin}/sso-callback`,
+                redirectUrlComplete: '/dashboard',
+            });
         } catch (err) {
             console.error('[Google OAuth] sign-up error:', err);
             toast.error(signUpCopy.unexpectedError, { id: 'google-oauth-error' });
@@ -72,7 +71,7 @@ const SignUp: React.FC = () => {
             setLoading(true);
             await signUp(email, password);
             toast.success(signUpCopy.successAlert, { duration: 6000 });
-            router.push('/login');
+            router.push('/verify-email');
         } catch (error: unknown) {
             console.error('Signup error:', error);
             const message = error instanceof Error ? error.message : 'An error occurred';
@@ -161,6 +160,8 @@ const SignUp: React.FC = () => {
                         {signUpCopy.agreementPrefix}{' '}<Link href="/terms-of-service" className="text-brand hover:underline" target="_blank">{signUpCopy.termsOfService}</Link>{' '}and{' '}<Link href="/privacy-policy" className="text-brand hover:underline" target="_blank">{signUpCopy.privacyPolicy}</Link>{signUpCopy.agreementSuffix}
                     </label>
                 </div>
+
+                <div id="clerk-captcha" />
 
                 <Button type="submit" disabled={loading} fullWidth>
                     {loading ? (

@@ -82,6 +82,32 @@ test.describe('Search Functionality', () => {
   });
 });
 
+test.describe('Turso Database Integration', () => {
+  // These tests explicitly verify that real data seeded into Turso by the test
+  // fixture (ensureAliceProfile) is correctly read through AppDataService and
+  // rendered in the UI, proving the full Turso read path works end-to-end.
+
+  test('should display Alice\'s seeded first name from Turso on the dashboard', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto('/dashboard');
+
+    // Alice's first_name is seeded as "Alice" in Turso by the auth fixture.
+    // The dashboard reads it via AppDataService.getProfile() and renders it in the welcome heading.
+    await expect(
+      authenticatedPage.getByRole('heading', { name: /welcome back, alice!/i, level: 1 })
+    ).toBeVisible({ timeout: 15000 });
+  });
+
+  test('should display Alice\'s about_me bio from Turso on the dashboard', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto('/dashboard');
+
+    // Alice's about_me is seeded as a specific string in Turso by the auth fixture.
+    // The dashboard reads it via AppDataService.getProfile() and renders it as the hero intro.
+    await expect(
+      authenticatedPage.getByText('Passionate about art and photography')
+    ).toBeVisible({ timeout: 15000 });
+  });
+});
+
 test.describe('Navbar Navigation', () => {
   test('should display navbar on homepage', async ({ page }) => {
     await page.goto('/');

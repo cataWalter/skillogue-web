@@ -2,32 +2,18 @@
 
 import { appClient } from '@/lib/appClient';
 
-type NamedRow = { passions?: { name: string } | null };
-type LanguageRow = { languages?: { name: string } | null };
-type ReferenceItem = { id: number; name: string };
+export type ReferenceItem = { id: string; name: string };
 
 /** Returns the passion names for a given profile. */
 export const getProfilePassions = async (profileId: string): Promise<string[]> => {
-    const { data } = await appClient
-        .from('profile_passions')
-        .select('passions(name)')
-        .eq('profile_id', profileId);
-
-    return (data as NamedRow[] | null)?.flatMap((row) =>
-        row.passions?.name ? [row.passions.name] : []
-    ) ?? [];
+    const { data } = await appClient.rpc<string[]>('get_profile_passions', { profile_id: profileId });
+    return (data as string[] | null) ?? [];
 };
 
 /** Returns the language names for a given profile. */
 export const getProfileLanguages = async (profileId: string): Promise<string[]> => {
-    const { data } = await appClient
-        .from('profile_languages')
-        .select('languages(name)')
-        .eq('profile_id', profileId);
-
-    return (data as LanguageRow[] | null)?.flatMap((row) =>
-        row.languages?.name ? [row.languages.name] : []
-    ) ?? [];
+    const { data } = await appClient.rpc<string[]>('get_profile_languages', { profile_id: profileId });
+    return (data as string[] | null) ?? [];
 };
 
 /** Returns all passions available in the platform. */

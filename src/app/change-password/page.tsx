@@ -123,7 +123,7 @@ const ChangePassword = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm your new password"
-                    autoComplete="new-password"
+                    autoComplete="off"
                 />
 
                 {error && (

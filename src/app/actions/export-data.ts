@@ -1,22 +1,16 @@
 'use server';
 
-import { cookies } from 'next/headers';
-import { getAppwriteSessionCookieName } from '@/lib/appwrite/config';
+import { auth } from '@clerk/nextjs/server';
 import { AppDataService } from '@/lib/server/app-data-service';
 
-const getSessionSecret = async () => {
-  const cookieStore = await cookies();
-  return cookieStore.get(getAppwriteSessionCookieName())?.value;
-};
-
 export async function getUserData() {
-  const sessionSecret = await getSessionSecret();
+  const { userId } = await auth();
 
-  if (!sessionSecret) {
+  if (!userId) {
     throw new Error('Not authenticated');
   }
 
-  const service = new AppDataService(sessionSecret);
+  const service = new AppDataService(userId);
   return service.exportCurrentUserData();
 }
 

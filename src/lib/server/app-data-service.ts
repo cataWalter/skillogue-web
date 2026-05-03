@@ -1,1390 +1,1293 @@
-import { ID, Query } from 'node-appwrite';
-import { DEFAULT_ADMIN_SYSTEM_CONTROLS } from '@/lib/admin-dashboard';
-import { getAppwriteCollectionId, getAppwriteFunctionId } from '@/lib/appwrite/config';
+import { and, desc, asc, eq, inArray, or, sql, ne, aliasedTable } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
+import { getDb } from '@/lib/db';
 import {
-  createAppwriteAdminFunctions,
-  createAppwriteSessionAccount,
-  getAppwriteErrorMessage,
-} from '@/lib/appwrite/server';
+  profiles,
+  locations,
+  passions,
+  languages,
+  profilePassions,
+  profileLanguages,
+  favorites,
+  blockedUsers,
+  messages,
+  userPresence,
+  savedSearches,
+  notifications,
+  reports,
+  verificationRequests,
+  pushSubscriptions,
+  adminSettings,
+  contactRequests,
+} from '@/lib/db/schema';
+import { DEFAULT_ADMIN_SYSTEM_CONTROLS } from '@/lib/admin-dashboard';
 import { calculateProfileAge, normalizeBirthDate } from '@/lib/profile-age';
 import staticMasterData from '@/lib/static-master-data';
-import { AppwriteRepository } from './appwrite-repo';
 
-type StaticPassion = {
-  id: string;
-  name: string;
-};
+const PRESENCE_TTL_MS = 5 * 60 * 1000;
+const ADMIN_SETTINGS_ID = 'global';
 
-type StaticLanguage = {
-  id: string;
-  name: string;
-};
-
-type StaticLocation = {
-  id: string;
-  city: string;
-  region: string;
-  country: string;
-};
-
-type CurrentUser = {
-  id: string;
-  email: string;
-  name?: string;
-};
-
-type CompatError = {
-  message: string;
-  code?: string;
-};
-
-type CollectionFilter =
-  | { type: 'eq'; column: string; value: unknown }
-  | { type: 'in'; column: string; value: unknown[] }
-  | { type: 'or'; expression: string };
-
-type CollectionOperation = {
-  action: 'select' | 'insert' | 'update' | 'delete' | 'upsert';
-  select?: string | null;
-  filters?: CollectionFilter[];
-  order?: { column: string; ascending: boolean } | null;
-  range?: { from: number; to: number } | null;
-  limit?: number | null;
-  single?: boolean;
-  maybeSingle?: boolean;
-  payload?: any;
-};
-
-type SelectResponse<T = any> = {
-  data: T;
-  error: CompatError | null;
-};
-
-const BATCH_SIZE = 100;
-const STATIC_COLLECTION_NAMES = new Set(['locations', 'passions', 'languages']);
-const ADMIN_SETTINGS_DOCUMENT_ID = 'global';
-
-const splitTopLevel = (value: string) => {
-  const parts: string[] = [];
-  let current = '';
-  let depth = 0;
-
-  for (const character of value) {
-    if (character === ',' && depth === 0) {
-      if (current.trim()) {
-        parts.push(current.trim());
-      }
-
-      current = '';
-      continue;
-    }
-
-    if (character === '(') {
-      depth += 1;
-    } else if (character === ')' && depth > 0) {
-      depth -= 1;
-    }
-
-    current += character;
-  }
-
-  if (current.trim()) {
-    parts.push(current.trim());
-  }
-
-  return parts;
-};
-
-const hasSelectedField = (selectSpec: string | null | undefined, field: string) => {
-  if (!selectSpec || !selectSpec.trim()) {
-    return true;
-  }
-
-  const tokens = splitTopLevel(selectSpec.replace(/\s+/g, ' '));
-
-  return tokens.includes('*') || tokens.includes(field);
-};
-
-const normalizeDocument = (value: any): any => {
-  if (Array.isArray(value)) {
-    return value.map((item) => normalizeDocument(item));
-  }
-
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-
-  const result: Record<string, any> = {};
-
-  for (const [key, entry] of Object.entries(value)) {
-    if (key.startsWith('$')) {
-      continue;
-    }
-
-    result[key] = normalizeDocument(entry);
-  }
-
-  if (result.id === undefined && typeof value.$id === 'string') {
-    result.id = value.$id;
-  }
-
-  if (typeof value.$id === 'string') {
-    result._appwriteId = value.$id;
-  }
-
-  if (result.created_at === undefined && typeof value.$createdAt === 'string') {
-    result.created_at = value.$createdAt;
-  }
-
-  if (result.updated_at === undefined && typeof value.$updatedAt === 'string') {
-    result.updated_at = value.$updatedAt;
-  }
-
-  return result;
-};
-
-const unique = <T,>(values: T[]) => Array.from(new Set(values));
-
-const normalizePushFunctionPayload = (data: any, actorId?: string | null) => {
-  const receiverId =
-    typeof data?.receiver_id === 'string'
-      ? data.receiver_id.trim()
-      : typeof data?.recipient_id === 'string'
-        ? data.recipient_id.trim()
-        : '';
-
-  const title = typeof data?.title === 'string' && data.title.trim() ? data.title.trim() : 'New message';
-  const body =
-    typeof data?.body === 'string'
-      ? data.body
-      : typeof data?.message === 'string'
-        ? data.message
-        : '';
-  const notificationType =
-    typeof data?.notification_type === 'string' && data.notification_type.trim()
-      ? data.notification_type.trim()
-      : 'message';
-  const relatedId =
-    typeof data?.related_id === 'string' && data.related_id.trim()
-      ? data.related_id.trim()
-      : actorId ?? null;
-
-  return {
-    ...data,
-    actor_id: typeof data?.actor_id === 'string' && data.actor_id.trim() ? data.actor_id.trim() : actorId ?? null,
-    receiver_id: receiverId || undefined,
-    recipient_id: receiverId || undefined,
-    title,
-    body,
-    message: body,
-    url: typeof data?.url === 'string' && data.url.trim() ? data.url.trim() : undefined,
-    notification_type: notificationType,
-    related_id: relatedId,
-  };
+type AdminSystemControls = {
+  maintenanceBannerText: string;
+  moderationHold: boolean;
+  followUpUserIds: string[];
+  updatedAt: string | null;
 };
 
 const lowerCase = (value: unknown) =>
   typeof value === 'string' ? value.trim().toLowerCase() : '';
 
-const compareValues = (left: unknown, right: unknown) => {
-  if (left === right) {
-    return 0;
-  }
+const unique = <T,>(values: T[]) => Array.from(new Set(values));
 
-  const leftDate = typeof left === 'string' && !Number.isNaN(Date.parse(left)) ? Date.parse(left) : null;
-  const rightDate = typeof right === 'string' && !Number.isNaN(Date.parse(right)) ? Date.parse(right) : null;
+const nowIso = () => new Date().toISOString();
 
-  if (leftDate !== null && rightDate !== null) {
-    return leftDate - rightDate;
-  }
-
-  const leftNumber = typeof left === 'number' ? left : Number(left);
-  const rightNumber = typeof right === 'number' ? right : Number(right);
-
-  if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) {
-    return leftNumber - rightNumber;
-  }
-
-  return String(left ?? '').localeCompare(String(right ?? ''));
-};
-
-const getStringValue = (value: unknown) =>
-  typeof value === 'string' && value.trim() ? value.trim() : null;
-
-const getStringArray = (value: unknown) => {
-  if (Array.isArray(value)) {
-    return value
-      .map((entry) => getStringValue(entry))
-      .filter((entry): entry is string => Boolean(entry));
-  }
-
-  const singleValue = getStringValue(value);
-  return singleValue ? [singleValue] : [];
-};
-
-const getNumberValue = (value: unknown) => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-};
-
-const isTruthy = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
-
-const parseStoredStringArray = (value: unknown) => {
-  if (Array.isArray(value)) {
-    return getStringArray(value);
-  }
-
-  const normalized = getStringValue(value);
-
-  if (!normalized) {
-    return [];
-  }
-
+const normalizeAdminSettings = (row: {
+  maintenance_banner_text: string | null;
+  moderation_hold: boolean | null;
+  follow_up_user_ids: string | null;
+  updated_at: string;
+}): AdminSystemControls => {
+  let followUpUserIds: string[] = [];
   try {
-    const parsed = JSON.parse(normalized);
-    return Array.isArray(parsed) ? getStringArray(parsed) : [];
+    const parsed = JSON.parse(row.follow_up_user_ids ?? '[]');
+    followUpUserIds = Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
   } catch {
-    return normalized
-      .split(',')
-      .map((entry) => entry.trim())
-      .filter(Boolean);
+    followUpUserIds = [];
   }
-};
-
-const buildDisplayName = (profile: any) => {
-  const firstName = getStringValue(profile?.first_name);
-  const lastName = getStringValue(profile?.last_name);
-  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
-
-  return fullName || getStringValue(profile?.name) || getStringValue(profile?.email) || getStringValue(profile?.id) || 'Unknown user';
-};
-
-const buildLocationLabel = (profile: any, locationsById: Map<string, any>) => {
-  const relationLocation = profile?.locations ?? profile?.location ?? null;
-  const locationId = getStringValue(profile?.location_id);
-  const resolvedLocation = locationId ? locationsById.get(locationId) ?? relationLocation : relationLocation;
-
-  if (!resolvedLocation || typeof resolvedLocation !== 'object') {
-    return null;
-  }
-
-  const parts = [
-    getStringValue((resolvedLocation as Record<string, unknown>).city),
-    getStringValue((resolvedLocation as Record<string, unknown>).region),
-    getStringValue((resolvedLocation as Record<string, unknown>).country),
-  ].filter((value): value is string => Boolean(value));
-
-  return parts.length ? parts.join(', ') : null;
-};
-
-const buildAdminQueueUser = (profile: any, locationsById: Map<string, any>) => {
-  if (!profile) {
-    return null;
-  }
-
   return {
-    id: String(profile.id ?? ''),
-    firstName: getStringValue(profile.first_name),
-    lastName: getStringValue(profile.last_name),
-    displayName: buildDisplayName(profile),
-    verified: profile.verified === true,
-    location: buildLocationLabel(profile, locationsById),
-    avatarUrl: getStringValue(profile.avatar_url),
+    maintenanceBannerText: row.maintenance_banner_text ?? '',
+    moderationHold: row.moderation_hold ?? false,
+    followUpUserIds,
+    updatedAt: row.updated_at ?? null,
   };
 };
 
-const mapAdminReportQueueItem = (report: any, locationsById: Map<string, any>) => ({
-  id: String(report.id ?? ''),
-  reason: getStringValue(report.reason) ?? '',
-  status: getStringValue(report.status) ?? 'pending',
-  createdAt: getStringValue(report.created_at),
-  reporterId: getStringValue(report.reporter_id),
-  reportedId: getStringValue(report.reported_id),
-  reporter: buildAdminQueueUser(report.reporter, locationsById),
-  reported: buildAdminQueueUser(report.reported, locationsById),
-});
-
-const mapAdminVerificationQueueItem = (request: any, locationsById: Map<string, any>) => ({
-  id: String(request.id ?? ''),
-  userId: String(request.user_id ?? ''),
-  status: getStringValue(request.status) ?? 'pending',
-  createdAt: getStringValue(request.created_at),
-  profile: buildAdminQueueUser(request.profiles, locationsById),
-});
-
-const normalizeAdminSystemControls = (document: any) => ({
-  maintenanceBannerText:
-    getStringValue(document?.maintenance_banner_text) ??
-    getStringValue(document?.maintenanceBannerText) ??
-    DEFAULT_ADMIN_SYSTEM_CONTROLS.maintenanceBannerText,
-  moderationHold: isTruthy(document?.moderation_hold ?? document?.moderationHold),
-  followUpUserIds: parseStoredStringArray(document?.follow_up_user_ids ?? document?.followUpUserIds),
-  updatedAt: getStringValue(document?.updated_at) ?? getStringValue(document?.updatedAt) ?? null,
-});
-
-function getStaticCollectionData(collection: 'locations'): StaticLocation[];
-function getStaticCollectionData(collection: 'passions'): StaticPassion[];
-function getStaticCollectionData(collection: 'languages'): StaticLanguage[];
-function getStaticCollectionData(collection: string): StaticLocation[] | StaticPassion[] | StaticLanguage[] | null;
-function getStaticCollectionData(collection: string) {
-  if (collection === 'locations') {
-    return staticMasterData.locations.map((location) => ({ ...location }));
-  }
-
-  if (collection === 'passions') {
-    return staticMasterData.passions.map((passion) => ({ ...passion }));
-  }
-
-  if (collection === 'languages') {
-    return staticMasterData.languages.map((language: StaticLanguage) => ({ ...language }));
-  }
-
-  return null;
+const buildDisplayName = (profile: { first_name: string | null; last_name: string | null; id: string }) => {
+  const parts = [profile.first_name, profile.last_name].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : profile.id;
 };
 
-const PRESENCE_TTL_MS = 60_000;
-
-const toCompatError = (error: unknown, fallbackMessage = 'Request failed.'): CompatError => ({
-  message: getAppwriteErrorMessage(error, fallbackMessage),
-  code:
-    typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      typeof (error as { code?: unknown }).code !== 'undefined'
-      ? String((error as { code: unknown }).code)
-      : undefined,
-});
-
-const getRelationSelection = (selectSpec: string | null | undefined, relationKey: string) => {
-  if (!selectSpec) {
-    return undefined;
-  }
-
-  const token = splitTopLevel(selectSpec.replace(/\s+/g, ' ')).find((entry) =>
-    entry.startsWith(`${relationKey}(`)
-  );
-
-  if (!token) {
-    return undefined;
-  }
-
-  const start = token.indexOf('(');
-  const end = token.lastIndexOf(')');
-
-  if (start === -1 || end === -1 || end <= start + 1) {
-    return undefined;
-  }
-
-  return token.slice(start + 1, end).trim();
+const buildLocationLabel = (
+  locationRow: { city: string; region: string; country: string } | undefined | null
+) => {
+  if (!locationRow) return null;
+  return [locationRow.city, locationRow.region, locationRow.country].filter(Boolean).join(', ') || null;
 };
 
 export class AppDataService {
-  private readonly repo: AppwriteRepository;
-  private readonly functions;
-  private readonly sessionSecret?: string;
-  private readonly userAgent?: string;
-  private currentUserPromise?: Promise<CurrentUser | null>;
+  private readonly userId: string | null;
 
-  constructor(sessionSecret?: string, userAgent?: string) {
-    this.repo = new AppwriteRepository(undefined, userAgent);
-    this.functions = createAppwriteAdminFunctions(userAgent);
-    this.sessionSecret = sessionSecret;
-    this.userAgent = userAgent;
+  constructor(userId?: string | null, _userAgentIgnored?: string) {
+    this.userId = userId ?? null;
   }
 
-  private async getCurrentUser() {
-    if (!this.sessionSecret) {
-      return null;
-    }
-
-    if (!this.currentUserPromise) {
-      this.currentUserPromise = (async () => {
-        try {
-          const account = createAppwriteSessionAccount(this.sessionSecret as string, this.userAgent);
-          const user = await account.get();
-
-          return {
-            id: user.$id,
-            email: user.email,
-            name: user.name ?? undefined,
-          } satisfies CurrentUser;
-        } catch {
-          return null;
-        }
-      })();
-    }
-
-    return this.currentUserPromise;
+  private get db() {
+    return getDb();
   }
 
-  private async requireCurrentUser() {
-    const user = await this.getCurrentUser();
-
-    if (!user) {
-      throw new Error('Not authenticated');
-    }
-
-    return user;
+  private requireUserId(): string {
+    if (!this.userId) throw new Error('Not authenticated');
+    return this.userId;
   }
 
-  private getCollectionId(name: string) {
-    return getAppwriteCollectionId(name);
+  // ─── Reference Data ───────────────────────────────────────────────────────
+
+  async listLanguages(): Promise<{ id: string; name: string }[]> {
+    const rows = await this.db.select().from(languages).orderBy(asc(languages.name));
+    if (rows.length === 0) return staticMasterData.languages ?? [];
+    return rows;
   }
 
-  private isStaticCollection(collection: string) {
-    return STATIC_COLLECTION_NAMES.has(collection);
+  async listPassions(): Promise<{ id: string; name: string }[]> {
+    const rows = await this.db.select().from(passions).orderBy(asc(passions.name));
+    if (rows.length === 0) return staticMasterData.passions ?? [];
+    return rows;
   }
 
-  private getStaticCollectionDocuments(collection: 'locations'): StaticLocation[];
-  private getStaticCollectionDocuments(collection: 'passions'): StaticPassion[];
-  private getStaticCollectionDocuments(collection: 'languages'): StaticLanguage[];
-  private getStaticCollectionDocuments(collection: string): StaticLocation[] | StaticPassion[] | StaticLanguage[] | null;
-  private getStaticCollectionDocuments(collection: string) {
-    return getStaticCollectionData(collection);
+  async listLocations(): Promise<{ id: string; city: string; region: string; country: string }[]> {
+    const rows = await this.db.select().from(locations).orderBy(asc(locations.country), asc(locations.region), asc(locations.city));
+    if (rows.length === 0) return staticMasterData.locations ?? [];
+    return rows;
   }
 
-  private resolveStaticLocationId(location: { city?: unknown; region?: unknown; country?: unknown } | null | undefined) {
-    const city = lowerCase(location?.city);
-    const region = lowerCase(location?.region);
-    const country = lowerCase(location?.country);
-
-    if (!city || !country) {
-      return null;
-    }
-
-    const exactMatch = staticMasterData.locations.find(
-      (candidate) =>
-        lowerCase(candidate.city) === city &&
-        lowerCase(candidate.region ?? '') === region &&
-        lowerCase(candidate.country) === country
-    );
-
-    if (exactMatch) {
-      return exactMatch.id;
-    }
-
-    if (region) {
-      return null;
-    }
-
-    const fallbackMatches = staticMasterData.locations.filter(
-      (candidate) => lowerCase(candidate.city) === city && lowerCase(candidate.country) === country
-    );
-
-    return fallbackMatches.length === 1 ? fallbackMatches[0].id : null;
-  }
-
-  private async listAllDocuments(collection: string, queries: string[] = []) {
-    const staticDocuments = this.getStaticCollectionDocuments(collection);
-
-    if (staticDocuments) {
-      return staticDocuments;
-    }
-
-    try {
-      const documents: any[] = [];
-      let offset = 0;
-
-      while (true) {
-        const response = await this.repo.listDocuments<any>(this.getCollectionId(collection), [
-          ...queries,
-          Query.limit(BATCH_SIZE),
-          Query.offset(offset),
-        ]);
-
-        documents.push(...response.documents);
-
-        if (response.documents.length < BATCH_SIZE) {
-          break;
-        }
-
-        offset += BATCH_SIZE;
-      }
-
-      return documents.map((document) => normalizeDocument(document));
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  private async listDocumentsPage(collection: string, queries: string[] = [], limit = BATCH_SIZE, offset = 0) {
-    const staticDocuments = this.getStaticCollectionDocuments(collection);
-
-    if (staticDocuments) {
-      return staticDocuments.slice(offset, offset + limit);
-    }
-
-    try {
-      const response = await this.repo.listDocuments<any>(this.getCollectionId(collection), [
-        ...queries,
-        Query.limit(limit),
-        Query.offset(offset),
-      ]);
-
-      return response.documents.map((document) => normalizeDocument(document));
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  private async listDocumentsWindow(collection: string, queries: string[] = [], targetCount: number | null = null) {
-    if (targetCount === null) {
-      return this.listAllDocuments(collection, queries);
-    }
-
-    const documents: Record<string, any>[] = [];
-    let offset = 0;
-
-    while (documents.length < targetCount) {
-      const batchLimit = Math.min(BATCH_SIZE, targetCount - documents.length);
-      const batch = await this.listDocumentsPage(collection, queries, batchLimit, offset);
-
-      documents.push(...batch);
-
-      if (batch.length < batchLimit) {
-        break;
-      }
-
-      offset += batch.length;
-    }
-
-    return documents;
-  }
-
-  private parseMessageOrExpression(expression: string) {
-    const match = expression.match(
-      /^and\(sender_id\.eq\.([^,]+),receiver_id\.eq\.([^\)]+)\),and\(sender_id\.eq\.([^,]+),receiver_id\.eq\.([^\)]+)\)$/
-    );
-
-    if (!match) {
-      return null;
-    }
-
-    return {
-      senderA: match[1],
-      receiverA: match[2],
-      senderB: match[3],
-      receiverB: match[4],
-    };
-  }
-
-  private matchesFilter(document: Record<string, any>, filter: CollectionFilter) {
-    if (filter.type === 'or') {
-      if (typeof filter.expression !== 'string') {
-        return true;
-      }
-
-      const parsedMessageFilter = this.parseMessageOrExpression(filter.expression);
-
-      if (!parsedMessageFilter) {
-        return true;
-      }
-
-      return (
-        (String(document.sender_id) === parsedMessageFilter.senderA &&
-          String(document.receiver_id) === parsedMessageFilter.receiverA) ||
-        (String(document.sender_id) === parsedMessageFilter.senderB &&
-          String(document.receiver_id) === parsedMessageFilter.receiverB)
-      );
-    }
-
-    const value = filter.column === 'id' ? document.id : document[filter.column];
-
-    if (filter.type === 'eq') {
-      if (Array.isArray(value)) {
-        return value.includes(filter.value);
-      }
-
-      return String(value) === String(filter.value);
-    }
-
-    if (filter.type === 'in') {
-      return filter.value.some((entry) => String(value) === String(entry));
-    }
-
-    return true;
-  }
-
-  private applyFilters(documents: Record<string, any>[], filters: CollectionFilter[] = []) {
-    if (!filters.length) {
-      return documents;
-    }
-
-    return documents.filter((document) => filters.every((filter) => this.matchesFilter(document, filter)));
-  }
-
-  private getWindowParameters(operation: CollectionOperation) {
-    const offset = operation.range?.from ?? 0;
-    const limit = operation.range
-      ? Math.max(0, operation.range.to - operation.range.from + 1)
-      : operation.limit ?? null;
-
-    return {
-      offset,
-      limit,
-      targetCount: limit === null ? null : offset + limit,
-    };
-  }
-
-  private mergeMessageDocuments(messageGroups: Array<Record<string, any>[]>, ascending: boolean) {
-    const merged = new Map<string, Record<string, any>>();
-
-    for (const group of messageGroups) {
-      for (const message of group) {
-        const key = String(message.id ?? message._appwriteId);
-        const current = merged.get(key);
-
-        if (!current || compareValues(message.created_at, current.created_at) > 0) {
-          merged.set(key, message);
-        }
-      }
-    }
-
-    return Array.from(merged.values()).sort((left, right) => {
-      const result = compareValues(left.created_at, right.created_at);
-      return ascending ? result : -result;
-    });
-  }
-
-  private async getConversationDocuments(
-    parsedFilter: NonNullable<ReturnType<AppDataService['parseMessageOrExpression']>>,
-    operation: CollectionOperation
-  ) {
-    const { offset, limit, targetCount } = this.getWindowParameters(operation);
-    const ascending = operation.order?.ascending ?? true;
-    const orderQuery = ascending ? Query.orderAsc('created_at') : Query.orderDesc('created_at');
-
-    try {
-      const [sentMessages, receivedMessages] = await Promise.all([
-        this.listDocumentsWindow(
-          'messages',
-          [
-            Query.equal('sender_id', parsedFilter.senderA),
-            Query.equal('receiver_id', parsedFilter.receiverA),
-            orderQuery,
-          ],
-          targetCount
-        ),
-        this.listDocumentsWindow(
-          'messages',
-          [
-            Query.equal('sender_id', parsedFilter.senderB),
-            Query.equal('receiver_id', parsedFilter.receiverB),
-            orderQuery,
-          ],
-          targetCount
-        ),
-      ]);
-
-      const merged = this.mergeMessageDocuments([sentMessages, receivedMessages], ascending);
-
-      if (limit === null && offset === 0) {
-        return merged;
-      }
-
-      return merged.slice(offset, limit === null ? undefined : offset + limit);
-    } catch {
-      const allMessages = await this.listAllDocuments('messages');
-      const filtered = this.applyFilters(allMessages, operation.filters);
-      return this.applyOrderAndWindow(filtered, operation);
-    }
-  }
-
-  private async listMessagesForParticipant(userId: string, ascending = true) {
-    try {
-      const [sentMessages, receivedMessages] = await Promise.all([
-        this.listAllDocuments('messages', [Query.equal('sender_id', userId)]),
-        this.listAllDocuments('messages', [Query.equal('receiver_id', userId)]),
-      ]);
-
-      return this.mergeMessageDocuments([sentMessages, receivedMessages], ascending);
-    } catch {
-      const allMessages = await this.listAllDocuments('messages');
-      const relevantMessages = allMessages.filter(
-        (message) => String(message.sender_id) === userId || String(message.receiver_id) === userId
-      );
-
-      return this.mergeMessageDocuments([relevantMessages], ascending);
-    }
-  }
-
-  private applyOrderAndWindow(documents: Record<string, any>[], operation: CollectionOperation) {
-    const ordered = [...documents];
-
-    if (operation.order?.column) {
-      ordered.sort((left, right) => {
-        const result = compareValues(left[operation.order!.column], right[operation.order!.column]);
-        return operation.order!.ascending ? result : -result;
-      });
-    }
-
-    const { offset, limit: explicitLimit } = this.getWindowParameters(operation);
-
-    if (offset > 0 || explicitLimit !== null) {
-      return ordered.slice(offset, explicitLimit === null ? undefined : offset + explicitLimit);
-    }
-
-    return ordered;
-  }
-
-  private pickSelectedFields(document: Record<string, any>, selectSpec?: string | null) {
-    if (!selectSpec || !selectSpec.trim()) {
-      return { ...document };
-    }
-
-    const tokens = splitTopLevel(selectSpec.replace(/\s+/g, ' '));
-    const includeAll = tokens.includes('*');
-    const result: Record<string, any> = includeAll ? { ...document } : {};
-
-    delete result._appwriteId;
-
-    for (const token of tokens) {
-      if (token === '*' || token.includes('(') || token.includes(':')) {
-        continue;
-      }
-
-      const field = token.trim();
-
-      if (!field) {
-        continue;
-      }
-
-      result[field] = document[field];
-    }
-
-    return result;
-  }
-
-  private async fetchByIds(collection: string, ids: Array<string | number>) {
-    const normalizedIds = unique(ids.filter((value) => value !== undefined && value !== null).map((value) => String(value)));
-
-    if (!normalizedIds.length) {
-      return new Map<string, any>();
-    }
-
-    const staticDocuments = this.getStaticCollectionDocuments(collection);
-
-    if (staticDocuments) {
-      return new Map<string, any>(
-        staticDocuments
-          .filter((document) => normalizedIds.includes(String(document.id)))
-          .map((document) => [String(document.id), document])
-      );
-    }
-
-    let documents = await this.listAllDocuments(collection, [Query.equal('id', normalizedIds)]);
-
-    if (documents.length < normalizedIds.length) {
-      const allDocuments = await this.listAllDocuments(collection);
-      const merged = new Map<string, any>();
-
-      for (const document of [...documents, ...allDocuments]) {
-        merged.set(String(document.id), document);
-      }
-
-      documents = normalizedIds.map((id) => merged.get(id)).filter(Boolean);
-    }
-
-    return new Map<string, any>(documents.map((document) => [String(document.id), document]));
-  }
-
-  private async hydrateProfilesWithLocations(profiles: Record<string, any>[], selectSpec?: string | null) {
-    const locationIds = unique(
-      profiles
-        .map((profile) => profile.location_id)
-        .filter((locationId) => locationId !== null && locationId !== undefined)
-    );
-    const locationsById = await this.fetchByIds('locations', locationIds);
-
-    return profiles.map((profile) => {
-      const result = this.pickSelectedFields(profile, selectSpec);
-
-      if (hasSelectedField(selectSpec, 'age')) {
-        result.age = calculateProfileAge(profile);
-      }
-
-      if (hasSelectedField(selectSpec, 'birth_date')) {
-        result.birth_date = normalizeBirthDate(profile.birth_date);
-      }
-
-      if (selectSpec?.includes('locations(')) {
-        const location = profile.location_id ? locationsById.get(String(profile.location_id)) || null : null;
-        result.locations = location ? this.pickSelectedFields(location, '*, city, region, country, id') : null;
-        result.location = result.locations;
-      }
-
-      if (selectSpec?.includes('passions_count:')) {
-        result.passions_count = profile.passions_count ?? [{ count: 0 }];
-      }
-
-      if (selectSpec?.includes('languages_count:')) {
-        result.languages_count = profile.languages_count ?? [{ count: 0 }];
-      }
-
-      return result;
-    });
-  }
-
-  private async hydrateRelationRows(
-    rows: Record<string, any>[],
-    relationCollection: string,
-    relationIdField: string,
-    relationKey: string,
-    selectSpec?: string | null
-  ) {
-    const relationIds = unique(rows.map((row) => row[relationIdField]).filter(Boolean));
-    const relationMap = await this.fetchByIds(relationCollection, relationIds);
-    const relationSelection = getRelationSelection(selectSpec, relationKey);
-
-    return rows.map((row) => {
-      const result = this.pickSelectedFields(row, selectSpec);
-
-      if (selectSpec?.includes(`${relationKey}(`)) {
-        const relation = relationMap.get(String(row[relationIdField]));
-        result[relationKey] = relation ? this.pickSelectedFields(relation, relationSelection) : null;
-      }
-
-      return result;
-    });
-  }
-
-  private async hydrateMessages(messages: Record<string, any>[], selectSpec?: string | null) {
-    const profileIds = unique(
-      messages.flatMap((message) => [message.sender_id, message.receiver_id]).filter(Boolean)
-    );
-    const profilesById = await this.fetchByIds('profiles', profileIds);
-
-    return messages.map((message) => {
-      const result = this.pickSelectedFields(message, selectSpec);
-
-      if (selectSpec?.includes('sender:profiles!sender_id')) {
-        const sender = profilesById.get(String(message.sender_id));
-        result.sender = sender ? this.pickSelectedFields(sender, 'id, first_name, last_name') : null;
-      }
-
-      if (selectSpec?.includes('receiver:profiles!receiver_id')) {
-        const receiver = profilesById.get(String(message.receiver_id));
-        result.receiver = receiver ? this.pickSelectedFields(receiver, 'id, first_name, last_name') : null;
-      }
-
-      return result;
-    });
-  }
-
-  private async hydrateBlockedUsers(rows: Record<string, any>[], selectSpec?: string | null) {
-    const profilesById = await this.fetchByIds(
-      'profiles',
-      rows.map((row) => row.blocked_id).filter(Boolean)
-    );
-
-    return rows.map((row) => {
-      const result = this.pickSelectedFields(row, selectSpec);
-
-      if (selectSpec?.includes('profile:profiles!blocked_users_blocked_id_fkey')) {
-        const profile = profilesById.get(String(row.blocked_id));
-        result.profile = profile
-          ? this.pickSelectedFields(profile, 'id, first_name, last_name, avatar_url')
-          : null;
-      }
-
-      return result;
-    });
-  }
-
-  private async addProfileCounts(profiles: Record<string, any>[]) {
-    const profileIds = profiles.map((profile) => String(profile.id));
-
-    if (!profileIds.length) {
-      return profiles;
-    }
-
-    const [passionRows, languageRows] = await Promise.all([
-      this.listAllDocuments('profile_passions', [Query.equal('profile_id', profileIds)]),
-      this.listAllDocuments('profile_languages', [Query.equal('profile_id', profileIds)]),
-    ]);
-
-    const passionsCount = new Map<string, number>();
-    const languagesCount = new Map<string, number>();
-
-    for (const row of passionRows) {
-      const profileId = String(row.profile_id);
-      passionsCount.set(profileId, (passionsCount.get(profileId) ?? 0) + 1);
-    }
-
-    for (const row of languageRows) {
-      const profileId = String(row.profile_id);
-      languagesCount.set(profileId, (languagesCount.get(profileId) ?? 0) + 1);
-    }
-
-    return profiles.map((profile) => ({
-      ...profile,
-      passions_count: [{ count: passionsCount.get(String(profile.id)) ?? 0 }],
-      languages_count: [{ count: languagesCount.get(String(profile.id)) ?? 0 }],
-    }));
-  }
-
-  private async transformSelectedDocuments(
-    collection: string,
-    documents: Record<string, any>[],
-    selectSpec?: string | null
-  ) {
-    switch (collection) {
-      case 'profiles': {
-        let profiles = documents;
-
-        if (selectSpec?.includes('profile_passions(count)') || selectSpec?.includes('profile_languages(count)')) {
-          profiles = await this.addProfileCounts(profiles);
-        }
-
-        return this.hydrateProfilesWithLocations(profiles, selectSpec);
-      }
-      case 'profile_passions':
-        return this.hydrateRelationRows(documents, 'passions', 'passion_id', 'passions', selectSpec);
-      case 'profile_languages':
-        return this.hydrateRelationRows(documents, 'languages', 'language_id', 'languages', selectSpec);
-      case 'messages':
-        return this.hydrateMessages(documents, selectSpec);
-      case 'blocked_users':
-        return this.hydrateBlockedUsers(documents, selectSpec);
-      default:
-        return documents.map((document) => this.pickSelectedFields(document, selectSpec));
-    }
-  }
-
-  private async getMatchingDocuments(collection: string, operation: CollectionOperation) {
-    const eqFilters = (operation.filters ?? []).filter(
-      (filter): filter is Extract<CollectionFilter, { type: 'eq' }> => filter.type === 'eq'
-    );
-    const inFilters = (operation.filters ?? []).filter(
-      (filter): filter is Extract<CollectionFilter, { type: 'in' }> => filter.type === 'in'
-    );
-    const orFilters = (operation.filters ?? []).filter(
-      (filter): filter is Extract<CollectionFilter, { type: 'or' }> => filter.type === 'or'
-    );
-
-    const queries: string[] = [];
-
-    if (collection === 'messages' && orFilters.length === 1) {
-      const parsed = this.parseMessageOrExpression(orFilters[0].expression);
-
-      if (parsed && (!operation.order?.column || operation.order.column === 'created_at')) {
-        return this.getConversationDocuments(parsed, operation);
-      }
-    }
-
-    for (const filter of eqFilters) {
-      queries.push(Query.equal(filter.column, filter.value as any));
-    }
-
-    for (const filter of inFilters) {
-      queries.push(Query.equal(filter.column, filter.value as any));
-    }
-
-    if (collection === 'messages' && orFilters.length === 1) {
-      const parsed = this.parseMessageOrExpression(orFilters[0].expression);
-
-      if (parsed) {
-        queries.push(Query.equal('sender_id', [parsed.senderA, parsed.senderB]));
-        queries.push(Query.equal('receiver_id', [parsed.receiverA, parsed.receiverB]));
-      }
-    }
-
-    if (operation.order?.column) {
-      queries.push(operation.order.ascending ? Query.orderAsc(operation.order.column) : Query.orderDesc(operation.order.column));
-    }
-
-    const documents = await this.listAllDocuments(collection, queries);
-    const filtered = this.applyFilters(documents, operation.filters);
-
-    return this.applyOrderAndWindow(filtered, operation);
-  }
-
-  private async createDocuments(collection: string, payload: any) {
-    if (this.isStaticCollection(collection)) {
-      throw new Error(`${collection} is managed in code and cannot be modified via collection operations.`);
-    }
-
-    const entries = Array.isArray(payload) ? payload.filter(Boolean) : [payload];
-    const created: any[] = [];
-
-    for (const entry of entries) {
-      if (!entry || typeof entry !== 'object') {
-        continue;
-      }
-
-      const requestedId = entry.id;
-      const documentId =
-        typeof requestedId === 'string' || typeof requestedId === 'number'
-          ? String(requestedId)
-          : ID.unique();
-      const createdAt = new Date().toISOString();
-      const data = {
-        ...entry,
-        id: requestedId ?? documentId,
-      };
-
-      switch (collection) {
-        case 'profiles':
-          data.created_at ??= createdAt;
-          data.updated_at ??= createdAt;
-          data.verified ??= false;
-          data.is_private ??= false;
-          data.show_age ??= true;
-          data.show_location ??= true;
-          break;
-        case 'messages':
-        case 'favorites':
-        case 'blocked_users':
-        case 'saved_searches':
-          data.created_at ??= createdAt;
-          break;
-        case 'notifications':
-          data.created_at ??= createdAt;
-          data.read ??= false;
-          break;
-        case 'reports':
-        case 'verification_requests':
-        case 'contact_requests':
-          data.created_at ??= createdAt;
-          data.status ??= 'pending';
-          break;
-        default:
-          break;
-      }
-
-      const createdDocument = await this.repo.createDocument<any>(
-        this.getCollectionId(collection),
-        data,
-        documentId
-      );
-      created.push(normalizeDocument(createdDocument));
-    }
-
-    return created;
-  }
-
-  private async updateDocuments(collection: string, operation: CollectionOperation) {
-    if (this.isStaticCollection(collection)) {
-      throw new Error(`${collection} is managed in code and cannot be modified via collection operations.`);
-    }
-
-    const matching = await this.getMatchingDocuments(collection, operation);
-    const updated: any[] = [];
-
-    for (const document of matching) {
-      const appwriteDocumentId = document._appwriteId ?? document.id;
-      const updatedDocument = await this.repo.updateDocument<any>(
-        this.getCollectionId(collection),
-        String(appwriteDocumentId),
-        operation.payload ?? {}
-      );
-      updated.push(normalizeDocument(updatedDocument));
-    }
-
-    return updated;
-  }
-
-  private async deleteDocuments(collection: string, operation: CollectionOperation) {
-    if (this.isStaticCollection(collection)) {
-      throw new Error(`${collection} is managed in code and cannot be modified via collection operations.`);
-    }
-
-    const matching = await this.getMatchingDocuments(collection, operation);
-
-    for (const document of matching) {
-      const appwriteDocumentId = document._appwriteId ?? document.id;
-      await this.repo.deleteDocument(this.getCollectionId(collection), String(appwriteDocumentId));
-    }
-
-    return matching;
-  }
-
-  async executeCollectionOperation(collection: string, operation: CollectionOperation): Promise<SelectResponse<any>> {
-    try {
-      if (operation.action === 'select') {
-        const matching = await this.getMatchingDocuments(collection, operation);
-        const transformed = await this.transformSelectedDocuments(collection, matching, operation.select);
-
-        if (operation.maybeSingle) {
-          return { data: transformed[0] ?? null, error: null };
-        }
-
-        if (operation.single) {
-          if (!transformed.length) {
-            return {
-              data: null,
-              error: {
-                code: 'PGRST116',
-                message: 'JSON object requested, multiple (or no) rows returned',
-              },
-            };
-          }
-
-          return { data: transformed[0], error: null };
-        }
-
-        return { data: transformed, error: null };
-      }
-
-      if (operation.action === 'insert') {
-        const created = await this.createDocuments(collection, operation.payload);
-        const transformed = operation.select
-          ? await this.transformSelectedDocuments(collection, created, operation.select)
-          : created;
-
-        if (operation.single) {
-          return { data: transformed[0] ?? null, error: null };
-        }
-
-        return { data: operation.select ? transformed : null, error: null };
-      }
-
-      if (operation.action === 'upsert') {
-        const payload = operation.payload ?? {};
-        const logicalId = payload.id;
-
-        if (logicalId === undefined || logicalId === null) {
-          throw new Error('Upsert operations require an id field.');
-        }
-
-        const existing = await this.getMatchingDocuments(collection, {
-          action: 'select',
-          filters: [{ type: 'eq', column: 'id', value: logicalId }],
-          single: true,
-        });
-
-        if (existing.length) {
-          await this.updateDocuments(collection, {
-            action: 'update',
-            filters: [{ type: 'eq', column: 'id', value: logicalId }],
-            payload,
-          });
-        } else {
-          await this.createDocuments(collection, payload);
-        }
-
-        return { data: null, error: null };
-      }
-
-      if (operation.action === 'update') {
-        const updated = await this.updateDocuments(collection, operation);
-        const transformed = operation.select
-          ? await this.transformSelectedDocuments(collection, updated, operation.select)
-          : updated;
-
-        if (operation.single) {
-          return { data: transformed[0] ?? null, error: null };
-        }
-
-        return { data: operation.select ? transformed : null, error: null };
-      }
-
-      if (operation.action === 'delete') {
-        const deleted = await this.deleteDocuments(collection, operation);
-        const transformed = operation.select
-          ? await this.transformSelectedDocuments(collection, deleted, operation.select)
-          : deleted;
-
-        if (operation.single) {
-          return { data: transformed[0] ?? null, error: null };
-        }
-
-        return { data: operation.select ? transformed : null, error: null };
-      }
-
-      return { data: null, error: null };
-    } catch (error) {
-      return {
-        data: null,
-        error: toCompatError(error),
-      };
-    }
-  }
+  // ─── Profile ──────────────────────────────────────────────────────────────
 
   async getProfile(id: string) {
-    const response = await this.executeCollectionOperation('profiles', {
-      action: 'select',
-      filters: [{ type: 'eq', column: 'id', value: id }],
-      single: true,
-      select:
-        'id, created_at, first_name, last_name, about_me, age, gender, verified, is_private, show_age, show_location, location_id, locations(*)',
-    });
-
-    if (response.error || !response.data) {
-      return null;
-    }
+    const [profile] = await this.db.select().from(profiles).where(eq(profiles.id, id)).limit(1);
+    if (!profile) return null;
 
     const [passionRows, languageRows] = await Promise.all([
-      this.executeCollectionOperation('profile_passions', {
-        action: 'select',
-        filters: [{ type: 'eq', column: 'profile_id', value: id }],
-        select: 'profile_id, passions(name)',
-      }),
-      this.executeCollectionOperation('profile_languages', {
-        action: 'select',
-        filters: [{ type: 'eq', column: 'profile_id', value: id }],
-        select: 'profile_id, languages(name)',
-      }),
+      this.db
+        .select({ id: passions.id, name: passions.name })
+        .from(profilePassions)
+        .innerJoin(passions, eq(profilePassions.passion_id, passions.id))
+        .where(eq(profilePassions.profile_id, id)),
+      this.db
+        .select({ id: languages.id, name: languages.name })
+        .from(profileLanguages)
+        .innerJoin(languages, eq(profileLanguages.language_id, languages.id))
+        .where(eq(profileLanguages.profile_id, id)),
     ]);
 
+    let locationRow: { id: string; city: string; region: string; country: string } | null = null;
+    if (profile.location_id) {
+      const [loc] = await this.db.select().from(locations).where(eq(locations.id, profile.location_id)).limit(1);
+      locationRow = loc ?? null;
+    }
+
     return {
-      ...response.data,
-      passions:
-        (passionRows.data as any[] | null)?.flatMap((row) => (row.passions?.name ? [row.passions.name] : [])) || [],
-      languages:
-        (languageRows.data as any[] | null)?.flatMap((row) =>
-          row.languages?.name ? [row.languages.name] : []
-        ) || [],
+      ...profile,
+      passions: passionRows.map((r) => r.name),
+      languages: languageRows.map((r) => r.name),
+      location: locationRow,
     };
   }
 
   async saveProfile(id: string, data: any) {
-    const response = await this.executeCollectionOperation('profiles', {
-      action: 'upsert',
-      payload: {
-        id,
-        ...data,
-        updated_at: new Date().toISOString(),
-      },
-    });
+    return this.saveProfileData(id, data);
+  }
 
-    if (response.error) {
-      throw new Error(response.error.message);
+  async saveProfileData(id: string, data: any) {
+    let locationId = data.location_id ?? null;
+
+    if (data.location?.city && data.location?.country) {
+      const cityLower = lowerCase(data.location.city);
+      const countryLower = lowerCase(data.location.country);
+      const allLocations = await this.listLocations();
+      const match = allLocations.find(
+        (loc) => lowerCase(loc.city) === cityLower && lowerCase(loc.country) === countryLower
+      );
+      locationId = match?.id ?? null;
+    }
+
+    const now = nowIso();
+    const profilePayload = {
+      id,
+      first_name: data.first_name ?? null,
+      last_name: data.last_name ?? null,
+      about_me: data.about_me ?? null,
+      age: data.birth_date ? null : (data.age ?? null),
+      birth_date: normalizeBirthDate(data.birth_date) ?? null,
+      gender: data.gender ?? null,
+      avatar_url: data.avatar_url ?? null,
+      location_id: locationId,
+      updated_at: now,
+    };
+
+    const existing = await this.db.select({ id: profiles.id }).from(profiles).where(eq(profiles.id, id)).limit(1);
+    if (existing.length > 0) {
+      await this.db.update(profiles).set(profilePayload).where(eq(profiles.id, id));
+    } else {
+      await this.db.insert(profiles).values({ ...profilePayload, created_at: now });
+    }
+
+    // Ensure reference tables are seeded (no-op if rows already exist)
+    if (staticMasterData.passions.length > 0) {
+      await this.db.insert(passions).values(staticMasterData.passions).onConflictDoNothing();
+    }
+    if (staticMasterData.languages.length > 0) {
+      await this.db.insert(languages).values(staticMasterData.languages).onConflictDoNothing();
+    }
+
+    // Sync passions
+    await this.db.delete(profilePassions).where(eq(profilePassions.profile_id, id));
+    if (Array.isArray(data.passions) && data.passions.length > 0) {
+      const allPassions = await this.listPassions();
+      const inserts = data.passions
+        .map((name: string) => allPassions.find((p) => lowerCase(p.name) === lowerCase(name)))
+        .filter(Boolean)
+        .map((p: { id: string }) => ({ id: randomUUID(), profile_id: id, passion_id: p.id }));
+      if (inserts.length > 0) {
+        await this.db.insert(profilePassions).values(inserts);
+      }
+    }
+
+    // Sync languages
+    await this.db.delete(profileLanguages).where(eq(profileLanguages.profile_id, id));
+    if (Array.isArray(data.languages) && data.languages.length > 0) {
+      const allLanguages = await this.listLanguages();
+      const inserts = data.languages
+        .map((name: string) => allLanguages.find((l) => lowerCase(l.name) === lowerCase(name)))
+        .filter(Boolean)
+        .map((l: { id: string }) => ({ id: randomUUID(), profile_id: id, language_id: l.id }));
+      if (inserts.length > 0) {
+        await this.db.insert(profileLanguages).values(inserts);
+      }
     }
 
     return this.getProfile(id);
   }
 
-  async listLanguages(): Promise<StaticLanguage[]> {
-    const languages = this.getStaticCollectionDocuments('languages');
-
-    return languages?.sort((left, right) =>
-      String(left.name ?? '').localeCompare(String(right.name ?? ''))
-    ) ?? [];
+  async deleteProfile(id: string) {
+    // Cascade deletes — FK constraints handle some, but we also delete orphan rows
+    await Promise.all([
+      this.db.delete(favorites).where(or(eq(favorites.user_id, id), eq(favorites.favorite_id, id))),
+      this.db.delete(blockedUsers).where(or(eq(blockedUsers.blocker_id, id), eq(blockedUsers.blocked_id, id))),
+      this.db.delete(messages).where(or(eq(messages.sender_id, id), eq(messages.receiver_id, id))),
+      this.db.delete(notifications).where(or(eq(notifications.receiver_id, id), eq(notifications.actor_id, id))),
+      this.db.delete(reports).where(or(eq(reports.reporter_id, id), eq(reports.reported_id, id))),
+      this.db.delete(savedSearches).where(eq(savedSearches.user_id, id)),
+      this.db.delete(verificationRequests).where(eq(verificationRequests.user_id, id)),
+      this.db.delete(pushSubscriptions).where(eq(pushSubscriptions.user_id, id)),
+      this.db.delete(userPresence).where(eq(userPresence.user_id, id)),
+    ]);
+    // profilePassions and profileLanguages cascade via FK
+    await this.db.delete(profiles).where(eq(profiles.id, id));
+    return { success: true };
   }
 
-  async listPassions(): Promise<StaticPassion[]> {
-    const passions = this.getStaticCollectionDocuments('passions');
-
-    return passions?.sort((left, right) =>
-      String(left.name ?? '').localeCompare(String(right.name ?? ''))
-    ) ?? [];
-  }
-
-  async listLocations(): Promise<StaticLocation[]> {
-    const locations = this.getStaticCollectionDocuments('locations');
-
-    return locations?.sort((left, right) => {
-      const countryResult = String(left.country ?? '').localeCompare(String(right.country ?? ''));
-
-      if (countryResult !== 0) {
-        return countryResult;
-      }
-
-      const regionResult = String(left.region ?? '').localeCompare(String(right.region ?? ''));
-
-      if (regionResult !== 0) {
-        return regionResult;
-      }
-
-      return String(left.city ?? '').localeCompare(String(right.city ?? ''));
-    }) ?? [];
-  }
+  // ─── Messages ─────────────────────────────────────────────────────────────
 
   async getMessages(userId: string) {
     return this.listMessagesForUser(userId);
   }
 
   async sendMessage(senderId: string, receiverId: string, content: string) {
-    const response = await this.executeCollectionOperation('messages', {
-      action: 'insert',
-      payload: {
-        sender_id: senderId,
-        receiver_id: receiverId,
-        content,
-        created_at: new Date().toISOString(),
-      },
-      select:
-        'id, created_at, sender_id, receiver_id, content, sender:profiles!sender_id(id, first_name, last_name), receiver:profiles!receiver_id(id, first_name, last_name)',
-      single: true,
-    });
-
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
-
-    return response.data;
+    const id = randomUUID();
+    const now = nowIso();
+    await this.db.insert(messages).values({ id, sender_id: senderId, receiver_id: receiverId, content, created_at: now });
+    return { id, sender_id: senderId, receiver_id: receiverId, content, created_at: now, read_at: null };
   }
+
+  async listMessagesForUser(userId?: string) {
+    const resolvedId = userId ?? this.requireUserId();
+    const rows = await this.db
+      .select()
+      .from(messages)
+      .where(or(eq(messages.sender_id, resolvedId), eq(messages.receiver_id, resolvedId)))
+      .orderBy(asc(messages.created_at));
+
+    const peerIds = unique(
+      rows.flatMap((m) => [m.sender_id, m.receiver_id]).filter((id) => id !== resolvedId)
+    );
+    const peerProfiles = peerIds.length > 0
+      ? await this.db.select().from(profiles).where(inArray(profiles.id, peerIds))
+      : [];
+    const profileById = new Map(peerProfiles.map((p) => [p.id, p]));
+
+    return rows.map((m) => ({
+      ...m,
+      direction: m.sender_id === resolvedId ? 'sent' : 'received',
+      sender: profileById.get(m.sender_id) ?? { id: m.sender_id, first_name: null, last_name: null },
+      receiver: profileById.get(m.receiver_id) ?? { id: m.receiver_id, first_name: null, last_name: null },
+    }));
+  }
+
+  // ─── Favorites ────────────────────────────────────────────────────────────
 
   async getFavorites(userId: string) {
     return this.loadSavedProfiles(userId);
   }
 
   async toggleFavorite(userId: string, favoriteId: string) {
-    const existing = await this.executeCollectionOperation('favorites', {
-      action: 'select',
-      filters: [
-        { type: 'eq', column: 'user_id', value: userId },
-        { type: 'eq', column: 'favorite_id', value: favoriteId },
-      ],
-      maybeSingle: true,
-    });
+    const [existing] = await this.db
+      .select()
+      .from(favorites)
+      .where(and(eq(favorites.user_id, userId), eq(favorites.favorite_id, favoriteId)))
+      .limit(1);
 
-    if (existing.data) {
-      return this.executeCompatRpc('unsave_profile', { target_id: favoriteId, current_user_id: userId });
+    if (existing) {
+      await this.db.delete(favorites).where(eq(favorites.id, existing.id));
+      return { saved: false };
     }
 
-    return this.executeCompatRpc('save_profile', { target_id: favoriteId, current_user_id: userId });
+    await this.db.insert(favorites).values({ id: randomUUID(), user_id: userId, favorite_id: favoriteId, created_at: nowIso() });
+    return { saved: true };
   }
 
-  async invokeCompatFunction(name: string, data?: any) {
-    if (name !== 'send-push') {
-      return { success: false, message: `Unsupported function: ${name}` };
+  private async loadSavedProfiles(currentUserId: string) {
+    const favRows = await this.db
+      .select()
+      .from(favorites)
+      .where(eq(favorites.user_id, currentUserId))
+      .orderBy(desc(favorites.created_at));
+
+    if (favRows.length === 0) return [];
+
+    const profileIds = favRows.map((f) => f.favorite_id);
+    const profileRows = await this.db.select().from(profiles).where(inArray(profiles.id, profileIds));
+    const profileById = new Map(profileRows.map((p) => [p.id, p]));
+
+    return favRows
+      .map((f) => profileById.get(f.favorite_id))
+      .filter((p): p is NonNullable<typeof p> => p != null);
+  }
+
+  private async getSavedProfiles() {
+    const userId = this.requireUserId();
+    const profiles = await this.loadSavedProfiles(userId);
+    return { data: profiles, error: null };
+  }
+
+  // ─── Block / Unblock ──────────────────────────────────────────────────────
+
+  async listBlockedUsers(userId?: string) {
+    const resolvedId = userId ?? this.requireUserId();
+    const rows = await this.db
+      .select()
+      .from(blockedUsers)
+      .where(eq(blockedUsers.blocker_id, resolvedId))
+      .orderBy(desc(blockedUsers.created_at));
+
+    if (rows.length === 0) return [];
+    const blockedIds = rows.map((r) => r.blocked_id);
+    const profileRows = await this.db.select().from(profiles).where(inArray(profiles.id, blockedIds));
+    const profileById = new Map(profileRows.map((p) => [p.id, p]));
+
+    return rows.map((r) => ({
+      ...r,
+      profile: profileById.get(r.blocked_id) ?? null,
+    }));
+  }
+
+  private async isBlocked(targetId: string) {
+    const userId = this.requireUserId();
+    const [row] = await this.db
+      .select()
+      .from(blockedUsers)
+      .where(and(eq(blockedUsers.blocker_id, userId), eq(blockedUsers.blocked_id, targetId)))
+      .limit(1);
+    return { data: Boolean(row), error: null };
+  }
+
+  private async isBlockedBy(targetId: string) {
+    const userId = this.requireUserId();
+    const [row] = await this.db
+      .select()
+      .from(blockedUsers)
+      .where(and(eq(blockedUsers.blocker_id, targetId), eq(blockedUsers.blocked_id, userId)))
+      .limit(1);
+    return { data: Boolean(row), error: null };
+  }
+
+  private async blockUser(targetId: string) {
+    const userId = this.requireUserId();
+    const [existing] = await this.db
+      .select()
+      .from(blockedUsers)
+      .where(and(eq(blockedUsers.blocker_id, userId), eq(blockedUsers.blocked_id, targetId)))
+      .limit(1);
+    if (!existing) {
+      await this.db.insert(blockedUsers).values({ id: randomUUID(), blocker_id: userId, blocked_id: targetId, created_at: nowIso() });
     }
+    return { data: true, error: null };
+  }
 
-    const currentUser = await this.getCurrentUser();
-    const payload = normalizePushFunctionPayload(data, currentUser?.id ?? null);
+  private async unblockUser(targetId: string) {
+    const userId = this.requireUserId();
+    await this.db
+      .delete(blockedUsers)
+      .where(and(eq(blockedUsers.blocker_id, userId), eq(blockedUsers.blocked_id, targetId)));
+    return { data: true, error: null };
+  }
 
-    const functionId = getAppwriteFunctionId(name);
+  // ─── Notifications ────────────────────────────────────────────────────────
 
-    if (functionId) {
-      await this.functions.createExecution(functionId, JSON.stringify(payload), false);
-      return { success: true };
+  async listNotifications() {
+    const userId = this.requireUserId();
+    const rows = await this.db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.receiver_id, userId))
+      .orderBy(desc(notifications.created_at));
+
+    const actorIds = unique(rows.map((n) => n.actor_id).filter((id): id is string => Boolean(id)));
+    const actorProfiles = actorIds.length > 0
+      ? await this.db.select().from(profiles).where(inArray(profiles.id, actorIds))
+      : [];
+    const profileById = new Map(actorProfiles.map((p) => [p.id, p]));
+
+    return rows.map((n) => {
+      const actor = n.actor_id ? profileById.get(n.actor_id) : undefined;
+      return {
+        id: n.id,
+        type: n.type,
+        read: n.read ?? false,
+        createdAt: n.created_at,
+        actorId: n.actor_id ?? undefined,
+        actorName: actor ? buildDisplayName(actor) : undefined,
+        title: n.title,
+        body: n.body ?? undefined,
+        url: n.url ?? undefined,
+      };
+    });
+  }
+
+  async markNotificationRead(notificationId: string) {
+    this.requireUserId();
+    await this.db.update(notifications).set({ read: true }).where(eq(notifications.id, notificationId));
+    return { data: true, error: null };
+  }
+
+  async markAllNotificationsRead() {
+    const userId = this.requireUserId();
+    await this.db.update(notifications).set({ read: true }).where(eq(notifications.receiver_id, userId));
+    return { data: true, error: null };
+  }
+
+  async listAdminNotificationsForUser(userId: string) {
+    const rows = await this.db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.receiver_id, userId))
+      .orderBy(desc(notifications.created_at));
+    return rows.map((n) => ({
+      id: n.id,
+      type: n.type,
+      read: n.read ?? false,
+      createdAt: n.created_at,
+      actorId: n.actor_id ?? undefined,
+      title: n.title,
+      body: n.body ?? undefined,
+      url: n.url ?? undefined,
+    }));
+  }
+
+  // ─── Reports ──────────────────────────────────────────────────────────────
+
+  async createReport(payload: { reporterId: string; reportedId: string; reason: string }) {
+    const id = randomUUID();
+    await this.db.insert(reports).values({
+      id,
+      reporter_id: payload.reporterId,
+      reported_id: payload.reportedId,
+      reason: payload.reason,
+      status: 'pending',
+      created_at: nowIso(),
+    });
+    return { data: { id }, error: null };
+  }
+
+  async listReports() {
+    const rows = await this.db.select().from(reports).orderBy(desc(reports.created_at));
+    const profileIds = unique(rows.flatMap((r) => [r.reporter_id, r.reported_id]));
+    const profileRows = profileIds.length > 0
+      ? await this.db.select().from(profiles).where(inArray(profiles.id, profileIds))
+      : [];
+    const profileById = new Map(profileRows.map((p) => [p.id, p]));
+    return rows.map((r) => ({
+      ...r,
+      reporter: profileById.get(r.reporter_id) ?? null,
+      reported: profileById.get(r.reported_id) ?? null,
+    }));
+  }
+
+  async updateReportStatus(id: string, status: string) {
+    await this.db.update(reports).set({ status }).where(eq(reports.id, id));
+    return { data: true, error: null };
+  }
+
+  // ─── Verification Requests ────────────────────────────────────────────────
+
+  async listVerificationRequests() {
+    const rows = await this.db.select().from(verificationRequests).orderBy(desc(verificationRequests.created_at));
+    const profileIds = unique(rows.map((r) => r.user_id));
+    const profileRows = profileIds.length > 0
+      ? await this.db.select().from(profiles).where(inArray(profiles.id, profileIds))
+      : [];
+    const profileById = new Map(profileRows.map((p) => [p.id, p]));
+    return rows.map((r) => ({
+      ...r,
+      profiles: profileById.get(r.user_id) ?? null,
+    }));
+  }
+
+  async listVerificationRequestsForUser(userId?: string) {
+    const resolvedId = userId ?? this.requireUserId();
+    return this.db
+      .select()
+      .from(verificationRequests)
+      .where(eq(verificationRequests.user_id, resolvedId))
+      .orderBy(desc(verificationRequests.created_at));
+  }
+
+  async updateVerificationRequest(id: string, status: string, userId?: string) {
+    await this.db.update(verificationRequests).set({ status }).where(eq(verificationRequests.id, id));
+    if (status === 'approved' && userId) {
+      await this.db.update(profiles).set({ verified: true, updated_at: nowIso() }).where(eq(profiles.id, userId));
     }
+    return { success: true };
+  }
 
-    if (payload.receiver_id) {
-      await this.executeCollectionOperation('notifications', {
-        action: 'insert',
-        payload: {
-          receiver_id: payload.receiver_id,
-          actor_id: payload.actor_id,
-          type: payload.notification_type === 'message' ? 'new_message' : payload.notification_type,
-          read: false,
-          title: payload.title,
-          body: payload.body,
-          url: payload.url ?? null,
-          created_at: new Date().toISOString(),
+  // ─── Saved Searches ───────────────────────────────────────────────────────
+
+  async listSavedSearches(userId?: string) {
+    const resolvedId = userId ?? this.requireUserId();
+    return this.db
+      .select()
+      .from(savedSearches)
+      .where(eq(savedSearches.user_id, resolvedId))
+      .orderBy(desc(savedSearches.created_at));
+  }
+
+  // ─── Presence ─────────────────────────────────────────────────────────────
+
+  private async trackPresence(_requestedUserId?: string, requestedOnlineAt?: string) {
+    const userId = this.requireUserId();
+    const onlineAt =
+      typeof requestedOnlineAt === 'string' && !Number.isNaN(Date.parse(requestedOnlineAt))
+        ? requestedOnlineAt
+        : nowIso();
+
+    await this.db
+      .insert(userPresence)
+      .values({ id: userId, user_id: userId, online_at: onlineAt })
+      .onConflictDoUpdate({ target: userPresence.user_id, set: { online_at: onlineAt } });
+
+    return { data: { user_id: userId, online_at: onlineAt }, error: null };
+  }
+
+  private async clearPresence(_requestedUserId?: string) {
+    const userId = this.requireUserId();
+    await this.db.delete(userPresence).where(eq(userPresence.user_id, userId));
+    return { data: true, error: null };
+  }
+
+  private async getOnlineUsers() {
+    const cutoff = new Date(Date.now() - PRESENCE_TTL_MS).toISOString();
+    const activeRows = await this.db
+      .select()
+      .from(userPresence)
+      .where(sql`${userPresence.online_at} >= ${cutoff}`)
+      .orderBy(desc(userPresence.online_at));
+
+    // Clean up stale rows
+    await this.db.delete(userPresence).where(sql`${userPresence.online_at} < ${cutoff}`);
+
+    return {
+      data: activeRows.map((r) => ({ user_id: r.user_id, online_at: r.online_at })),
+      error: null,
+    };
+  }
+
+  // ─── Push Subscriptions ───────────────────────────────────────────────────
+
+  async savePushSubscription(payload: { userId: string; endpoint: string; p256dh?: string; auth?: string }) {
+    const [existing] = await this.db
+      .select()
+      .from(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.user_id, payload.userId), eq(pushSubscriptions.endpoint, payload.endpoint)))
+      .limit(1);
+    if (existing) return { success: true, duplicate: true };
+    await this.db.insert(pushSubscriptions).values({
+      id: randomUUID(),
+      user_id: payload.userId,
+      endpoint: payload.endpoint,
+      p256dh: payload.p256dh ?? null,
+      auth: payload.auth ?? null,
+    });
+    return { success: true };
+  }
+
+  async deletePushSubscription(userId: string, endpoint?: string) {
+    if (endpoint) {
+      await this.db
+        .delete(pushSubscriptions)
+        .where(and(eq(pushSubscriptions.user_id, userId), eq(pushSubscriptions.endpoint, endpoint)));
+    } else {
+      await this.db.delete(pushSubscriptions).where(eq(pushSubscriptions.user_id, userId));
+    }
+    return { success: true };
+  }
+
+  // ─── Contact Requests ─────────────────────────────────────────────────────
+
+  async createContactRequest(payload: { name: string; email: string; subject: string; message: string; category: string }) {
+    await this.db.insert(contactRequests).values({
+      id: randomUUID(),
+      ...payload,
+      status: 'pending',
+      created_at: nowIso(),
+    });
+    return { success: true };
+  }
+
+  // ─── Admin Settings ───────────────────────────────────────────────────────
+
+  async getAdminSettings(): Promise<AdminSystemControls> {
+    const [row] = await this.db
+      .select()
+      .from(adminSettings)
+      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
+      .limit(1);
+    if (!row) return { ...DEFAULT_ADMIN_SYSTEM_CONTROLS };
+    return normalizeAdminSettings(row);
+  }
+
+  async updateAdminSettings(patch: { maintenanceBannerText?: string; moderationHold?: boolean; followUpUserIds?: string[] }) {
+    const current = await this.getAdminSettings();
+    const now = nowIso();
+    const next: AdminSystemControls = {
+      maintenanceBannerText: patch.maintenanceBannerText !== undefined ? patch.maintenanceBannerText : current.maintenanceBannerText,
+      moderationHold: patch.moderationHold !== undefined ? patch.moderationHold : current.moderationHold,
+      followUpUserIds: patch.followUpUserIds ?? current.followUpUserIds,
+      updatedAt: now,
+    };
+
+    await this.db
+      .insert(adminSettings)
+      .values({
+        id: ADMIN_SETTINGS_ID,
+        maintenance_banner_text: next.maintenanceBannerText,
+        moderation_hold: next.moderationHold,
+        follow_up_user_ids: JSON.stringify(next.followUpUserIds),
+        updated_at: now,
+      })
+      .onConflictDoUpdate({
+        target: adminSettings.id,
+        set: {
+          maintenance_banner_text: next.maintenanceBannerText,
+          moderation_hold: next.moderationHold,
+          follow_up_user_ids: JSON.stringify(next.followUpUserIds),
+          updated_at: now,
         },
+      });
+
+    return next;
+  }
+
+  async toggleAdminFollowUp(userId: string, enabled: boolean) {
+    const current = await this.getAdminSettings();
+    const followUpUserIds = enabled
+      ? unique([...current.followUpUserIds, userId])
+      : current.followUpUserIds.filter((id) => id !== userId);
+    return this.updateAdminSettings({ followUpUserIds });
+  }
+
+  async setAdminUserVerified(userId: string, verified: boolean) {
+    await this.db.update(profiles).set({ verified, updated_at: nowIso() }).where(eq(profiles.id, userId));
+    if (verified) {
+      const requests = await this.listVerificationRequestsForUser(userId);
+      const pending = requests.find((r) => r.status === 'pending');
+      if (pending?.id) {
+        await this.updateVerificationRequest(String(pending.id), 'approved', userId);
+      }
+    }
+    return { success: true };
+  }
+
+  async sendAdminMessage(payload: { adminUserId: string; userId: string; content: string }) {
+    const message = await this.sendMessage(payload.adminUserId, payload.userId, payload.content);
+    await this.invokeCompatFunction('send-push', {
+      actor_id: payload.adminUserId,
+      receiver_id: payload.userId,
+      title: 'Admin message',
+      body: payload.content,
+      notification_type: 'message',
+      url: '/messages',
+    });
+    return message;
+  }
+
+  async sendAdminNotification(payload: { adminUserId: string; userId: string; title: string; body: string; url?: string }) {
+    return this.invokeCompatFunction('send-push', {
+      actor_id: payload.adminUserId,
+      receiver_id: payload.userId,
+      title: payload.title,
+      body: payload.body,
+      notification_type: 'admin_notice',
+      url: payload.url ?? '/notifications',
+    });
+  }
+
+  // ─── Admin Profiles List ──────────────────────────────────────────────────
+
+  async listAdminProfiles(options?: { query?: string | null; limit?: number | null }) {
+    const limitVal = typeof options?.limit === 'number' && options.limit > 0 ? Math.min(options.limit, 25) : 8;
+    const allProfiles = await this.db.select().from(profiles).orderBy(desc(profiles.created_at));
+    const allLocations = await this.listLocations();
+    const settings = await this.getAdminSettings();
+    const flaggedUsers = new Set(settings.followUpUserIds);
+    const locById = new Map(allLocations.map((l) => [l.id, l]));
+
+    const [messageCounts, savedSearchCounts, blockedCounts, openReports, pendingVerifs] = await Promise.all([
+      this.db.select({ user_id: messages.sender_id, count: sql<number>`count(*)` }).from(messages).groupBy(messages.sender_id),
+      this.db.select({ user_id: savedSearches.user_id, count: sql<number>`count(*)` }).from(savedSearches).groupBy(savedSearches.user_id),
+      this.db.select({ user_id: blockedUsers.blocker_id, count: sql<number>`count(*)` }).from(blockedUsers).groupBy(blockedUsers.blocker_id),
+      this.db.select({ user_id: reports.reported_id }).from(reports).where(ne(reports.status, 'resolved')),
+      this.db.select({ user_id: verificationRequests.user_id }).from(verificationRequests).where(eq(verificationRequests.status, 'pending')),
+    ]);
+
+    const msgCountById = new Map(messageCounts.map((r) => [r.user_id, Number(r.count)]));
+    const searchCountById = new Map(savedSearchCounts.map((r) => [r.user_id, Number(r.count)]));
+    const blockCountById = new Map(blockedCounts.map((r) => [r.user_id, Number(r.count)]));
+    const openReportIds = new Map<string, number>();
+    for (const r of openReports) {
+      openReportIds.set(r.user_id, (openReportIds.get(r.user_id) ?? 0) + 1);
+    }
+    const pendingVerifSet = new Set(pendingVerifs.map((r) => r.user_id));
+
+    const queryLower = lowerCase(options?.query);
+
+    return allProfiles
+      .map((p) => {
+        const loc = p.location_id ? locById.get(p.location_id) : null;
+        return {
+          id: p.id,
+          displayName: buildDisplayName(p),
+          firstName: p.first_name,
+          lastName: p.last_name,
+          verified: p.verified ?? false,
+          location: loc ? buildLocationLabel(loc) : null,
+          joinedAt: p.created_at,
+          lastActiveAt: p.last_login ?? p.updated_at,
+          openReports: openReportIds.get(p.id) ?? 0,
+          pendingVerification: pendingVerifSet.has(p.id),
+          savedSearchCount: searchCountById.get(p.id) ?? 0,
+          blockedCount: blockCountById.get(p.id) ?? 0,
+          messageCount: msgCountById.get(p.id) ?? 0,
+          flaggedForFollowUp: flaggedUsers.has(p.id),
+        };
+      })
+      .filter((p) => {
+        if (!queryLower) return true;
+        return [p.displayName, p.id, p.location ?? ''].some((v) => lowerCase(v).includes(queryLower));
+      })
+      .sort((a, b) => {
+        if (a.flaggedForFollowUp !== b.flaggedForFollowUp) return a.flaggedForFollowUp ? -1 : 1;
+        if (a.openReports !== b.openReports) return b.openReports - a.openReports;
+        if (a.pendingVerification !== b.pendingVerification) return a.pendingVerification ? -1 : 1;
+        return (b.lastActiveAt ?? '').localeCompare(a.lastActiveAt ?? '');
+      })
+      .slice(0, limitVal);
+  }
+
+  async getAdminUserInvestigation(userId: string) {
+    const [profile, allProfiles, msgs, searches, blocked, verifs, allReports, notifs] = await Promise.all([
+      this.getProfile(userId),
+      this.listAdminProfiles({ query: userId, limit: 50 }),
+      this.listMessagesForUser(userId),
+      this.listSavedSearches(userId),
+      this.listBlockedUsers(userId),
+      this.listVerificationRequestsForUser(userId),
+      this.listReports(),
+      this.listAdminNotificationsForUser(userId),
+    ]);
+
+    const baseUser = allProfiles.find((p) => p.id === userId);
+    if (!profile || !baseUser) throw new Error('User not found');
+
+    return {
+      user: {
+        ...baseUser,
+        aboutMe: (profile as any).about_me ?? null,
+        age: (profile as any).age ?? null,
+        gender: (profile as any).gender ?? null,
+        passions: Array.isArray((profile as any).passions) ? (profile as any).passions : [],
+        languages: Array.isArray((profile as any).languages) ? (profile as any).languages : [],
+        isPrivate: (profile as any).is_private ?? false,
+      },
+      messages: msgs.map((m) => ({
+        id: m.id,
+        createdAt: m.created_at,
+        direction: (m as any).direction,
+        content: m.content,
+        sender: { id: m.sender_id, firstName: (m as any).sender?.first_name ?? null, lastName: (m as any).sender?.last_name ?? null },
+        receiver: { id: m.receiver_id, firstName: (m as any).receiver?.first_name ?? null, lastName: (m as any).receiver?.last_name ?? null },
+      })),
+      savedSearches: searches.map((s) => ({
+        id: s.id,
+        name: s.name,
+        query: s.query ?? null,
+        location: s.location ?? null,
+        language: s.language ?? null,
+        gender: s.gender ?? null,
+        minAge: s.min_age ?? null,
+        maxAge: s.max_age ?? null,
+        passionIds: s.passion_ids ?? [],
+        createdAt: s.created_at,
+      })),
+      blockedUsers: blocked.map((b) => ({
+        id: b.id,
+        blockedId: b.blocked_id,
+        createdAt: b.created_at,
+        profile: (b as any).profile ?? null,
+      })),
+      verificationHistory: verifs.map((v) => ({
+        id: v.id,
+        status: v.status ?? 'pending',
+        createdAt: v.created_at,
+      })),
+      notifications: notifs,
+      reportsFiled: allReports.filter((r) => r.reporter_id === userId),
+      reportsAgainst: allReports.filter((r) => r.reported_id === userId),
+    };
+  }
+
+  async getAdminDashboardSnapshot() {
+    const [allReports, allVerifs, settings, locs, profileList, msgCount, favCount, notifCount, pushCount] = await Promise.all([
+      this.listReports(),
+      this.listVerificationRequests(),
+      this.getAdminSettings(),
+      this.listLocations(),
+      this.db.select().from(profiles),
+      this.db.select({ count: sql<number>`count(*)` }).from(messages),
+      this.db.select({ count: sql<number>`count(*)` }).from(favorites),
+      this.db.select().from(notifications),
+      this.db.select({ count: sql<number>`count(*)` }).from(pushSubscriptions),
+    ]);
+
+    const locById = new Map(locs.map((l) => [l.id, l]));
+    const pendingReports = allReports.filter((r) => r.status === 'pending');
+    const pendingVerifs = allVerifs.filter((r) => r.status === 'pending');
+
+    const buildQueueUser = (p: (typeof profileList)[number] | undefined | null) =>
+      p
+        ? {
+            id: p.id,
+            firstName: p.first_name,
+            lastName: p.last_name,
+            displayName: buildDisplayName(p),
+            verified: p.verified ?? false,
+            location: p.location_id ? buildLocationLabel(locById.get(p.location_id) ?? null) : null,
+            avatarUrl: p.avatar_url,
+          }
+        : null;
+
+    const profileById = new Map(profileList.map((p) => [p.id, p]));
+
+    const unreadNotifications = notifCount.filter((n) => !n.read).length;
+
+    return {
+      overview: {
+        totalProfiles: profileList.length,
+        verifiedProfiles: profileList.filter((p) => p.verified).length,
+        completedProfiles: profileList.filter((p) => p.first_name && p.last_name && p.birth_date && p.gender).length,
+        totalMessages: Number(msgCount[0]?.count ?? 0),
+        totalFavorites: Number(favCount[0]?.count ?? 0),
+        totalNotifications: notifCount.length,
+        unreadNotifications,
+        activePushSubscriptions: Number(pushCount[0]?.count ?? 0),
+        totalReports: allReports.length,
+        pendingReports: pendingReports.length,
+        totalVerificationRequests: allVerifs.length,
+        pendingVerificationRequests: pendingVerifs.length,
+      },
+      queues: {
+        reports: pendingReports.slice(0, 5).map((r) => ({
+          id: r.id,
+          reason: r.reason,
+          status: r.status ?? 'pending',
+          createdAt: r.created_at,
+          reporterId: r.reporter_id,
+          reportedId: r.reported_id,
+          reporter: buildQueueUser(profileById.get(r.reporter_id)),
+          reported: buildQueueUser(profileById.get(r.reported_id)),
+        })),
+        verificationRequests: pendingVerifs.slice(0, 5).map((v) => ({
+          id: v.id,
+          userId: v.user_id,
+          status: v.status ?? 'pending',
+          createdAt: v.created_at,
+          profile: buildQueueUser(profileById.get(v.user_id)),
+        })),
+      },
+      quickActions: {
+        pendingReports: pendingReports.length,
+        pendingVerificationRequests: pendingVerifs.length,
+        flaggedUsers: settings.followUpUserIds.length,
+        unreadNotifications,
+        totalQueueItems: pendingReports.length + pendingVerifs.length,
+      },
+      systemControls: settings,
+      lastUpdatedAt: nowIso(),
+    };
+  }
+
+  // ─── Search / Discovery ───────────────────────────────────────────────────
+
+  private async searchProfiles(filters: Record<string, any>) {
+    const currentUserId = filters.p_current_user_id ? String(filters.p_current_user_id) : null;
+    const queryText = lowerCase(filters.p_query);
+    const locationQuery = lowerCase(filters.p_location);
+    const languageQuery = lowerCase(filters.p_language);
+    const genderFilter = lowerCase(filters.p_gender);
+    const passionFilter: string[] = Array.isArray(filters.p_passion_ids)
+      ? filters.p_passion_ids.map((v: unknown) => String(v))
+      : [];
+    const toNum = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+    const minAge = toNum(filters.p_min_age);
+    const maxAge = toNum(filters.p_max_age);
+    const offset = Math.max(0, Math.floor(toNum(filters.p_offset) ?? 0));
+    const limit = Math.max(1, Math.floor(toNum(filters.p_limit) ?? 10));
+
+    const allLocations = await this.listLocations();
+    const locById = new Map(allLocations.map((l) => [l.id, l]));
+
+    let blockedByCurrent = new Set<string>();
+    let blockedCurrent = new Set<string>();
+    if (currentUserId) {
+      const [bbc, bc] = await Promise.all([
+        this.db.select({ id: blockedUsers.blocked_id }).from(blockedUsers).where(eq(blockedUsers.blocker_id, currentUserId)),
+        this.db.select({ id: blockedUsers.blocker_id }).from(blockedUsers).where(eq(blockedUsers.blocked_id, currentUserId)),
+      ]);
+      blockedByCurrent = new Set(bbc.map((r) => r.id));
+      blockedCurrent = new Set(bc.map((r) => r.id));
+    }
+
+    let matchedLocationIds: string[] | null = null;
+    if (locationQuery) {
+      matchedLocationIds = allLocations
+        .filter((l) => [l.city, l.region, l.country].filter(Boolean).join(', ').toLowerCase().includes(locationQuery))
+        .map((l) => l.id);
+      if (matchedLocationIds.length === 0) return { data: [], error: null };
+    }
+
+    // Fetch all profiles (batched server-side filtering for SQLite/Turso)
+    const allProfileRows = await this.db.select().from(profiles).orderBy(desc(profiles.created_at));
+    const allPassionRows = await this.db.select().from(profilePassions);
+    const allLanguageRows = await this.db.select().from(profileLanguages);
+    const allPassions = await this.listPassions();
+    const allLanguages = await this.listLanguages();
+
+    const passionNameById = new Map(allPassions.map((p) => [p.id, p.name]));
+    const languageNameById = new Map(allLanguages.map((l) => [l.id, l.name]));
+    const passionIdsByProfile = new Map<string, string[]>();
+    const passionNamesByProfile = new Map<string, string[]>();
+    const languageNamesByProfile = new Map<string, string[]>();
+
+    for (const row of allPassionRows) {
+      const ids = passionIdsByProfile.get(row.profile_id) ?? [];
+      ids.push(row.passion_id);
+      passionIdsByProfile.set(row.profile_id, ids);
+      const names = passionNamesByProfile.get(row.profile_id) ?? [];
+      const name = passionNameById.get(row.passion_id);
+      if (name) names.push(name);
+      passionNamesByProfile.set(row.profile_id, names);
+    }
+
+    for (const row of allLanguageRows) {
+      const names = languageNamesByProfile.get(row.profile_id) ?? [];
+      const name = languageNameById.get(row.language_id);
+      if (name) names.push(name);
+      languageNamesByProfile.set(row.profile_id, names);
+    }
+
+    const results: any[] = [];
+
+    for (const p of allProfileRows) {
+      if (currentUserId && p.id === currentUserId) continue;
+      if (currentUserId && (blockedByCurrent.has(p.id) || blockedCurrent.has(p.id))) continue;
+      if (matchedLocationIds && !matchedLocationIds.includes(p.location_id ?? '')) continue;
+
+      const age = calculateProfileAge(p);
+      if (minAge !== null && (age === null || age < minAge)) continue;
+      if (maxAge !== null && (age === null || age > maxAge)) continue;
+      if (genderFilter && lowerCase(p.gender) !== genderFilter) continue;
+
+      if (queryText) {
+        const haystack = [p.first_name, p.last_name, p.about_me].map(lowerCase).join(' ');
+        if (!haystack.includes(queryText)) continue;
+      }
+
+      if (languageQuery) {
+        const langs = languageNamesByProfile.get(p.id) ?? [];
+        if (!langs.some((l) => lowerCase(l).includes(languageQuery))) continue;
+      }
+
+      if (passionFilter.length > 0) {
+        const ids = passionIdsByProfile.get(p.id) ?? [];
+        if (!passionFilter.some((id) => ids.includes(id))) continue;
+      }
+
+      const loc = p.location_id ? locById.get(p.location_id) : null;
+      results.push({
+        id: p.id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        about_me: p.about_me,
+        location: loc ? buildLocationLabel(loc) : null,
+        age: p.show_age === false ? null : age,
+        gender: p.gender,
+        profile_languages: languageNamesByProfile.get(p.id) ?? [],
+        profilepassions: passionNamesByProfile.get(p.id) ?? [],
+        created_at: p.created_at,
+        last_login: p.last_login,
+        is_private: p.is_private ?? false,
+        show_age: p.show_age ?? true,
+        show_location: p.show_location ?? true,
       });
     }
 
-    return { success: true, fallback: true };
+    return { data: results.slice(offset, offset + limit), error: null };
   }
 
-  async executeCompatQuery(query: any, _params?: any[]) {
-    if (query && typeof query === 'object' && typeof query.collection === 'string') {
-      return this.executeCollectionOperation(query.collection, query.operation ?? query);
+  private async getSuggestedProfiles(currentUserId: string, limit: number) {
+    const currentPassions = await this.db
+      .select()
+      .from(profilePassions)
+      .where(eq(profilePassions.profile_id, currentUserId));
+    const currentPassionIds = new Set(currentPassions.map((r) => r.passion_id));
+
+    const searchResult = await this.searchProfiles({ p_current_user_id: currentUserId, p_limit: 500, p_offset: 0 });
+    const allData = (searchResult.data as any[]) ?? [];
+    const allPassionRows = await this.db.select().from(profilePassions);
+    const passionIdsByProfile = new Map<string, string[]>();
+    for (const row of allPassionRows) {
+      const ids = passionIdsByProfile.get(row.profile_id) ?? [];
+      ids.push(row.passion_id);
+      passionIdsByProfile.set(row.profile_id, ids);
     }
 
-    return { rows: [] };
+    const suggestions = allData
+      .map((p) => {
+        const shared = (passionIdsByProfile.get(String(p.id)) ?? []).filter((id) => currentPassionIds.has(id)).length;
+        return { ...p, shared_passions_count: shared };
+      })
+      .filter((p) => p.shared_passions_count > 0)
+      .sort((a, b) => b.shared_passions_count - a.shared_passions_count || (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+      .slice(0, limit);
+
+    return { data: suggestions, error: null };
+  }
+
+  private async getConversations(currentUserId: string) {
+    const allMessages = await this.db
+      .select()
+      .from(messages)
+      .where(or(eq(messages.sender_id, currentUserId), eq(messages.receiver_id, currentUserId)))
+      .orderBy(desc(messages.created_at));
+
+    const conversationMap = new Map<string, (typeof allMessages)[number]>();
+    for (const m of allMessages) {
+      const peerId = m.sender_id === currentUserId ? m.receiver_id : m.sender_id;
+      if (!conversationMap.has(peerId)) conversationMap.set(peerId, m);
+    }
+
+    const peerIds = Array.from(conversationMap.keys());
+    const peerProfiles = peerIds.length > 0 ? await this.db.select().from(profiles).where(inArray(profiles.id, peerIds)) : [];
+    const profileById = new Map(peerProfiles.map((p) => [p.id, p]));
+
+    const conversations = Array.from(conversationMap.entries()).map(([peerId, lastMsg]) => ({
+      peer_id: peerId,
+      peer: profileById.get(peerId) ?? { id: peerId, first_name: null, last_name: null },
+      last_message: lastMsg,
+      unread_count: allMessages.filter(
+        (m) => m.sender_id === peerId && m.receiver_id === currentUserId && !m.read_at
+      ).length,
+    }));
+
+    return { data: conversations, error: null };
+  }
+
+  private async getRecentConversations(currentUserId: string) {
+    const result = await this.getConversations(currentUserId);
+    return { data: (result.data as any[]).slice(0, 5), error: result.error };
+  }
+
+  private async markMessagesAsRead(senderId: string, receiverId: string) {
+    const resolvedReceiverId = receiverId || this.requireUserId();
+    await this.db
+      .update(messages)
+      .set({ read_at: nowIso() })
+      .where(and(eq(messages.sender_id, senderId), eq(messages.receiver_id, resolvedReceiverId)));
+    return { data: true, error: null };
+  }
+
+  private async isSaved(targetId: string) {
+    const userId = this.requireUserId();
+    const [row] = await this.db
+      .select()
+      .from(favorites)
+      .where(and(eq(favorites.user_id, userId), eq(favorites.favorite_id, targetId)))
+      .limit(1);
+    return { data: Boolean(row), error: null };
+  }
+
+  private async saveProfileToFavorites(targetId: string) {
+    const userId = this.requireUserId();
+    await this.toggleFavorite(userId, targetId);
+    return { data: true, error: null };
+  }
+
+  private async unsaveProfile(targetId: string) {
+    const userId = this.requireUserId();
+    await this.db
+      .delete(favorites)
+      .where(and(eq(favorites.user_id, userId), eq(favorites.favorite_id, targetId)));
+    return { data: true, error: null };
+  }
+
+  private async getDistinctCountries() {
+    const locs = await this.listLocations();
+    return { data: unique(locs.map((l) => l.country).filter(Boolean)).sort().map((c) => ({ country: c })), error: null };
+  }
+
+  private async getDistinctRegions(country?: string) {
+    const locs = await this.listLocations();
+    const filtered = country ? locs.filter((l) => l.country === country) : locs;
+    return { data: unique(filtered.map((l) => l.region).filter(Boolean)).sort().map((r) => ({ region: r })), error: null };
+  }
+
+  private async getDistinctCities(country?: string, region?: string) {
+    const locs = await this.listLocations();
+    const filtered = locs.filter((l) => (!country || l.country === country) && (!region || l.region === region));
+    return { data: unique(filtered.map((l) => l.city).filter(Boolean)).sort().map((c) => ({ city: c })), error: null };
+  }
+
+  // ─── Data Export ──────────────────────────────────────────────────────────
+
+  async exportCurrentUserData() {
+    const userId = this.requireUserId();
+    const [profile, msgs, notifs, favs, blocked, searches, verifs] = await Promise.all([
+      this.getProfile(userId),
+      this.listMessagesForUser(userId),
+      this.listNotifications(),
+      this.loadSavedProfiles(userId),
+      this.listBlockedUsers(userId),
+      this.listSavedSearches(userId),
+      this.listVerificationRequestsForUser(userId),
+    ]);
+    return { exported_at: nowIso(), profile, messages: msgs, notifications: notifs, favorites: favs, blocked_users: blocked, saved_searches: searches, verification_requests: verifs };
+  }
+
+  // ─── Generic Collection Operations (used by /api/internal/collection) ─────
+
+  async executeCollectionOperation(collection: string, op: {
+    action: string;
+    select?: string | null;
+    filters?: Array<{ type: string; column?: string; value?: unknown; expression?: string }>;
+    order?: { column: string; ascending: boolean } | null;
+    range?: { from: number; to: number } | null;
+    limit?: number | null;
+    single?: boolean;
+    maybeSingle?: boolean;
+    payload?: any;
+  }) {
+    switch (collection) {
+      case 'profiles': {
+        if (op.action === 'select') {
+          const idFilter = (op.filters ?? []).find((f) => f.type === 'eq' && f.column === 'id');
+          if (!idFilter) {
+            const rows = await this.db.select().from(profiles);
+            return { data: rows, error: null };
+          }
+          const [row] = await this.db
+            .select()
+            .from(profiles)
+            .where(eq(profiles.id, String(idFilter.value)))
+            .limit(1);
+          return { data: (op.maybeSingle || op.single) ? (row ?? null) : (row ? [row] : []), error: null };
+        }
+        break;
+      }
+      case 'passions': {
+        if (op.action === 'select') {
+          const rows = await this.db.select().from(passions).orderBy(asc(passions.name));
+          return { data: rows, error: null };
+        }
+        break;
+      }
+      case 'languages': {
+        if (op.action === 'select') {
+          const rows = await this.db.select().from(languages).orderBy(asc(languages.name));
+          return { data: rows, error: null };
+        }
+        break;
+      }
+      case 'profile_passions': {
+        if (op.action === 'select') {
+          const profileIdFilter = (op.filters ?? []).find((f) => f.type === 'eq' && f.column === 'profile_id');
+          if (!profileIdFilter) return { data: [], error: null };
+          const rows = await this.db
+            .select({ passion_id: profilePassions.passion_id, passions: { name: passions.name } })
+            .from(profilePassions)
+            .innerJoin(passions, eq(profilePassions.passion_id, passions.id))
+            .where(eq(profilePassions.profile_id, String(profileIdFilter.value)));
+          return { data: rows, error: null };
+        }
+        break;
+      }
+      case 'saved_searches': {
+        if (op.action === 'select') {
+          const userIdFilter = (op.filters ?? []).find((f) => f.type === 'eq' && f.column === 'user_id');
+          const userId = userIdFilter ? String(userIdFilter.value) : this.requireUserId();
+          const rows = await this.db
+            .select()
+            .from(savedSearches)
+            .where(eq(savedSearches.user_id, userId))
+            .orderBy(desc(savedSearches.created_at));
+          return { data: rows, error: null };
+        }
+        if (op.action === 'insert' && op.payload) {
+          const [inserted] = await this.db
+            .insert(savedSearches)
+            .values({ id: randomUUID(), ...op.payload })
+            .returning();
+          return { data: inserted ?? null, error: null };
+        }
+        if (op.action === 'delete') {
+          const idFilter = (op.filters ?? []).find((f) => f.type === 'eq' && f.column === 'id');
+          if (!idFilter) return { data: null, error: { message: 'Missing id filter for delete' } };
+          await this.db.delete(savedSearches).where(eq(savedSearches.id, String(idFilter.value)));
+          return { data: null, error: null };
+        }
+        break;
+      }
+      case 'messages': {
+        if (op.action === 'select') {
+          const orFilter = (op.filters ?? []).find((f) => f.type === 'or' && f.expression);
+          if (!orFilter?.expression) return { data: [], error: null };
+          const match = orFilter.expression.match(
+            /^and\(sender_id\.eq\.([^,]+),receiver_id\.eq\.([^)]+)\),and\(sender_id\.eq\.([^,]+),receiver_id\.eq\.([^)]+)\)$/
+          );
+          if (!match) return { data: [], error: null };
+          const [, userA, userB] = match;
+          const senderProfile = aliasedTable(profiles, 'sender_profile');
+          const receiverProfile = aliasedTable(profiles, 'receiver_profile');
+          const rows = await this.db
+            .select({
+              id: messages.id,
+              created_at: messages.created_at,
+              sender_id: messages.sender_id,
+              receiver_id: messages.receiver_id,
+              content: messages.content,
+              sender: {
+                id: senderProfile.id,
+                first_name: senderProfile.first_name,
+                last_name: senderProfile.last_name,
+              },
+              receiver: {
+                id: receiverProfile.id,
+                first_name: receiverProfile.first_name,
+                last_name: receiverProfile.last_name,
+              },
+            })
+            .from(messages)
+            .leftJoin(senderProfile, eq(messages.sender_id, senderProfile.id))
+            .leftJoin(receiverProfile, eq(messages.receiver_id, receiverProfile.id))
+            .where(
+              or(
+                and(eq(messages.sender_id, userA), eq(messages.receiver_id, userB)),
+                and(eq(messages.sender_id, userB), eq(messages.receiver_id, userA))
+              )
+            )
+            .orderBy(desc(messages.created_at))
+            .offset(op.range?.from ?? 0)
+            .limit(op.range != null ? op.range.to - op.range.from + 1 : (op.limit ?? 50));
+          return { data: rows, error: null };
+        }
+        if (op.action === 'insert' && op.payload) {
+          const [inserted] = await this.db
+            .insert(messages)
+            .values({ id: randomUUID(), ...op.payload })
+            .returning();
+          return { data: inserted ?? null, error: null };
+        }
+        break;
+      }
+      default:
+        return { data: null, error: { message: `Unknown collection: ${collection}` } };
+    }
+    return { data: null, error: { message: `Unsupported operation: ${collection}.${op.action}` } };
+  }
+
+  // ─── Compat RPC (used by /api/internal/rpc) ───────────────────────────────
+
+  async invokeCompatFunction(_name: string, _data?: any) {
+    // Push notifications are dispatched separately via the Appwrite Functions replacement.
+    // For now, this is a no-op placeholder. Implement with your push provider of choice.
+    return { data: null, error: null };
   }
 
   async executeCompatRpc(name: string, args?: Record<string, any>) {
@@ -1404,12 +1307,7 @@ export class AppDataService {
       case 'unblock_user':
         return this.unblockUser(String(args?.target_id ?? ''));
       case 'list_blocked_users':
-        return {
-          data: await this.listBlockedUsers(
-            typeof args?.user_id === 'string' && args.user_id.trim() ? args.user_id : undefined
-          ),
-          error: null,
-        };
+        return { data: await this.listBlockedUsers(args?.user_id ?? undefined), error: null };
       case 'is_saved':
         return this.isSaved(String(args?.target_id ?? ''));
       case 'save_profile':
@@ -1437,1554 +1335,64 @@ export class AppDataService {
         return this.searchProfiles(args ?? {});
       case 'get_suggested_profiles':
         return this.getSuggestedProfiles(String(args?.current_user_id ?? ''), Number(args?.p_limit ?? 5));
+      case 'get_profile_passions': {
+        const profileId = String(args?.profile_id ?? '');
+        const rows = await this.db
+          .select({ name: passions.name })
+          .from(profilePassions)
+          .innerJoin(passions, eq(profilePassions.passion_id, passions.id))
+          .where(eq(profilePassions.profile_id, profileId))
+          .orderBy(asc(passions.name));
+        return { data: rows.map((r) => r.name), error: null };
+      }
+      case 'get_profile_languages': {
+        const profileId = String(args?.profile_id ?? '');
+        const rows = await this.db
+          .select({ name: languages.name })
+          .from(profileLanguages)
+          .innerJoin(languages, eq(profileLanguages.language_id, languages.id))
+          .where(eq(profileLanguages.profile_id, profileId))
+          .orderBy(asc(languages.name));
+        return { data: rows.map((r) => r.name), error: null };
+      }
       default:
         return { data: null, error: { message: `Unsupported RPC: ${name}` } };
     }
   }
 
-  async listDocuments(collectionId: string) {
-    const response = await this.executeCollectionOperation(collectionId, {
-      action: 'select',
-    });
+  async executeCompatQuery(_query: any, _params?: any[]) {
+    return { data: null, error: null };
+  }
 
-    return { documents: (response.data as any[]) ?? [] };
+  // ─── Generic collection ops (kept for compatibility) ─────────────────────
+
+  async listDocuments(collectionId: string) {
+    // Generic listing is used by admin routes
+    const tableMap: Record<string, any> = {
+      profiles, locations, passions, languages, profilePassions, profileLanguages,
+      favorites, blockedUsers, messages, userPresence, savedSearches,
+      notifications, reports, verificationRequests, pushSubscriptions, adminSettings, contactRequests,
+    };
+    const camelId = collectionId.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const table = tableMap[collectionId] ?? tableMap[camelId];
+    if (!table) return { documents: [] };
+    const rows = await this.db.select().from(table);
+    return { documents: rows };
   }
 
   async deleteDocument(collectionId: string, documentId: string) {
-    const response = await this.executeCollectionOperation(collectionId, {
-      action: 'delete',
-      filters: [{ type: 'eq', column: 'id', value: documentId }],
-    });
-
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
-
+    const tableMap: Record<string, any> = {
+      profiles, locations, passions, languages,
+      profile_passions: profilePassions, profile_languages: profileLanguages,
+      favorites, blocked_users: blockedUsers, messages,
+      user_presence: userPresence, saved_searches: savedSearches,
+      notifications, reports, verification_requests: verificationRequests,
+      push_subscriptions: pushSubscriptions, admin_settings: adminSettings,
+      contact_requests: contactRequests,
+    };
+    const table = tableMap[collectionId];
+    if (!table) return { success: false };
+    await this.db.delete(table).where(eq((table as any).id, documentId));
     return { success: true };
-  }
-
-  async saveProfileData(id: string, data: any) {
-    let locationId = data.location_id ?? null;
-
-    if (data.location?.city && data.location?.country) {
-      locationId = this.resolveStaticLocationId(data.location);
-    }
-
-    const profilePayload = {
-      id,
-      first_name: data.first_name,
-      last_name: data.last_name,
-      about_me: data.about_me ?? '',
-      age: data.birth_date ? null : data.age ?? null,
-      birth_date: normalizeBirthDate(data.birth_date),
-      gender: data.gender ?? null,
-      location_id: locationId,
-      updated_at: new Date().toISOString(),
-    };
-
-    const upsertProfile = await this.executeCollectionOperation('profiles', {
-      action: 'upsert',
-      payload: profilePayload,
-    });
-
-    if (upsertProfile.error) {
-      throw new Error(upsertProfile.error.message);
-    }
-
-    await this.executeCollectionOperation('profile_languages', {
-      action: 'delete',
-      filters: [{ type: 'eq', column: 'profile_id', value: id }],
-    });
-
-    await this.executeCollectionOperation('profile_passions', {
-      action: 'delete',
-      filters: [{ type: 'eq', column: 'profile_id', value: id }],
-    });
-
-    if (Array.isArray(data.languages) && data.languages.length) {
-      const languageLookup = await this.listAllDocuments('languages');
-      const inserts = data.languages
-        .map((languageName: string) =>
-          languageLookup.find((language) => lowerCase(language.name) === lowerCase(languageName))
-        )
-        .filter(Boolean)
-        .map((language: { id: string; name: string }) => ({
-          profile_id: id,
-          language_id: language.id,
-        }));
-
-      if (inserts.length) {
-        await this.executeCollectionOperation('profile_languages', {
-          action: 'insert',
-          payload: inserts,
-        });
-      }
-    }
-
-    if (Array.isArray(data.passions) && data.passions.length) {
-      const passionLookup = await this.listAllDocuments('passions');
-      const inserts = data.passions
-        .map((passionName: string) =>
-          passionLookup.find((passion) => lowerCase(passion.name) === lowerCase(passionName))
-        )
-        .filter(Boolean)
-        .map((passion: { id: string; name: string }) => ({
-          profile_id: id,
-          passion_id: passion.id,
-        }));
-
-      if (inserts.length) {
-        await this.executeCollectionOperation('profile_passions', {
-          action: 'insert',
-          payload: inserts,
-        });
-      }
-    }
-
-    return this.getProfile(id);
-  }
-
-  async deleteProfile(id: string) {
-    await Promise.all([
-      this.executeCollectionOperation('profile_languages', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'profile_id', value: id }],
-      }),
-      this.executeCollectionOperation('profile_passions', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'profile_id', value: id }],
-      }),
-      this.executeCollectionOperation('favorites', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'user_id', value: id }],
-      }),
-      this.executeCollectionOperation('favorites', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'favorite_id', value: id }],
-      }),
-      this.executeCollectionOperation('saved_searches', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'user_id', value: id }],
-      }),
-      this.executeCollectionOperation('blocked_users', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'blocker_id', value: id }],
-      }),
-      this.executeCollectionOperation('blocked_users', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'blocked_id', value: id }],
-      }),
-      this.executeCollectionOperation('messages', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'sender_id', value: id }],
-      }),
-      this.executeCollectionOperation('messages', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'receiver_id', value: id }],
-      }),
-      this.executeCollectionOperation('notifications', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'receiver_id', value: id }],
-      }),
-      this.executeCollectionOperation('notifications', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'actor_id', value: id }],
-      }),
-      this.executeCollectionOperation('reports', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'reporter_id', value: id }],
-      }),
-      this.executeCollectionOperation('reports', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'reported_id', value: id }],
-      }),
-      this.executeCollectionOperation('verification_requests', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'user_id', value: id }],
-      }),
-      this.executeCollectionOperation('push_subscriptions', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'user_id', value: id }],
-      }),
-      this.executeCollectionOperation('user_presence', {
-        action: 'delete',
-        filters: [{ type: 'eq', column: 'user_id', value: id }],
-      }),
-    ]);
-
-    return this.deleteDocument('profiles', id);
-  }
-
-  async listNotifications() {
-    const currentUser = await this.requireCurrentUser();
-    const response = await this.executeCollectionOperation('notifications', {
-      action: 'select',
-      filters: [{ type: 'eq', column: 'receiver_id', value: currentUser.id }],
-      order: { column: 'created_at', ascending: false },
-    });
-
-    const notifications = (response.data as any[] | null) ?? [];
-
-    const actorIds = [...new Set(
-      notifications.map((n) => n.actor_id).filter(Boolean)
-    )];
-    const profilesById = actorIds.length > 0
-      ? await this.fetchByIds('profiles', actorIds)
-      : new Map();
-
-    return notifications.map((notification) => {
-      const profile = notification.actor_id
-        ? profilesById.get(String(notification.actor_id))
-        : undefined;
-      const actorName = profile
-        ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') || undefined
-        : undefined;
-
-      return {
-        id: notification.id,
-        type: notification.type,
-        read: notification.read ?? false,
-        createdAt: notification.created_at,
-        actorId: notification.actor_id ?? undefined,
-        actorName,
-        title: notification.title ?? undefined,
-        body: notification.body ?? undefined,
-        url: notification.url ?? undefined,
-      };
-    });
-  }
-
-  async markNotificationRead(notificationId: string) {
-    await this.requireCurrentUser();
-
-    return this.executeCollectionOperation('notifications', {
-      action: 'update',
-      filters: [{ type: 'eq', column: 'id', value: notificationId }],
-      payload: { read: true },
-    });
-  }
-
-  async markAllNotificationsRead() {
-    const currentUser = await this.requireCurrentUser();
-
-    return this.executeCollectionOperation('notifications', {
-      action: 'update',
-      filters: [{ type: 'eq', column: 'receiver_id', value: currentUser.id }],
-      payload: { read: true },
-    });
-  }
-
-  async createReport(payload: { reporterId: string; reportedId: string; reason: string }) {
-    return this.executeCollectionOperation('reports', {
-      action: 'insert',
-      payload: {
-        reporter_id: payload.reporterId,
-        reported_id: payload.reportedId,
-        reason: payload.reason,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-      },
-    });
-  }
-
-  async listReports() {
-    const response = await this.executeCollectionOperation('reports', {
-      action: 'select',
-      order: { column: 'created_at', ascending: false },
-    });
-    const reports = (response.data as any[]) ?? [];
-    const profileIds = unique(
-      reports.flatMap((report) => [report.reporter_id, report.reported_id]).filter(Boolean)
-    );
-    const profilesById = await this.fetchByIds('profiles', profileIds);
-
-    return reports.map((report) => ({
-      ...report,
-      reporter: profilesById.get(String(report.reporter_id)) || null,
-      reported: profilesById.get(String(report.reported_id)) || null,
-    }));
-  }
-
-  async updateReportStatus(id: string, status: string) {
-    return this.executeCollectionOperation('reports', {
-      action: 'update',
-      filters: [{ type: 'eq', column: 'id', value: id }],
-      payload: { status },
-    });
-  }
-
-  async listVerificationRequests() {
-    const response = await this.executeCollectionOperation('verification_requests', {
-      action: 'select',
-      order: { column: 'created_at', ascending: false },
-    });
-    const requests = (response.data as any[]) ?? [];
-    const profilesById = await this.fetchByIds(
-      'profiles',
-      requests.map((request) => request.user_id).filter(Boolean)
-    );
-
-    return requests.map((request) => ({
-      ...request,
-      profiles: profilesById.get(String(request.user_id)) || null,
-    }));
-  }
-
-  async updateVerificationRequest(id: string, status: string, userId?: string) {
-    await this.executeCollectionOperation('verification_requests', {
-      action: 'update',
-      filters: [{ type: 'eq', column: 'id', value: id }],
-      payload: { status },
-    });
-
-    if (status === 'approved' && userId) {
-      await this.executeCollectionOperation('profiles', {
-        action: 'update',
-        filters: [{ type: 'eq', column: 'id', value: userId }],
-        payload: { verified: true },
-      });
-    }
-
-    return { success: true };
-  }
-
-  async getAdminSettings() {
-    const response = await this.executeCollectionOperation('admin_settings', {
-      action: 'select',
-      filters: [{ type: 'eq', column: 'id', value: ADMIN_SETTINGS_DOCUMENT_ID }],
-      maybeSingle: true,
-    });
-
-    if (response.error || !response.data) {
-      return { ...DEFAULT_ADMIN_SYSTEM_CONTROLS };
-    }
-
-    return normalizeAdminSystemControls(response.data);
-  }
-
-  async updateAdminSettings(patch: {
-    maintenanceBannerText?: string;
-    moderationHold?: boolean;
-    followUpUserIds?: string[];
-  }) {
-    const current = await this.getAdminSettings();
-    const updatedAt = new Date().toISOString();
-    const next = normalizeAdminSystemControls({
-      ...current,
-      maintenanceBannerText:
-        patch.maintenanceBannerText !== undefined ? patch.maintenanceBannerText : current.maintenanceBannerText,
-      moderationHold: patch.moderationHold !== undefined ? patch.moderationHold : current.moderationHold,
-      followUpUserIds: patch.followUpUserIds ?? current.followUpUserIds,
-      updatedAt,
-    });
-
-    const response = await this.executeCollectionOperation('admin_settings', {
-      action: 'upsert',
-      payload: {
-        id: ADMIN_SETTINGS_DOCUMENT_ID,
-        maintenance_banner_text: next.maintenanceBannerText,
-        moderation_hold: next.moderationHold,
-        follow_up_user_ids: JSON.stringify(next.followUpUserIds),
-        updated_at: updatedAt,
-      },
-    });
-
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
-
-    return {
-      ...next,
-      updatedAt,
-    };
-  }
-
-  async toggleAdminFollowUp(userId: string, enabled: boolean) {
-    const current = await this.getAdminSettings();
-    const followUpUserIds = enabled
-      ? unique([...current.followUpUserIds, userId])
-      : current.followUpUserIds.filter((entry) => entry !== userId);
-
-    return this.updateAdminSettings({ followUpUserIds });
-  }
-
-  async listAdminNotificationsForUser(userId: string) {
-    const response = await this.executeCollectionOperation('notifications', {
-      action: 'select',
-      filters: [{ type: 'eq', column: 'receiver_id', value: userId }],
-      order: { column: 'created_at', ascending: false },
-    });
-
-    return ((response.data as any[]) ?? []).map((notification) => ({
-      id: String(notification.id ?? ''),
-      type: getStringValue(notification.type) ?? 'unknown',
-      read: notification.read === true,
-      createdAt: getStringValue(notification.created_at),
-      actorId: getStringValue(notification.actor_id),
-      title: getStringValue(notification.title),
-      body: getStringValue(notification.body),
-      url: getStringValue(notification.url),
-    }));
-  }
-
-  async setAdminUserVerified(userId: string, verified: boolean) {
-    const response = await this.executeCollectionOperation('profiles', {
-      action: 'update',
-      filters: [{ type: 'eq', column: 'id', value: userId }],
-      payload: {
-        verified,
-        updated_at: new Date().toISOString(),
-      },
-    });
-
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
-
-    if (verified) {
-      const requests = await this.listVerificationRequestsForUser(userId);
-      const pendingRequest = requests.find((request) => request.status === 'pending');
-
-      if (pendingRequest?.id) {
-        await this.updateVerificationRequest(String(pendingRequest.id), 'approved', userId);
-      }
-    }
-
-    return { success: true };
-  }
-
-  async sendAdminMessage(payload: { adminUserId: string; userId: string; content: string }) {
-    const message = await this.sendMessage(payload.adminUserId, payload.userId, payload.content);
-
-    await this.invokeCompatFunction('send-push', {
-      actor_id: payload.adminUserId,
-      receiver_id: payload.userId,
-      title: 'Admin message',
-      body: payload.content,
-      notification_type: 'message',
-      url: '/messages',
-    });
-
-    return message;
-  }
-
-  async sendAdminNotification(payload: {
-    adminUserId: string;
-    userId: string;
-    title: string;
-    body: string;
-    url?: string;
-  }) {
-    return this.invokeCompatFunction('send-push', {
-      actor_id: payload.adminUserId,
-      receiver_id: payload.userId,
-      title: payload.title,
-      body: payload.body,
-      notification_type: 'admin_notice',
-      url: payload.url ?? '/notifications',
-    });
-  }
-
-  async listAdminProfiles(options?: { query?: string | null; limit?: number | null }) {
-    const [profiles, messages, savedSearches, blockedUsers, reports, verificationRequests, locations, settings] =
-      await Promise.all([
-        this.listAllDocuments('profiles'),
-        this.listAllDocuments('messages'),
-        this.listAllDocuments('saved_searches'),
-        this.listAllDocuments('blocked_users'),
-        this.listAllDocuments('reports'),
-        this.listAllDocuments('verification_requests'),
-        this.listLocations(),
-        this.getAdminSettings(),
-      ]);
-
-    const normalizedQuery = lowerCase(options?.query);
-    const limit =
-      typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0
-        ? Math.min(Math.floor(options.limit), 25)
-        : 8;
-    const locationsById = new Map(locations.map((location: any) => [String(location.id), location]));
-    const flaggedUsers = new Set(settings.followUpUserIds);
-    const messageCountByUser = new Map<string, number>();
-    const savedSearchCountByUser = new Map<string, number>();
-    const blockedCountByUser = new Map<string, number>();
-    const openReportsByUser = new Map<string, number>();
-    const lastActiveAtByUser = new Map<string, string>();
-    const pendingVerificationByUser = new Set<string>();
-
-    for (const message of messages) {
-      const createdAt = getStringValue(message.created_at);
-
-      for (const userId of [getStringValue(message.sender_id), getStringValue(message.receiver_id)]) {
-        if (!userId) {
-          continue;
-        }
-
-        messageCountByUser.set(userId, (messageCountByUser.get(userId) ?? 0) + 1);
-
-        if (createdAt) {
-          const current = lastActiveAtByUser.get(userId);
-
-          if (!current || compareValues(createdAt, current) > 0) {
-            lastActiveAtByUser.set(userId, createdAt);
-          }
-        }
-      }
-    }
-
-    for (const search of savedSearches) {
-      const userId = getStringValue(search.user_id);
-
-      if (userId) {
-        savedSearchCountByUser.set(userId, (savedSearchCountByUser.get(userId) ?? 0) + 1);
-      }
-    }
-
-    for (const blockedUser of blockedUsers) {
-      const blockerId = getStringValue(blockedUser.blocker_id);
-
-      if (blockerId) {
-        blockedCountByUser.set(blockerId, (blockedCountByUser.get(blockerId) ?? 0) + 1);
-      }
-    }
-
-    for (const report of reports) {
-      const reportedId = getStringValue(report.reported_id);
-
-      if (reportedId && getStringValue(report.status) !== 'resolved') {
-        openReportsByUser.set(reportedId, (openReportsByUser.get(reportedId) ?? 0) + 1);
-      }
-    }
-
-    for (const request of verificationRequests) {
-      const userId = getStringValue(request.user_id);
-
-      if (userId && getStringValue(request.status) === 'pending') {
-        pendingVerificationByUser.add(userId);
-      }
-    }
-
-    return profiles
-      .map((profile) => {
-        const id = String(profile.id ?? '');
-        const displayName = buildDisplayName(profile);
-        const location = buildLocationLabel(profile, locationsById);
-        const joinedAt = getStringValue(profile.created_at);
-        const updatedAt = getStringValue(profile.updated_at);
-        const lastActiveAt =
-          updatedAt && (!lastActiveAtByUser.get(id) || compareValues(updatedAt, lastActiveAtByUser.get(id)) > 0)
-            ? updatedAt
-            : lastActiveAtByUser.get(id) ?? joinedAt;
-
-        return {
-          id,
-          displayName,
-          firstName: getStringValue(profile.first_name),
-          lastName: getStringValue(profile.last_name),
-          verified: profile.verified === true,
-          location,
-          joinedAt,
-          lastActiveAt,
-          openReports: openReportsByUser.get(id) ?? 0,
-          pendingVerification: pendingVerificationByUser.has(id),
-          savedSearchCount: savedSearchCountByUser.get(id) ?? 0,
-          blockedCount: blockedCountByUser.get(id) ?? 0,
-          messageCount: messageCountByUser.get(id) ?? 0,
-          flaggedForFollowUp: flaggedUsers.has(id),
-        };
-      })
-      .filter((profile) => {
-        if (!normalizedQuery) {
-          return true;
-        }
-
-        return [profile.displayName, profile.id, profile.location ?? '']
-          .some((value) => lowerCase(value).includes(normalizedQuery));
-      })
-      .sort((left, right) => {
-        if (left.flaggedForFollowUp !== right.flaggedForFollowUp) {
-          return left.flaggedForFollowUp ? -1 : 1;
-        }
-
-        if (left.openReports !== right.openReports) {
-          return right.openReports - left.openReports;
-        }
-
-        if (left.pendingVerification !== right.pendingVerification) {
-          return left.pendingVerification ? -1 : 1;
-        }
-
-        return compareValues(right.lastActiveAt, left.lastActiveAt) || left.displayName.localeCompare(right.displayName);
-      })
-      .slice(0, limit);
-  }
-
-  async getAdminUserInvestigation(userId: string) {
-    const [profile, profileLookup, messages, savedSearches, blockedUsers, verificationHistory, reports, notifications, locations] =
-      await Promise.all([
-        this.getProfile(userId),
-        this.listAdminProfiles({ query: userId, limit: 50 }),
-        this.listMessagesForUser(userId),
-        this.listSavedSearches(userId),
-        this.listBlockedUsers(userId),
-        this.listVerificationRequestsForUser(userId),
-        this.listReports(),
-        this.listAdminNotificationsForUser(userId),
-        this.listLocations(),
-      ]);
-
-    const baseUser = profileLookup.find((entry) => entry.id === userId);
-
-    if (!profile || !baseUser) {
-      throw new Error('User not found');
-    }
-
-    const locationsById = new Map(locations.map((location: any) => [String(location.id), location]));
-
-    return {
-      user: {
-        ...baseUser,
-        aboutMe: getStringValue((profile as any).about_me),
-        age: getNumberValue((profile as any).age),
-        gender: getStringValue((profile as any).gender),
-        passions: Array.isArray((profile as any).passions) ? (profile as any).passions : [],
-        languages: Array.isArray((profile as any).languages) ? (profile as any).languages : [],
-        isPrivate: (profile as any).is_private === true,
-      },
-      messages: messages.map((message) => ({
-        id: String(message.id ?? ''),
-        createdAt: getStringValue(message.created_at),
-        direction: message.direction === 'sent' ? 'sent' : 'received',
-        content: getStringValue(message.content) ?? '',
-        sender: {
-          id: String(message.sender?.id ?? ''),
-          firstName: getStringValue(message.sender?.first_name),
-          lastName: getStringValue(message.sender?.last_name),
-        },
-        receiver: {
-          id: String(message.receiver?.id ?? ''),
-          firstName: getStringValue(message.receiver?.first_name),
-          lastName: getStringValue(message.receiver?.last_name),
-        },
-      })),
-      savedSearches: savedSearches.map((search) => ({
-        id: String(search.id ?? ''),
-        name: getStringValue(search.name) ?? 'Saved search',
-        query: getStringValue(search.query),
-        location: getStringValue(search.location),
-        language: getStringValue(search.language),
-        gender: getStringValue(search.gender),
-        minAge: getNumberValue(search.min_age),
-        maxAge: getNumberValue(search.max_age),
-        passionIds: getStringArray(search.passion_ids),
-        createdAt: getStringValue(search.created_at),
-      })),
-      blockedUsers: blockedUsers.map((entry) => ({
-        id: String(entry.id ?? ''),
-        blockedId: getStringValue(entry.blocked_id),
-        createdAt: getStringValue(entry.created_at),
-        profile: buildAdminQueueUser(entry.profile, locationsById),
-      })),
-      verificationHistory: verificationHistory.map((entry) => ({
-        id: String(entry.id ?? ''),
-        status: getStringValue(entry.status) ?? 'pending',
-        createdAt: getStringValue(entry.created_at),
-      })),
-      notifications,
-      reportsFiled: reports
-        .filter((report) => String(report.reporter_id ?? '') === userId)
-        .map((report) => mapAdminReportQueueItem(report, locationsById)),
-      reportsAgainst: reports
-        .filter((report) => String(report.reported_id ?? '') === userId)
-        .map((report) => mapAdminReportQueueItem(report, locationsById)),
-    };
-  }
-
-  async getAdminDashboardSnapshot() {
-    const [reports, verificationRequests, settings, locations, favorites, messages, notifications, pushSubscriptions, profiles] = await Promise.all([
-      this.listReports(),
-      this.listVerificationRequests(),
-      this.getAdminSettings(),
-      this.listLocations(),
-      this.executeCollectionOperation('favorites', { action: 'select' }),
-      this.executeCollectionOperation('messages', { action: 'select' }),
-      this.executeCollectionOperation('notifications', { action: 'select' }),
-      this.executeCollectionOperation('push_subscriptions', { action: 'select' }),
-      this.executeCollectionOperation('profiles', { action: 'select' }),
-    ]);
-
-    const locationsById = new Map(locations.map((location: any) => [String(location.id), location]));
-    const pendingReports = reports
-      .filter((report) => getStringValue(report.status) === 'pending')
-      .slice(0, 5)
-      .map((report) => mapAdminReportQueueItem(report, locationsById));
-    const pendingVerificationRequests = verificationRequests
-      .filter((request) => getStringValue(request.status) === 'pending')
-      .slice(0, 5)
-      .map((request) => mapAdminVerificationQueueItem(request, locationsById));
-
-    const profileList = (profiles.data as any[]) ?? [];
-    const notificationList = (notifications.data as any[]) ?? [];
-    const verifiedProfiles = profileList.filter((p) => p.verified === true).length;
-    const completedProfiles = profileList.filter(
-      (p) =>
-        getStringValue(p.first_name) &&
-        getStringValue(p.last_name) &&
-        getStringValue(p.birth_date) &&
-        getStringValue(p.gender)
-    ).length;
-    const unreadNotifications = notificationList.filter((n) => n.read !== true).length;
-    const pendingReportCount = reports.filter((r) => getStringValue(r.status) === 'pending').length;
-    const pendingVerificationCount = verificationRequests.filter((r) => getStringValue(r.status) === 'pending').length;
-
-    const overview = {
-      totalProfiles: profileList.length,
-      verifiedProfiles,
-      completedProfiles,
-      totalMessages: ((messages.data as any[]) ?? []).length,
-      totalFavorites: ((favorites.data as any[]) ?? []).length,
-      totalNotifications: notificationList.length,
-      unreadNotifications,
-      activePushSubscriptions: ((pushSubscriptions.data as any[]) ?? []).length,
-      totalReports: reports.length,
-      pendingReports: pendingReportCount,
-      totalVerificationRequests: verificationRequests.length,
-      pendingVerificationRequests: pendingVerificationCount,
-    };
-
-    return {
-      overview,
-      queues: {
-        reports: pendingReports,
-        verificationRequests: pendingVerificationRequests,
-      },
-      quickActions: {
-        pendingReports: pendingReportCount,
-        pendingVerificationRequests: pendingVerificationCount,
-        flaggedUsers: settings.followUpUserIds.length,
-        unreadNotifications,
-        totalQueueItems: pendingReportCount + pendingVerificationCount,
-      },
-      systemControls: settings,
-      lastUpdatedAt: new Date().toISOString(),
-    };
-  }
-
-  async savePushSubscription(payload: {
-    userId: string;
-    endpoint: string;
-    p256dh?: string;
-    auth?: string;
-  }) {
-    const existing = await this.executeCollectionOperation('push_subscriptions', {
-      action: 'select',
-      filters: [
-        { type: 'eq', column: 'user_id', value: payload.userId },
-        { type: 'eq', column: 'endpoint', value: payload.endpoint },
-      ],
-      maybeSingle: true,
-    });
-
-    if (existing.data) {
-      return { success: true, duplicate: true };
-    }
-
-    await this.executeCollectionOperation('push_subscriptions', {
-      action: 'insert',
-      payload: {
-        user_id: payload.userId,
-        endpoint: payload.endpoint,
-        p256dh: payload.p256dh ?? null,
-        auth: payload.auth ?? null,
-      },
-    });
-
-    return { success: true };
-  }
-
-  async deletePushSubscription(userId: string, endpoint?: string) {
-    const filters: CollectionFilter[] = [{ type: 'eq', column: 'user_id', value: userId }];
-
-    if (endpoint) {
-      filters.push({ type: 'eq', column: 'endpoint', value: endpoint });
-    }
-
-    await this.executeCollectionOperation('push_subscriptions', {
-      action: 'delete',
-      filters,
-    });
-
-    return { success: true };
-  }
-
-  async createContactRequest(payload: {
-    name: string;
-    email: string;
-    subject: string;
-    message: string;
-    category: string;
-  }) {
-    await this.executeCollectionOperation('contact_requests', {
-      action: 'insert',
-      payload: {
-        ...payload,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-      },
-    });
-
-    return { success: true };
-  }
-
-  async listMessagesForUser(userId?: string) {
-    const resolvedUserId = userId ?? (await this.requireCurrentUser()).id;
-    const relevantMessages = await this.listMessagesForParticipant(resolvedUserId, true);
-    const profilesById = await this.fetchByIds(
-      'profiles',
-      relevantMessages.flatMap((message) => [message.sender_id, message.receiver_id]).filter(Boolean)
-    );
-
-    return relevantMessages.map((message) => {
-      const sender = profilesById.get(String(message.sender_id));
-      const receiver = profilesById.get(String(message.receiver_id));
-
-      return {
-        id: message.id,
-        created_at: message.created_at,
-        sender_id: message.sender_id,
-        receiver_id: message.receiver_id,
-        content: message.content,
-        read_at: message.read_at ?? null,
-        direction: String(message.sender_id) === resolvedUserId ? 'sent' : 'received',
-        sender: {
-          id: String(message.sender_id),
-          first_name: sender?.first_name ?? null,
-          last_name: sender?.last_name ?? null,
-        },
-        receiver: {
-          id: String(message.receiver_id),
-          first_name: receiver?.first_name ?? null,
-          last_name: receiver?.last_name ?? null,
-        },
-      };
-    });
-  }
-
-  private async trackPresence(_requestedUserId?: string, requestedOnlineAt?: string) {
-    const currentUser = await this.requireCurrentUser();
-    const onlineAt = typeof requestedOnlineAt === 'string' && !Number.isNaN(Date.parse(requestedOnlineAt))
-      ? requestedOnlineAt
-      : new Date().toISOString();
-
-    await this.executeCollectionOperation('user_presence', {
-      action: 'upsert',
-      payload: {
-        id: currentUser.id,
-        user_id: currentUser.id,
-        online_at: onlineAt,
-      },
-    });
-
-    return {
-      data: {
-        user_id: currentUser.id,
-        online_at: onlineAt,
-      },
-      error: null,
-    };
-  }
-
-  private async clearPresence(_requestedUserId?: string) {
-    const currentUser = await this.requireCurrentUser();
-
-    await this.executeCollectionOperation('user_presence', {
-      action: 'delete',
-      filters: [{ type: 'eq', column: 'user_id', value: currentUser.id }],
-    });
-
-    return { data: true, error: null };
-  }
-
-  private async getOnlineUsers() {
-    const now = Date.now();
-    const presenceRows = await this.listAllDocuments('user_presence', [Query.orderDesc('online_at')]);
-    const activeRows: Array<{ user_id: string; online_at: string }> = [];
-    const staleUserIds: string[] = [];
-
-    for (const row of presenceRows) {
-      const userId = String(row.user_id ?? '');
-      const onlineAtValue = typeof row.online_at === 'string' ? Date.parse(row.online_at) : Number.NaN;
-
-      if (!userId) {
-        continue;
-      }
-
-      if (!Number.isNaN(onlineAtValue) && now - onlineAtValue <= PRESENCE_TTL_MS) {
-        activeRows.push({ user_id: userId, online_at: row.online_at });
-      } else {
-        staleUserIds.push(userId);
-      }
-    }
-
-    if (staleUserIds.length) {
-      await this.executeCollectionOperation('user_presence', {
-        action: 'delete',
-        filters: [{ type: 'in', column: 'user_id', value: unique(staleUserIds) }],
-      });
-    }
-
-    return {
-      data: activeRows,
-      error: null,
-    };
-  }
-
-  async listBlockedUsers(userId?: string) {
-    const resolvedUserId = userId ?? (await this.requireCurrentUser()).id;
-    const response = await this.executeCollectionOperation('blocked_users', {
-      action: 'select',
-      filters: [{ type: 'eq', column: 'blocker_id', value: resolvedUserId }],
-      order: { column: 'created_at', ascending: false },
-      select:
-        'id, blocker_id, blocked_id, created_at, profile:profiles!blocked_users_blocked_id_fkey(id, first_name, last_name, avatar_url)',
-    });
-
-    return (response.data as any[]) ?? [];
-  }
-
-  async listSavedSearches(userId?: string) {
-    const resolvedUserId = userId ?? (await this.requireCurrentUser()).id;
-    const response = await this.executeCollectionOperation('saved_searches', {
-      action: 'select',
-      filters: [{ type: 'eq', column: 'user_id', value: resolvedUserId }],
-      order: { column: 'created_at', ascending: false },
-      select: 'id, name, query, location, min_age, max_age, language, gender, passion_ids, created_at',
-    });
-
-    return (response.data as any[]) ?? [];
-  }
-
-  async listVerificationRequestsForUser(userId?: string) {
-    const resolvedUserId = userId ?? (await this.requireCurrentUser()).id;
-    const response = await this.executeCollectionOperation('verification_requests', {
-      action: 'select',
-      filters: [{ type: 'eq', column: 'user_id', value: resolvedUserId }],
-      order: { column: 'created_at', ascending: false },
-    });
-
-    return (response.data as any[]) ?? [];
-  }
-
-  async exportCurrentUserData() {
-    const currentUser = await this.requireCurrentUser();
-    const [profile, messages, notifications, favorites, blockedUsers, savedSearches, verificationRequests] =
-      await Promise.all([
-        this.getProfile(currentUser.id),
-        this.listMessagesForUser(currentUser.id),
-        this.listNotifications(),
-        this.loadSavedProfiles(currentUser.id),
-        this.listBlockedUsers(currentUser.id),
-        this.listSavedSearches(currentUser.id),
-        this.listVerificationRequestsForUser(currentUser.id),
-      ]);
-
-    return {
-      exported_at: new Date().toISOString(),
-      user: currentUser,
-      profile,
-      messages,
-      notifications,
-      favorites,
-      blocked_users: blockedUsers,
-      saved_searches: savedSearches,
-      verification_requests: verificationRequests,
-    };
-  }
-
-  private async getDistinctCountries() {
-    const locations = await this.listLocations();
-    return {
-      data: unique(locations.map((location: any) => location.country).filter(Boolean))
-        .sort((left, right) => left.localeCompare(right))
-        .map((country) => ({ country })),
-      error: null,
-    };
-  }
-
-  private async getDistinctRegions(country?: string) {
-    const locations = await this.listLocations();
-    const regions = unique(
-      locations
-        .filter((location: any) => !country || location.country === country)
-        .map((location: any) => location.region)
-        .filter(Boolean)
-    ).sort((left, right) => left.localeCompare(right));
-
-    return {
-      data: regions.map((region) => ({ region })),
-      error: null,
-    };
-  }
-
-  private async getDistinctCities(country?: string, region?: string) {
-    const locations = await this.listLocations();
-    const cities = unique(
-      locations
-        .filter((location: any) => (!country || location.country === country) && (!region || location.region === region))
-        .map((location: any) => location.city)
-        .filter(Boolean)
-    ).sort((left, right) => left.localeCompare(right));
-
-    return {
-      data: cities.map((city) => ({ city })),
-      error: null,
-    };
-  }
-
-  private async isBlocked(targetId: string) {
-    const currentUser = await this.requireCurrentUser();
-    const response = await this.executeCollectionOperation('blocked_users', {
-      action: 'select',
-      filters: [
-        { type: 'eq', column: 'blocker_id', value: currentUser.id },
-        { type: 'eq', column: 'blocked_id', value: targetId },
-      ],
-      maybeSingle: true,
-    });
-
-    return { data: Boolean(response.data), error: response.error };
-  }
-
-  private async isBlockedBy(targetId: string) {
-    const currentUser = await this.requireCurrentUser();
-    const response = await this.executeCollectionOperation('blocked_users', {
-      action: 'select',
-      filters: [
-        { type: 'eq', column: 'blocker_id', value: targetId },
-        { type: 'eq', column: 'blocked_id', value: currentUser.id },
-      ],
-      maybeSingle: true,
-    });
-
-    return { data: Boolean(response.data), error: response.error };
-  }
-
-  private async blockUser(targetId: string) {
-    const currentUser = await this.requireCurrentUser();
-    const response = await this.executeCollectionOperation('blocked_users', {
-      action: 'select',
-      filters: [
-        { type: 'eq', column: 'blocker_id', value: currentUser.id },
-        { type: 'eq', column: 'blocked_id', value: targetId },
-      ],
-      maybeSingle: true,
-    });
-
-    if (!response.data) {
-      await this.executeCollectionOperation('blocked_users', {
-        action: 'insert',
-        payload: {
-          blocker_id: currentUser.id,
-          blocked_id: targetId,
-          created_at: new Date().toISOString(),
-        },
-      });
-    }
-
-    return { data: true, error: null };
-  }
-
-  private async unblockUser(targetId: string) {
-    const currentUser = await this.requireCurrentUser();
-    await this.executeCollectionOperation('blocked_users', {
-      action: 'delete',
-      filters: [
-        { type: 'eq', column: 'blocker_id', value: currentUser.id },
-        { type: 'eq', column: 'blocked_id', value: targetId },
-      ],
-    });
-
-    return { data: true, error: null };
-  }
-
-  private async isSaved(targetId: string) {
-    const currentUser = await this.requireCurrentUser();
-    const response = await this.executeCollectionOperation('favorites', {
-      action: 'select',
-      filters: [
-        { type: 'eq', column: 'user_id', value: currentUser.id },
-        { type: 'eq', column: 'favorite_id', value: targetId },
-      ],
-      maybeSingle: true,
-    });
-
-    return { data: Boolean(response.data), error: response.error };
-  }
-
-  private async saveProfileToFavorites(targetId: string) {
-    const currentUser = await this.requireCurrentUser();
-    const existing = await this.isSaved(targetId);
-
-    if (!existing.data) {
-      await this.executeCollectionOperation('favorites', {
-        action: 'insert',
-        payload: {
-          user_id: currentUser.id,
-          favorite_id: targetId,
-          created_at: new Date().toISOString(),
-        },
-      });
-    }
-
-    return { data: true, error: null };
-  }
-
-  private async unsaveProfile(targetId: string) {
-    const currentUser = await this.requireCurrentUser();
-    await this.executeCollectionOperation('favorites', {
-      action: 'delete',
-      filters: [
-        { type: 'eq', column: 'user_id', value: currentUser.id },
-        { type: 'eq', column: 'favorite_id', value: targetId },
-      ],
-    });
-
-    return { data: true, error: null };
-  }
-
-  private async loadSavedProfiles(currentUserId: string) {
-    const favoriteRows = await this.executeCollectionOperation('favorites', {
-      action: 'select',
-      filters: [{ type: 'eq', column: 'user_id', value: currentUserId }],
-      select: 'favorite_id',
-    });
-
-    const favoriteIds = ((favoriteRows.data as any[]) ?? []).map((row) => row.favorite_id);
-
-    if (!favoriteIds.length) {
-      return [];
-    }
-
-    const [profilesResponse, passionsResponse, languagesResponse, locations] = await Promise.all([
-      this.executeCollectionOperation('profiles', {
-        action: 'select',
-        filters: [{ type: 'in', column: 'id', value: favoriteIds }],
-        select:
-          'id, first_name, last_name, about_me, age, gender, location_id, created_at, is_private, show_age, show_location',
-      }),
-      this.executeCollectionOperation('profile_passions', {
-        action: 'select',
-        filters: [{ type: 'in', column: 'profile_id', value: favoriteIds }],
-        select: 'profile_id, passions(name)',
-      }),
-      this.executeCollectionOperation('profile_languages', {
-        action: 'select',
-        filters: [{ type: 'in', column: 'profile_id', value: favoriteIds }],
-        select: 'profile_id, languages(name)',
-      }),
-      this.listLocations(),
-    ]);
-
-    const locationsById = new Map(
-      locations.map((location: any) => [String(location.id), location])
-    );
-    const passionsByProfileId = new Map<string, string[]>();
-    const languagesByProfileId = new Map<string, string[]>();
-
-    for (const row of (passionsResponse.data as any[]) ?? []) {
-      const names = passionsByProfileId.get(String(row.profile_id)) ?? [];
-      if (row.passions?.name) {
-        names.push(row.passions.name);
-      }
-      passionsByProfileId.set(String(row.profile_id), names);
-    }
-
-    for (const row of (languagesResponse.data as any[]) ?? []) {
-      const names = languagesByProfileId.get(String(row.profile_id)) ?? [];
-      if (row.languages?.name) {
-        names.push(row.languages.name);
-      }
-      languagesByProfileId.set(String(row.profile_id), names);
-    }
-
-    const profilesById = new Map(
-      ((profilesResponse.data as any[]) ?? []).map((profile) => [String(profile.id), profile])
-    );
-
-    return favoriteIds
-      .map((favoriteId) => {
-        const profile = profilesById.get(String(favoriteId));
-
-        if (!profile) {
-          return null;
-        }
-
-        const location = profile.location_id ? locationsById.get(String(profile.location_id)) : null;
-
-        return {
-          id: profile.id,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          about_me: profile.about_me,
-          location: profile.show_location === false ? null : location?.city ?? null,
-          age: profile.show_age === false ? null : profile.age,
-          gender: profile.gender,
-          profile_languages: languagesByProfileId.get(String(profile.id)) ?? [],
-          created_at: profile.created_at,
-          profilepassions: passionsByProfileId.get(String(profile.id)) ?? [],
-          is_private: profile.is_private,
-          show_age: profile.show_age,
-          show_location: profile.show_location,
-        };
-      })
-      .filter(Boolean);
-  }
-
-  private async getSavedProfiles() {
-    const currentUser = await this.requireCurrentUser();
-
-    return {
-      data: await this.loadSavedProfiles(currentUser.id),
-      error: null,
-    };
-  }
-
-  private async getConversations(currentUserId: string) {
-    const relevantMessages = await this.listMessagesForParticipant(currentUserId, false);
-    const conversationMap = new Map<string, any>();
-
-    for (const message of relevantMessages) {
-      const otherUserId = String(message.sender_id) === currentUserId ? String(message.receiver_id) : String(message.sender_id);
-      const current = conversationMap.get(otherUserId);
-
-      if (!current || compareValues(message.created_at, current.last_message_time) > 0) {
-        conversationMap.set(otherUserId, {
-          conversation_id: otherUserId,
-          user_id: otherUserId,
-          last_message: message.content,
-          last_message_time: message.created_at,
-          unread:
-            String(message.receiver_id) === currentUserId && !message.read_at
-              ? (current?.unread ?? 0) + 1
-              : current?.unread ?? 0,
-        });
-      } else if (String(message.receiver_id) === currentUserId && !message.read_at) {
-        current.unread = (current.unread ?? 0) + 1;
-      }
-    }
-
-    const profilesById = await this.fetchByIds('profiles', Array.from(conversationMap.keys()));
-
-    return {
-      data: Array.from(conversationMap.values())
-        .map((conversation) => {
-          const profile = profilesById.get(String(conversation.user_id));
-          const firstName = profile?.first_name ?? '';
-          const lastName = profile?.last_name ?? '';
-          return {
-            ...conversation,
-            first_name: firstName,
-            last_name: lastName,
-            full_name: [firstName, lastName].filter(Boolean).join(' ').trim(),
-          };
-        })
-        .sort((left, right) => compareValues(right.last_message_time, left.last_message_time)),
-      error: null,
-    };
-  }
-
-  private async getRecentConversations(currentUserId: string) {
-    const conversations = await this.getConversations(currentUserId);
-
-    return {
-      data: ((conversations.data as any[]) ?? []).slice(0, 5),
-      error: conversations.error,
-    };
-  }
-
-  private async markMessagesAsRead(senderId: string, receiverId: string) {
-    const currentUser = await this.requireCurrentUser();
-    const resolvedReceiverId = receiverId || currentUser.id;
-
-    await this.executeCollectionOperation('messages', {
-      action: 'update',
-      filters: [
-        { type: 'eq', column: 'sender_id', value: senderId },
-        { type: 'eq', column: 'receiver_id', value: resolvedReceiverId },
-      ],
-      payload: { read_at: new Date().toISOString() },
-    });
-
-    return { data: true, error: null };
-  }
-
-  private async searchProfiles(filters: Record<string, any>) {
-    const currentUserId = filters.p_current_user_id ? String(filters.p_current_user_id) : undefined;
-    const toNullableNumber = (value: unknown) => {
-      if (value === null || value === undefined || value === '') {
-        return null;
-      }
-
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : null;
-    };
-    const loadBlockedRows = async (column: 'blocker_id' | 'blocked_id') => {
-      if (!currentUserId) {
-        return [];
-      }
-
-      try {
-        return await this.listAllDocuments('blocked_users', [Query.equal(column, currentUserId)]);
-      } catch {
-        const allBlockedRows = await this.listAllDocuments('blocked_users');
-        return allBlockedRows.filter((row) => String(row[column]) === currentUserId);
-      }
-    };
-    const [locations, passions, languages, blockedByCurrentRows, blockedCurrentRows] = await Promise.all([
-      this.listLocations(),
-      this.listAllDocuments('passions'),
-      this.listAllDocuments('languages'),
-      loadBlockedRows('blocker_id'),
-      loadBlockedRows('blocked_id'),
-    ]);
-
-    const locationsById = new Map<string, any>(locations.map((location: any) => [String(location.id), location]));
-    const passionsById = new Map<string, any>(passions.map((passion: any) => [String(passion.id), passion]));
-    const languagesById = new Map<string, any>(languages.map((language: any) => [String(language.id), language]));
-
-    const blockedByCurrent = new Set<string>();
-    const blockedCurrent = new Set<string>();
-
-    for (const block of blockedByCurrentRows) {
-      blockedByCurrent.add(String(block.blocked_id));
-    }
-
-    for (const block of blockedCurrentRows) {
-      blockedCurrent.add(String(block.blocker_id));
-    }
-
-    const query = lowerCase(filters.p_query);
-    const locationQuery = lowerCase(filters.p_location);
-    const languageQuery = lowerCase(filters.p_language);
-    const genderFilter = lowerCase(filters.p_gender);
-    const passionFilter = Array.isArray(filters.p_passion_ids)
-      ? filters.p_passion_ids.map((value: unknown) => String(value))
-      : [];
-    const minAge = toNullableNumber(filters.p_min_age);
-    const maxAge = toNullableNumber(filters.p_max_age);
-    const offset = Math.max(0, Math.floor(toNullableNumber(filters.p_offset) ?? 0));
-    const limit = Math.max(1, Math.floor(toNullableNumber(filters.p_limit) ?? 10));
-    const matchedLocationIds = locationQuery
-      ? locations
-        .filter((location: any) => {
-          const locationValue = [location.city, location.region, location.country].filter(Boolean).join(', ');
-          return lowerCase(locationValue).includes(locationQuery);
-        })
-        .map((location: any) => String(location.id))
-      : [];
-
-    if (locationQuery && !matchedLocationIds.length) {
-      return {
-        data: [],
-        error: null,
-      };
-    }
-
-    const profileQueries = [Query.orderDesc('created_at')];
-
-    if (matchedLocationIds.length) {
-      profileQueries.push(Query.equal('location_id', matchedLocationIds));
-    }
-
-    const targetResultCount = offset + limit;
-    const batchSize = Math.min(BATCH_SIZE, Math.max(limit, 25));
-    const results: Array<Record<string, any>> = [];
-    let profileOffset = 0;
-
-    while (results.length < targetResultCount) {
-      const profiles = await this.listDocumentsPage('profiles', profileQueries, batchSize, profileOffset);
-
-      if (!profiles.length) {
-        break;
-      }
-
-      profileOffset += profiles.length;
-
-      const candidateProfiles = profiles.filter((profile) => {
-        const profileId = String(profile.id);
-
-        if (currentUserId && profileId === currentUserId) {
-          return false;
-        }
-
-        if (currentUserId && (blockedByCurrent.has(profileId) || blockedCurrent.has(profileId))) {
-          return false;
-        }
-
-        const profileAge = calculateProfileAge(profile);
-
-        if (minAge !== null && (profileAge === null || profileAge < minAge)) {
-          return false;
-        }
-
-        if (maxAge !== null && (profileAge === null || profileAge > maxAge)) {
-          return false;
-        }
-
-        if (genderFilter && lowerCase(profile.gender) !== genderFilter) {
-          return false;
-        }
-
-        if (query) {
-          const haystack = [profile.first_name, profile.last_name, profile.about_me]
-            .map((value) => lowerCase(value))
-            .join(' ');
-
-          if (!haystack.includes(query)) {
-            return false;
-          }
-        }
-
-        if (locationQuery) {
-          const location = profile.location_id ? locationsById.get(String(profile.location_id)) : null;
-          const locationValue = location ? [location.city, location.region, location.country].filter(Boolean).join(', ') : null;
-
-          if (!lowerCase(locationValue).includes(locationQuery)) {
-            return false;
-          }
-        }
-
-        return true;
-      });
-
-      if (candidateProfiles.length) {
-        const candidateProfileIds = candidateProfiles.map((profile) => String(profile.id));
-        const [passionRows, languageRows] = await Promise.all([
-          this.listAllDocuments('profile_passions', [Query.equal('profile_id', candidateProfileIds)]),
-          this.listAllDocuments('profile_languages', [Query.equal('profile_id', candidateProfileIds)]),
-        ]);
-        const passionsByProfile = new Map<string, string[]>();
-        const passionIdsByProfile = new Map<string, string[]>();
-        const languagesByProfile = new Map<string, string[]>();
-
-        for (const row of passionRows) {
-          const profileId = String(row.profile_id);
-          const names = passionsByProfile.get(profileId) ?? [];
-          const ids = passionIdsByProfile.get(profileId) ?? [];
-          const passion = passionsById.get(String(row.passion_id));
-
-          if (passion?.name) {
-            names.push(passion.name);
-          }
-
-          if (row.passion_id) {
-            ids.push(String(row.passion_id));
-          }
-
-          passionsByProfile.set(profileId, names);
-          passionIdsByProfile.set(profileId, ids);
-        }
-
-        for (const row of languageRows) {
-          const profileId = String(row.profile_id);
-          const names = languagesByProfile.get(profileId) ?? [];
-          const language = languagesById.get(String(row.language_id));
-
-          if (language?.name) {
-            names.push(language.name);
-          }
-
-          languagesByProfile.set(profileId, names);
-        }
-
-        const matchedProfiles = candidateProfiles
-          .map((profile) => {
-            const location = profile.location_id ? locationsById.get(String(profile.location_id)) : null;
-            return {
-              id: profile.id,
-              first_name: profile.first_name ?? null,
-              last_name: profile.last_name ?? null,
-              about_me: profile.about_me ?? null,
-              location: location ? [location.city, location.region, location.country].filter(Boolean).join(', ') : null,
-              age: profile.show_age === false ? null : calculateProfileAge(profile),
-              gender: profile.gender ?? null,
-              profile_languages: languagesByProfile.get(String(profile.id)) ?? [],
-              created_at: profile.created_at,
-              last_login: profile.last_login ?? null,
-              profilepassions: passionsByProfile.get(String(profile.id)) ?? [],
-              is_private: profile.is_private ?? false,
-              show_age: profile.show_age ?? true,
-              show_location: profile.show_location ?? true,
-            };
-          })
-          .filter((profile) => {
-            if (languageQuery) {
-              const hasLanguage = (profile.profile_languages ?? []).some((language) => lowerCase(language).includes(languageQuery));
-              if (!hasLanguage) {
-                return false;
-              }
-            }
-
-            if (passionFilter.length) {
-              const profilePassionIds = passionIdsByProfile.get(String(profile.id)) ?? [];
-              if (!passionFilter.some((passionId) => profilePassionIds.includes(passionId))) {
-                return false;
-              }
-            }
-
-            return true;
-          });
-
-        results.push(...matchedProfiles);
-      }
-
-      if (profiles.length < batchSize) {
-        break;
-      }
-    }
-
-    return {
-      data: results.slice(offset, offset + limit),
-      error: null,
-    };
-  }
-
-  private async getSuggestedProfiles(currentUserId: string, limit: number) {
-    const [currentUserPassions, searchResults] = await Promise.all([
-      this.listAllDocuments('profile_passions', [Query.equal('profile_id', currentUserId)]),
-      this.searchProfiles({ p_current_user_id: currentUserId, p_limit: 500, p_offset: 0 }),
-    ]);
-    const currentPassionIds = new Set(currentUserPassions.map((row) => String(row.passion_id)));
-    const allPassionRows = await this.listAllDocuments('profile_passions');
-    const passionsByProfile = new Map<string, string[]>();
-
-    for (const row of allPassionRows) {
-      const ids = passionsByProfile.get(String(row.profile_id)) ?? [];
-      ids.push(String(row.passion_id));
-      passionsByProfile.set(String(row.profile_id), ids);
-    }
-
-    const suggestions = ((searchResults.data as any[]) ?? [])
-      .map((profile) => {
-        const sharedPassionsCount = (passionsByProfile.get(String(profile.id)) ?? []).filter((id) => currentPassionIds.has(id)).length;
-        return {
-          ...profile,
-          shared_passions_count: sharedPassionsCount,
-        };
-      })
-      .filter((profile) => profile.shared_passions_count > 0)
-      .sort((left, right) => {
-        if (right.shared_passions_count !== left.shared_passions_count) {
-          return right.shared_passions_count - left.shared_passions_count;
-        }
-
-        return compareValues(right.created_at, left.created_at);
-      })
-      .slice(0, limit);
-
-    return {
-      data: suggestions,
-      error: null,
-    };
   }
 }

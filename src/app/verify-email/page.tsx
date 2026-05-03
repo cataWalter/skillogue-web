@@ -1,44 +1,41 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useSignUp } from '@clerk/nextjs/legacy';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { createAppwriteBrowserAccount } from '@/lib/appwrite/browser';
 import { authCopy } from '../../lib/app-copy';
+import Input from '../../components/Input';
+import { Button } from '../../components/Button';
 
 const VerifyEmailPage = () => {
-  const searchParams = useSearchParams();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState<string>(authCopy.verifyEmail.loadingMessage);
+  const router = useRouter();
+  const { signUp, isLoaded } = useSignUp();
+  const [code, setCode] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    const verifyEmail = async () => {
-      const userId = searchParams.get('userId');
-      const secret = searchParams.get('secret');
+  const handleVerify = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!isLoaded || !signUp) return;
 
-      if (!userId || !secret) {
-        setStatus('error');
-        setMessage(authCopy.verifyEmail.invalidLink);
-        return;
-      }
-
-      try {
-        const account = createAppwriteBrowserAccount();
-        await account.updateEmailVerification({ userId, secret });
-
+    setStatus('loading');
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code });
+      if (result.status === 'complete') {
         setStatus('success');
         setMessage(authCopy.verifyEmail.successMessage);
-      } catch (error) {
+        setTimeout(() => router.push('/dashboard'), 1500);
+      } else {
         setStatus('error');
-        setMessage(
-          error instanceof Error ? error.message : authCopy.verifyEmail.failure
-        );
+        setMessage(authCopy.verifyEmail.failure);
       }
-    };
-
-    verifyEmail();
-  }, [searchParams]);
+    } catch (error) {
+      setStatus('error');
+      setMessage(error instanceof Error ? error.message : authCopy.verifyEmail.failure);
+    }
+  };
 
   return (
     <main className="editorial-shell flex flex-grow items-center justify-center py-12 sm:py-16">
@@ -48,13 +45,11 @@ const VerifyEmailPage = () => {
             <Loader2 className="w-8 h-8 text-brand-soft animate-spin" />
           </div>
         )}
-
         {status === 'success' && (
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-approval/20 mb-4 shadow-glass-sm">
             <CheckCircle className="w-8 h-8 text-approval" />
           </div>
         )}
-
         {status === 'error' && (
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-danger/20 mb-4 shadow-glass-sm">
             <AlertCircle className="w-8 h-8 text-danger" />
@@ -62,9 +57,33 @@ const VerifyEmailPage = () => {
         )}
 
         <h1 className="text-2xl font-bold text-foreground mb-3">{authCopy.verifyEmail.title}</h1>
-        <p className="text-muted mb-6">{message}</p>
 
-        <div className="flex items-center justify-center gap-3">
+        {status === 'idle' || status === 'error' ? (
+          <>
+            <p className="text-muted mb-6">
+              {status === 'error' ? message : authCopy.verifyEmail.loadingMessage}
+            </p>
+            <form onSubmit={handleVerify} className="space-y-4 text-left">
+              <Input
+                id="code"
+                type="text"
+                inputMode="numeric"
+                label="Verification Code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Enter 6-digit code"
+                required
+              />
+              <Button type="submit" fullWidth>
+                Verify Email
+              </Button>
+            </form>
+          </>
+        ) : (
+          <p className="text-muted mb-6">{message || authCopy.verifyEmail.loadingMessage}</p>
+        )}
+
+        <div className="mt-6 flex items-center justify-center gap-3">
           <Link
             href="/login"
             className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-start to-brand-end px-5 py-3 text-white shadow-glass-sm transition-all duration-300 hover:-translate-y-0.5 hover:from-brand-start-hover hover:to-brand-end-hover hover:shadow-glass-md"

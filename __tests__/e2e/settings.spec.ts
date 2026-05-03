@@ -186,7 +186,7 @@ test.describe('Change Password', () => {
     await page.locator('#current-password').fill('OldPassword1!');
     await page.locator('#new-password').fill('NewPassword1!');
     await page.locator('#confirm-password').fill('DifferentPassword1!');
-    await page.getByRole('button', { name: /update password/i }).click({ force: true });
+    await page.getByRole('button', { name: /update password/i }).click();
 
     await expect(page.getByText(/passwords do not match/i)).toBeVisible({ timeout: 10000 });
   });

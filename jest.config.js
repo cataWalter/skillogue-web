@@ -20,7 +20,7 @@ const customJestConfig = {
   setupFiles: ['<rootDir>/jest.env.js'],
   testPathIgnorePatterns: ['/node_modules/', '/__tests__/e2e/'],
   transformIgnorePatterns: [
-    '/node_modules/(?!(node-appwrite|node-fetch-native-with-agent|appwrite)/)',
+    '/node_modules/(?!(@clerk/backend|@clerk/nextjs|@clerk/shared|@clerk/types|node-fetch-native-with-agent)/)',
   ],
 }
 

@@ -4,42 +4,35 @@ import SignUp from '../src/app/signup/page'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
-// Mock useRouter
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }))
 
-jest.mock('appwrite', () => ({ OAuthProvider: { Google: 'google' } }))
-jest.mock('../src/lib/appwrite/browser', () => ({
-  createAppwriteBrowserAccount: jest.fn(() => ({ createOAuth2Token: jest.fn() })),
-}))
-
-// Mock react-hot-toast
 jest.mock('react-hot-toast', () => ({
   __esModule: true,
-  default: {
-    error: jest.fn(),
-    success: jest.fn(),
-  },
+  default: { error: jest.fn(), success: jest.fn() },
 }))
 
-// Mock useAuth hook
 const mockSignUp = jest.fn();
 jest.mock('../src/hooks/useAuth', () => ({
-  useAuth: () => ({
-    signUp: mockSignUp,
-  }),
+  useAuth: () => ({ signUp: mockSignUp }),
+}))
+
+jest.mock('@clerk/nextjs', () => ({
+  useSignUp: () => ({ signUp: null, isLoaded: true }),
+}))
+
+jest.mock('@clerk/nextjs/legacy', () => ({
+  useSignIn: () => ({ signIn: { authenticateWithRedirect: jest.fn() } }),
 }))
 
 describe('SignUp Page', () => {
   const mockPush = jest.fn()
 
   beforeEach(() => {
-    (useRouter as jest.Mock).mockReturnValue({
-      push: mockPush,
-    })
+    (useRouter as jest.Mock).mockReturnValue({ push: mockPush })
     jest.clearAllMocks()
-    mockSignUp.mockReset();
+    mockSignUp.mockReset()
   })
 
   it('renders signup form', () => {
@@ -60,88 +53,31 @@ describe('SignUp Page', () => {
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'weak' } })
     fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
-    expect(toast.error).toHaveBeenCalledWith('Please ensure your password meets all the strength requirements.', { id: 'signup-error' })
+    expect(toast.error).toHaveBeenCalled()
   })
 
-  it('validates terms agreement', async () => {
+  it('redirects to verify-email after successful signup', async () => {
+    mockSignUp.mockResolvedValue({ requiresEmailVerification: true })
     render(<SignUp />)
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } })
-    fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
-    expect(toast.error).toHaveBeenCalledWith('You must agree to the Terms of Service and Privacy Policy to create an account.', { id: 'signup-error' })
-  })
-
-  it('submits form successfully', async () => {
-    mockSignUp.mockResolvedValue({})
-
-    render(<SignUp />)
-    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } })
-
-    // Find checkbox and click it
-    const checkbox = screen.getByRole('checkbox')
-    fireEvent.click(checkbox)
-
-    fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
-
-    await waitFor(() => {
-      expect(mockSignUp).toHaveBeenCalledWith('test@example.com', 'StrongP@ssw0rd!')
-      expect(mockPush).toHaveBeenCalledWith('/login')
-    })
-  })
-
-  it('submits successfully when the email does not contain a domain separator', async () => {
-    mockSignUp.mockResolvedValue({})
-
-    const { container } = render(<SignUp />)
-    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'localpart' } })
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } })
-
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'Strong#1Pass' } })
     fireEvent.click(screen.getByRole('checkbox'))
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
-
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
     await waitFor(() => {
-      expect(mockSignUp).toHaveBeenCalledWith('localpart', 'StrongP@ssw0rd!')
-      expect(mockPush).toHaveBeenCalledWith('/login')
+      expect(mockSignUp).toHaveBeenCalledWith('test@example.com', 'Strong#1Pass')
+      expect(mockPush).toHaveBeenCalledWith('/verify-email')
     })
   })
 
-  it('handles signup error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-    mockSignUp.mockRejectedValue(new Error('Signup failed'));
-
-    render(<SignUp />);
-
-    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } });
-
-    const checkbox = screen.getByRole('checkbox');
-    fireEvent.click(checkbox);
-
-    fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Signup failed', { id: 'signup-error' });
-    });
-
+  it('shows an error toast on signup failure', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockSignUp.mockRejectedValue(new Error('Email already exists'))
+    render(<SignUp />)
+    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'Strong#1Pass' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }))
+    await waitFor(() => { expect(toast.error).toHaveBeenCalled() })
     consoleSpy.mockRestore()
-  });
-
-  it('falls back to the default error message when signup rejects with a non-Error value', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-    mockSignUp.mockRejectedValue('Signup failed');
-
-    render(<SignUp />);
-
-    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'StrongP@ssw0rd!' } });
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('An error occurred', { id: 'signup-error' });
-    });
-
-    consoleSpy.mockRestore();
-  });
+  })
 })

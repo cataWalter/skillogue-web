@@ -1,12 +1,7 @@
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  clearAppwriteSessionCookie,
-  createAppwriteSessionAccount,
-  getAppwriteSessionSecret,
-} from '@/lib/appwrite/server';
-import { getE2EAdminSession } from '@/lib/e2e-auth';
-
-const getUserAgent = (request: NextRequest) => request.headers.get('user-agent') ?? undefined;
+import { isAdminEmail } from '@/lib/admin';
+import { getE2EAdminSession, getE2EUserSession } from '@/lib/e2e-auth';
 
 export async function GET(request: NextRequest) {
   const e2eSession = getE2EAdminSession(request);
@@ -15,32 +10,46 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ session: e2eSession });
   }
 
-  const sessionSecret = getAppwriteSessionSecret(request);
+  const e2eUser = getE2EUserSession(request);
 
-  if (!sessionSecret) {
-    return NextResponse.json({ session: null });
-  }
-
-  try {
-    const account = createAppwriteSessionAccount(sessionSecret, getUserAgent(request));
-    const [user, session] = await Promise.all([
-      account.get(),
-      account.getSession({ sessionId: 'current' }),
-    ]);
-
+  if (e2eUser) {
     return NextResponse.json({
       session: {
         user: {
-          id: user.$id,
-          email: user.email,
-          name: user.name ?? undefined,
+          id: e2eUser.id,
+          email: e2eUser.email,
+          name: e2eUser.name,
+          isAdmin: false,
         },
-        expires: session.expire,
+        expires: null,
       },
     });
-  } catch {
-    const response = NextResponse.json({ session: null });
-    clearAppwriteSessionCookie(response);
-    return response;
   }
+
+  const { userId } = await auth();
+
+  if (!userId) {
+    return NextResponse.json({ session: null });
+  }
+
+  const user = await currentUser();
+
+  if (!user) {
+    return NextResponse.json({ session: null });
+  }
+
+  const primaryEmail =
+    user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)?.emailAddress ?? '';
+
+  return NextResponse.json({
+    session: {
+      user: {
+        id: userId,
+        email: primaryEmail,
+        name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+        isAdmin: isAdminEmail(primaryEmail),
+      },
+      expires: null,
+    },
+  });
 }

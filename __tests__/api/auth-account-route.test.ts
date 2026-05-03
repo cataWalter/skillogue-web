@@ -1,24 +1,11 @@
-import {
-  clearAppwriteSessionCookie,
-  createAppwriteAdminUsers,
-  createAppwriteSessionAccount,
-  getAppwriteErrorMessage,
-  getAppwriteErrorStatus,
-  getAppwriteSessionSecret,
-} from '../../src/lib/appwrite/server';
-import { AppDataService } from '../../src/lib/server/app-data-service';
+export {};
 
-jest.mock('../../src/lib/appwrite/server', () => ({
-  clearAppwriteSessionCookie: jest.fn(),
-  createAppwriteAdminUsers: jest.fn(),
-  createAppwriteSessionAccount: jest.fn(),
-  getAppwriteErrorMessage: jest.fn((error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback
-  ),
-  getAppwriteErrorStatus: jest.fn((error: { code?: number } | undefined, fallback = 500) =>
-    typeof error?.code === 'number' ? error.code : fallback
-  ),
-  getAppwriteSessionSecret: jest.fn(),
+const mockAuth = jest.fn();
+const mockClerkClient = jest.fn();
+
+jest.mock('@clerk/nextjs/server', () => ({
+  auth: () => mockAuth(),
+  clerkClient: () => mockClerkClient(),
 }));
 
 jest.mock('../../src/lib/server/app-data-service', () => ({
@@ -26,22 +13,19 @@ jest.mock('../../src/lib/server/app-data-service', () => ({
 }));
 
 jest.mock('next/server', () => ({
-  NextRequest: class NextRequest { },
+  NextRequest: class NextRequest {},
   NextResponse: {
-    json: (body: unknown, init?: { status?: number }) => ({
-      status: init?.status ?? 200,
-      json: async () => body,
-      cookies: {
-        set: jest.fn(),
-      },
-    }),
+    json: (body: unknown, init?: { status?: number }) => ({ status: (init && init.status) || 200, json: async () => body }),
   },
 }));
 
 describe('/api/auth/account route', () => {
   const deleteProfile = jest.fn();
   const deleteUser = jest.fn();
-  let routeHandlers: typeof import('../../src/app/api/auth/account/route');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let routeHandlers: any;
+
+  const createRequest = () => ({ headers: { get: jest.fn() } });
 
   beforeAll(async () => {
     routeHandlers = await import('../../src/app/api/auth/account/route');
@@ -51,90 +35,42 @@ describe('/api/auth/account route', () => {
     jest.clearAllMocks();
     deleteProfile.mockResolvedValue(undefined);
     deleteUser.mockResolvedValue(undefined);
-
-    (getAppwriteSessionSecret as jest.Mock).mockReturnValue('session-secret');
-    (createAppwriteSessionAccount as jest.Mock).mockReturnValue({
-      get: jest.fn().mockResolvedValue({ $id: 'user-123' }),
-    });
-    (createAppwriteAdminUsers as jest.Mock).mockReturnValue({
-      delete: deleteUser,
-    });
-    (AppDataService as jest.Mock).mockImplementation(() => ({
-      deleteProfile,
-    }));
+    const { AppDataService } = require('../../src/lib/server/app-data-service');
+    AppDataService.mockImplementation(() => ({ deleteProfile }));
+    mockClerkClient.mockResolvedValue({ users: { deleteUser } });
   });
 
-  it('deletes the profile and Appwrite user via POST', async () => {
-    const request = {
-      headers: {
-        get: jest.fn((name: string) => (name === 'user-agent' ? 'jest-test' : null)),
-      },
-    };
+  it('returns 401 when not authenticated', async () => {
+    mockAuth.mockResolvedValue({ userId: null });
+    const response = await routeHandlers.DELETE(createRequest());
+    expect(response.status).toBe(401);
+  });
 
-    const response = await routeHandlers.POST(request as never);
-
-    expect(getAppwriteSessionSecret).toHaveBeenCalledWith(request);
-    expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', 'jest-test');
-    expect(AppDataService).toHaveBeenCalledWith('session-secret', 'jest-test');
+  it('deletes profile and Clerk user (DELETE)', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user-123' });
+    const response = await routeHandlers.DELETE(createRequest());
+    const body = await response.json();
     expect(deleteProfile).toHaveBeenCalledWith('user-123');
     expect(deleteUser).toHaveBeenCalledWith('user-123');
-    expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ success: true });
+    expect(body.success).toBe(true);
   });
 
-  it('skips profile cleanup when the current user id is missing', async () => {
-    (createAppwriteSessionAccount as jest.Mock).mockReturnValue({
-      get: jest.fn().mockResolvedValue({ $id: '' }),
-    });
-
-    const request = {
-      headers: {
-        get: jest.fn((name: string) => (name === 'user-agent' ? 'jest-test' : null)),
-      },
-    };
-
-    const response = await routeHandlers.POST(request as never);
-
-    expect(AppDataService).not.toHaveBeenCalled();
-    expect(deleteProfile).not.toHaveBeenCalled();
-    expect(deleteUser).toHaveBeenCalledWith('');
-    expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
+  it('deletes profile and Clerk user (POST)', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user-456' });
+    const response = await routeHandlers.POST(createRequest());
+    const body = await response.json();
+    expect(deleteProfile).toHaveBeenCalledWith('user-456');
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ success: true });
+    expect(body.success).toBe(true);
   });
 
-  it('returns the mapped Appwrite error on failure', async () => {
-    const failure = Object.assign(new Error('Delete failed'), { code: 503 });
-    deleteProfile.mockRejectedValue(failure);
-
-    const request = {
-      headers: {
-        get: jest.fn((name: string) => (name === 'user-agent' ? 'jest-test' : null)),
-      },
-    };
-
-    const response = await routeHandlers.POST(request as never);
-
-    expect(getAppwriteErrorStatus).toHaveBeenCalledWith(failure, 500);
-    expect(getAppwriteErrorMessage).toHaveBeenCalledWith(failure, 'Failed to delete account.');
-    expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ message: 'Delete failed' });
-  });
-
-  it('passes an undefined user agent through when the header is absent', async () => {
-    const request = {
-      headers: {
-        get: jest.fn(() => null),
-      },
-    };
-
-    const response = await routeHandlers.POST(request as never);
-
-    expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', undefined);
-    expect(AppDataService).toHaveBeenCalledWith('session-secret', undefined);
-    expect(createAppwriteAdminUsers).toHaveBeenCalledWith(undefined);
-    expect(response.status).toBe(200);
+  it('returns 500 on error', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user-123' });
+    deleteProfile.mockRejectedValue(new Error('DB error'));
+    const response = await routeHandlers.DELETE(createRequest());
+    const body = await response.json();
+    expect(response.status).toBe(500);
+    expect(body.message).toBe('DB error');
   });
 });

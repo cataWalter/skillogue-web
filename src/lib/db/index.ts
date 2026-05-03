@@ -1,14 +1,27 @@
-// Stub DB module to resolve TypeScript errors
-export type PoolClient = any;
-export type QueryResult = any;
+import { createClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
+import * as schema from './schema';
 
-export const db: any = null;
+const getTursoUrl = () => process.env.TURSO_DATABASE_URL?.trim() ?? '';
+const getTursoAuthToken = () => process.env.TURSO_AUTH_TOKEN?.trim() ?? '';
 
-// Expected exports from various API routes
-export const query = async (_text: string, _params?: any[]) => ({
-  rows: [] as any[],
-  rowCount: 0,
-} as QueryResult);
+let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
-export const connect = async () => ({} as PoolClient);
-export const end = async () => { };
+export const getDb = () => {
+  if (!_db) {
+    const url = getTursoUrl();
+    const authToken = getTursoAuthToken();
+
+    if (!url) {
+      throw new Error('TURSO_DATABASE_URL is not configured.');
+    }
+
+    const client = createClient({ url, authToken: authToken || undefined });
+    _db = drizzle(client, { schema });
+  }
+
+  return _db;
+};
+
+export { schema };
+export * from './schema';

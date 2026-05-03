@@ -1,14 +1,6 @@
 'use client';
 
-import { Client as AppwriteBrowserClient } from 'appwrite';
 import { useEffect, useState } from 'react';
-import {
-  getAppwriteCollectionId,
-  getAppwriteDatabaseId,
-  getAppwriteEndpoint,
-  getAppwriteProjectId,
-  isAppwritePublicConfigReady,
-} from '@/lib/appwrite/config';
 
 type CompatError = {
   message: string;
@@ -112,54 +104,6 @@ const fetchSession = async () => {
     session: hasSessionPayload(payload) ? payload.session : null,
     error: null,
   };
-};
-
-let realtimeClient: AppwriteBrowserClient | null = null;
-
-const getRealtimeClient = () => {
-  if (typeof window === 'undefined' || !isAppwritePublicConfigReady()) {
-    return null;
-  }
-
-  if (!realtimeClient) {
-    realtimeClient = new AppwriteBrowserClient()
-      .setEndpoint(getAppwriteEndpoint())
-      .setProject(getAppwriteProjectId());
-  }
-
-  return realtimeClient;
-};
-
-const normalizeRealtimePayload = (payload: any) => {
-  if (!payload || typeof payload !== 'object') {
-    return payload;
-  }
-
-  const normalized = { ...payload };
-
-  if (!normalized.id && typeof normalized.$id === 'string') {
-    normalized.id = normalized.$id;
-  }
-
-  if (!normalized.created_at && typeof normalized.$createdAt === 'string') {
-    normalized.created_at = normalized.$createdAt;
-  }
-
-  return normalized;
-};
-
-const matchesRealtimeFilter = (payload: Record<string, any>, filter?: string) => {
-  if (!filter) {
-    return true;
-  }
-
-  const [column, matcher] = filter.split('=eq.');
-
-  if (!column || matcher === undefined) {
-    return true;
-  }
-
-  return String(payload[column]) === matcher;
 };
 
 class CompatChannel {
@@ -266,51 +210,8 @@ class CompatChannel {
   }
 
   subscribe(callback?: (status: string) => void) {
-    const client = getRealtimeClient();
-    const channels = Array.from(
-      new Set(
-        this.changeHandlers
-          .map((handler) => {
-            if (!handler.config.table) {
-              return null;
-            }
-
-            return `databases.${getAppwriteDatabaseId()}.collections.${getAppwriteCollectionId(handler.config.table)}.documents`;
-          })
-          .filter(Boolean)
-      )
-    ) as string[];
-
-    if (client && channels.length) {
-      const unsubscribe = (client as any).subscribe(channels, (event: any) => {
-        const payload = normalizeRealtimePayload(event?.payload ?? {});
-        const joinedEvents = Array.isArray(event?.events) ? event.events.join(' ') : '';
-
-        for (const handler of this.changeHandlers) {
-          if (handler.config.event === 'INSERT' && !joinedEvents.includes('.create')) {
-            continue;
-          }
-
-          if (handler.config.event === 'UPDATE' && !joinedEvents.includes('.update')) {
-            continue;
-          }
-
-          if (handler.config.event === 'DELETE' && !joinedEvents.includes('.delete')) {
-            continue;
-          }
-
-          if (!matchesRealtimeFilter(payload, handler.config.filter)) {
-            continue;
-          }
-
-          handler.callback({ new: payload });
-        }
-      });
-
-      if (typeof unsubscribe === 'function') {
-        this.unsubscribeCallbacks.push(unsubscribe);
-      }
-    }
+    // Realtime DB change subscriptions are not supported with Turso.
+    // Presence polling (for online-users) continues to work via the RPC endpoint.
 
     queueMicrotask(() => callback?.('SUBSCRIBED'));
 
@@ -548,48 +449,18 @@ export const appClient = {
         error,
       };
     },
-    async signInWithPassword(credentials: { email: string; password: string }) {
-      const response = await fetch('/api/auth/sign-in/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      const payload = await parseResponse(response);
-
-      if (!response.ok) {
-        return {
-          data: null,
-          error: buildError(payload?.message || 'Failed to sign in.'),
-        };
-      }
-
-      return {
-        data: payload,
-        error: null,
-      };
+    /** @deprecated Use Clerk hooks directly for sign-in. */
+    async signInWithPassword(_credentials: { email: string; password: string }) {
+      return { data: null, error: buildError('Use Clerk hooks for sign-in.', 'DEPRECATED') };
     },
-    async signUp(credentials: { email: string; password: string }) {
-      const response = await fetch('/api/auth/sign-up/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      const payload = await parseResponse(response);
-
-      if (!response.ok) {
-        return {
-          data: null,
-          error: buildError(payload?.message || 'Failed to sign up.'),
-        };
-      }
-
-      return {
-        data: payload,
-        error: null,
-      };
+    /** @deprecated Use Clerk hooks directly for sign-up. */
+    async signUp(_credentials: { email: string; password: string }) {
+      return { data: null, error: buildError('Use Clerk hooks for sign-up.', 'DEPRECATED') };
     },
     async signOut() {
-      await fetch('/api/auth/sign-out', { method: 'POST' });
+      if (typeof window !== 'undefined' && (window as any).Clerk) {
+        await (window as any).Clerk.signOut();
+      }
       return { error: null };
     },
   },
@@ -624,6 +495,8 @@ export const appClient = {
 } as const;
 
 export const handleSignOut = async () => {
-  await appClient.auth.signOut();
+  if (typeof window !== 'undefined' && (window as any).Clerk) {
+    await (window as any).Clerk.signOut();
+  }
   window.location.href = '/login';
 };

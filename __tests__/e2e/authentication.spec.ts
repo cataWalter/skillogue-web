@@ -1,30 +1,18 @@
-import type { Page, Route } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures/test';
-
-const fulfillJson = async (route: Route, status: number, body: unknown) => {
-  await route.fulfill({
-    status,
-    contentType: 'application/json',
-    body: JSON.stringify(body),
-  });
-};
+import {
+  E2E_UNVERIFIED_EMAIL,
+  E2E_SIGNUP_SUCCESS_EMAIL,
+  E2E_RESET_PASSWORD_EMAIL,
+} from '../../src/lib/e2e-auth';
 
 const visitAuthPage = async (page: Page, path: string) => {
-  await page.route('**/api/auth/session', async (route) => {
-    await fulfillJson(route, 200, { session: null });
-  });
-
-  const sessionResponse = page.waitForResponse((response) =>
-    response.url().includes('/api/auth/session') && response.request().method() === 'GET'
-  );
-
-  await page.goto(path, { waitUntil: 'commit' });
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
     (expectedPath) => window.location.pathname === expectedPath,
     path,
     { timeout: 10000 }
   );
-  await sessionResponse;
 };
 
 const fillAndExpectValue = async (page: Page, selector: string, value: string) => {
@@ -90,30 +78,26 @@ test.describe('Authentication', () => {
     });
 
     test('should redirect unverified users to the resend verification page', async ({ page }) => {
-      await page.route('**/api/auth/sign-in/email', async (route) => {
-        await fulfillJson(route, 403, {
-          message:
-            'Please verify your email before signing in. Check your inbox and wait to verify the email.',
-        });
-      });
-
-      const signInRequest = page.waitForRequest((request) =>
-        request.url().includes('/api/auth/sign-in/email') && request.method() === 'POST'
-      );
-
-      await fillAndExpectValue(page, '#email', 'user@example.com');
+      // AuthContext short-circuits for E2E_UNVERIFIED_EMAIL on localhost and throws
+      // "Please verify your email before signing in" without making a real Clerk API call.
+      // The login page checks for that fragment and redirects to /verify-email/resend.
+      await fillAndExpectValue(page, '#email', E2E_UNVERIFIED_EMAIL);
       await fillAndExpectValue(page, '#password', 'Password123#');
       await page.getByRole('button', { name: /sign in/i }).click();
 
-      await signInRequest;
-      await page.waitForURL(/\/verify-email\/resend\?email=user%40example\.com/, {
-        timeout: 10000,
-      });
+      await page.waitForURL(
+        new RegExp(`/verify-email/resend\\?email=${encodeURIComponent(E2E_UNVERIFIED_EMAIL).replace(/\+/g, '%2B')}`),
+        { timeout: 10000 },
+      );
     });
   });
 
   test.describe('Signup Page', () => {
     test.beforeEach(async ({ page }) => {
+      // Block Cloudflare Turnstile so Clerk's CAPTCHA form-interceptor never installs.
+      // Without this, Clerk's SDK may capture the form's native `submit` event before
+      // React's onSubmit handler runs, making client-side validation tests flaky.
+      await page.route('**/challenges.cloudflare.com/**', (route) => route.abort());
       await visitAuthPage(page, '/signup');
     });
 
@@ -144,45 +128,36 @@ test.describe('Authentication', () => {
     });
 
     test('should show an alert for a weak password', async ({ page }) => {
+      // Client-side validation runs before any Clerk call; no network mocking needed.
       await fillAndExpectValue(page, '#email', 'test@example.com');
       await fillAndExpectValue(page, '#password', 'weak');
-
+      await expect(page.getByRole('button', { name: /sign up/i })).toBeEnabled();
       await page.getByRole('button', { name: /sign up/i }).click();
-      await expect(page.getByText('Please ensure your password meets all the strength requirements.')).toBeVisible({ timeout: 5000 });
+      await expect(
+        page.getByText('Please ensure your password meets all the strength requirements.')
+      ).toBeVisible({ timeout: 5000 });
     });
 
     test('should require terms agreement before signup', async ({ page }) => {
       await fillAndExpectValue(page, '#email', 'test@example.com');
       await fillAndExpectValue(page, '#password', 'StrongP@ssw0rd!');
-
       await page.getByRole('button', { name: /sign up/i }).click();
-      await expect(page.getByText('You must agree to the Terms of Service and Privacy Policy to create an account.')).toBeVisible({ timeout: 5000 });
+      await expect(
+        page.getByText(
+          'You must agree to the Terms of Service and Privacy Policy to create an account.'
+        )
+      ).toBeVisible({ timeout: 5000 });
     });
 
-    test('should submit successfully and return to login', async ({ page }) => {
-      await page.route('**/api/auth/sign-up/email', async (route) => {
-        await fulfillJson(route, 200, {
-          user: {
-            id: 'user-123',
-            email: 'test@example.com',
-          },
-          requiresEmailVerification: true,
-        });
-      });
-
-      const signUpRequest = page.waitForRequest((request) =>
-        request.url().includes('/api/auth/sign-up/email') && request.method() === 'POST'
-      );
-
-      await fillAndExpectValue(page, '#email', 'test@example.com');
+    test('should submit successfully and navigate to email verification', async ({ page }) => {
+      // AuthContext short-circuits for E2E_SIGNUP_SUCCESS_EMAIL on localhost and returns
+      // { requiresEmailVerification: true } without making a real Clerk API call.
+      await fillAndExpectValue(page, '#email', E2E_SIGNUP_SUCCESS_EMAIL);
       await fillAndExpectValue(page, '#password', 'StrongP@ssw0rd!');
       await page.locator('#agreed').check();
-
       await page.getByRole('button', { name: /sign up/i }).click();
-      await expect(page.getByText('🎉 Check your email for the confirmation link!')).toBeVisible({ timeout: 5000 });
 
-      await signUpRequest;
-      await page.waitForURL(/.*\/login/, { timeout: 10000 });
+      await page.waitForURL(/\/verify-email/, { timeout: 10000 });
     });
 
     test('should expose terms and privacy links', async ({ page }) => {
@@ -218,28 +193,17 @@ test.describe('Authentication', () => {
       await expect(page.getByRole('button', { name: /send/i })).toBeVisible();
     });
 
-    test('should submit successfully and return to login', async ({ page }) => {
-      await page.route('**/api/auth/reset-password', async (route) => {
-        if (route.request().method() !== 'POST') {
-          await route.continue();
-          return;
-        }
-
-        await fulfillJson(route, 200, { success: true });
-      });
-
-      const resetRequest = page.waitForRequest((request) =>
-        request.url().includes('/api/auth/reset-password') && request.method() === 'POST'
-      );
-
-      await fillAndExpectValue(page, '#email', 'user@example.com');
+    test('should submit successfully and show the confirmation screen', async ({ page }) => {
+      // AuthContext short-circuits for E2E_RESET_PASSWORD_EMAIL on localhost and
+      // returns without throwing, so the forgot-password page shows its confirmation screen.
+      await fillAndExpectValue(page, '#email', E2E_RESET_PASSWORD_EMAIL);
       await page.getByRole('button', { name: /send reset link/i }).click();
 
-      await resetRequest;
-
-      await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: /check your email/i })
+      ).toBeVisible({ timeout: 10000 });
       await expect(page.getByText("We've sent a password reset link to")).toBeVisible();
-      await expect(page.getByText('user@example.com')).toBeVisible();
+      await expect(page.getByText(E2E_RESET_PASSWORD_EMAIL)).toBeVisible();
 
       await page.getByRole('button', { name: /back to sign in/i }).click();
       await expect(page).toHaveURL(/.*\/login/, { timeout: 10000 });
@@ -247,43 +211,30 @@ test.describe('Authentication', () => {
   });
 
   test.describe('Reset Password Page', () => {
-    test('should show the forgot password form when the link is missing required params', async ({ page }) => {
+    test('should show the reset password form', async ({ page }) => {
       await page.goto('/reset-password');
       await expect(
-        page.getByRole('heading', { name: /reset password/i })
-      ).toBeVisible();
-      await expect(page.getByLabel(/email address/i)).toBeVisible();
+        page.getByRole('heading', { name: /set new password/i })
+      ).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('#reset-code')).toBeVisible();
+      await expect(page.locator('#new-password')).toBeVisible();
+      await expect(page.locator('#confirm-password')).toBeVisible();
     });
 
     test('should validate mismatched passwords before submitting', async ({ page }) => {
-      await page.goto('/reset-password?userId=user-123&secret=reset-secret');
+      await page.goto('/reset-password');
+      await page.locator('#reset-code').fill('123456');
       await fillResetPasswords(page, 'StrongP@ssw0rd!', 'DifferentP@ssw0rd!');
       await page.getByRole('button', { name: /update password/i }).click();
 
       await expect(page.getByText('Passwords do not match')).toBeVisible();
     });
 
-    test('should update the password when the reset link is valid', async ({ page }) => {
-      await page.route('**/api/auth/reset-password', async (route) => {
-        if (route.request().method() !== 'PUT') {
-          await route.continue();
-          return;
-        }
-
-        await fulfillJson(route, 200, { success: true });
-      });
-
-      const updatePasswordRequest = page.waitForRequest((request) =>
-        request.url().includes('/api/auth/reset-password') && request.method() === 'PUT'
-      );
-
-      await page.goto('/reset-password?userId=user-123&secret=reset-secret');
-      await fillResetPasswords(page, 'StrongP@ssw0rd!', 'StrongP@ssw0rd!');
+    test('should show an error when all fields are empty on submit', async ({ page }) => {
+      await page.goto('/reset-password');
       await page.getByRole('button', { name: /update password/i }).click();
 
-      await updatePasswordRequest;
-
-      await expect(page.getByRole('heading', { name: /password updated!/i })).toBeVisible();
+      await expect(page.getByText('Please fill in all fields')).toBeVisible();
     });
   });
 });

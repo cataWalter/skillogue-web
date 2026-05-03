@@ -14,6 +14,7 @@ const adminSessionPayload = {
       id: 'e2e-admin',
       email: 'cata.walter@gmail.com',
       name: 'E2E Admin',
+      isAdmin: true,
     },
     expires: '2099-01-01T00:00:00.000Z',
   },
@@ -81,6 +82,20 @@ const baseDashboardPayload = {
     updatedAt: '2026-04-26T12:05:00.000Z',
   },
   lastUpdatedAt: '2026-04-26T12:30:00.000Z',
+  overview: {
+    totalProfiles: 120,
+    verifiedProfiles: 45,
+    completedProfiles: 98,
+    totalMessages: 540,
+    totalFavorites: 210,
+    totalNotifications: 330,
+    unreadNotifications: 12,
+    activePushSubscriptions: 67,
+    totalReports: 8,
+    pendingReports: 1,
+    totalVerificationRequests: 5,
+    pendingVerificationRequests: 1,
+  },
 };
 
 const aliceUser = {

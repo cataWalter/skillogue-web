@@ -6,9 +6,20 @@ import Link from 'next/link';
 import { Shield, FileText, LayoutDashboard, Search, SlidersHorizontal, AlertTriangle, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { adminCopy } from '../../lib/app-copy';
-import { isAdminEmail } from '../../lib/admin';
+import { E2E_AUTH_COOKIE_NAME, E2E_AUTH_ADMIN_COOKIE_VALUE } from '../../lib/e2e-auth';
 
 const navLinkClass = 'block rounded-lg px-3 py-2 text-muted transition hover:bg-surface-secondary hover:text-foreground';
+
+const isE2EAdminSession = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return false;
+    }
+    const { hostname } = window.location;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        return false;
+    }
+    return document.cookie.split(';').some((c) => c.trim() === `${E2E_AUTH_COOKIE_NAME}=${E2E_AUTH_ADMIN_COOKIE_VALUE}`);
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, loading: authLoading } = useAuth();
@@ -16,6 +27,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const router = useRouter();
 
     useEffect(() => {
+        if (isE2EAdminSession()) {
+            setIsAdmin(true);
+            return;
+        }
+
         if (authLoading) {
             return;
         }
@@ -26,7 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 return;
             }
 
-            if (!isAdminEmail(user.email)) {
+            if (!user.isAdmin) {
                 router.replace('/');
                 return;
             }

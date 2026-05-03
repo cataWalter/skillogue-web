@@ -65,9 +65,10 @@ describe('FavoritesClient', () => {
   });
 
   it('renders private profile correctly', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const privateFavorites = [
       { id: '1', first_name: 'John', last_name: 'Doe', is_private: true, created_at: '2023-01-01', profilepassions: [], profile_languages: [] },
-    ];
+    ] as any[];
     render(<FavoritesClient initialFavorites={privateFavorites} />);
     expect(screen.getByText(favoritesCopy.privateProfile)).toBeInTheDocument();
   });

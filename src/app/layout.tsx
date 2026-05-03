@@ -9,6 +9,7 @@ import { NotificationProvider } from "../context/NotificationContext";
 import { AuthProvider } from "../context/AuthContext";
 import { Toaster } from 'react-hot-toast';
 import { Suspense } from "react";
+import { ClerkProvider } from "@clerk/nextjs";
 
 // Force all pages to be dynamically rendered (SSR)
 // This is needed because the app uses real-time features and authentication
@@ -119,17 +120,19 @@ export default function RootLayout({
           Skip to main content
         </a>
         <Suspense fallback={null}>
-          <AuthProvider>
-            <NotificationProvider>
-              <Navbar />
-              <main id="main-content" className="flex-grow flex flex-col">
-                {children}
-              </main>
-              <Footer />
-              <CookieBanner />
-              <Toaster position="top-right" />
-            </NotificationProvider>
-          </AuthProvider>
+          <ClerkProvider>
+            <AuthProvider>
+              <NotificationProvider>
+                <Navbar />
+                <main id="main-content" className="flex-grow flex flex-col">
+                  {children}
+                </main>
+                <Footer />
+                <CookieBanner />
+                <Toaster position="top-right" />
+              </NotificationProvider>
+            </AuthProvider>
+          </ClerkProvider>
         </Suspense>
       </body>
     </html>

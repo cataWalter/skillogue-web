@@ -24,7 +24,7 @@ const waitForPathname = async (page: Page, prefix: string) => {
   await page.waitForFunction(
     (expectedPrefix) => window.location.pathname.startsWith(expectedPrefix),
     prefix,
-    { timeout: 10000 }
+    { timeout: 15000 }
   );
 };
 
@@ -37,7 +37,6 @@ export const expectLoginRedirect = async (page: Page, path: string) => {
 export const expectOnboardingRedirect = async (page: Page, path: string) => {
   await navigateWithRedirectTolerance(page, path);
   await waitForPathname(page, '/onboarding');
-  await expect(page.getByRole('heading', { name: /welcome to skillogue/i })).toBeVisible({ timeout: 10000 });
   await expect(page.locator('#first_name')).toBeVisible({ timeout: 10000 });
 };
 

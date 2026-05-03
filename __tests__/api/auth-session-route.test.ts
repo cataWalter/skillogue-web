@@ -1,45 +1,37 @@
-import {
-  clearAppwriteSessionCookie,
-  createAppwriteSessionAccount,
-  getAppwriteSessionSecret,
-} from '../../src/lib/appwrite/server';
-import {
-  E2E_AUTH_ADMIN_COOKIE_VALUE,
-  E2E_AUTH_COOKIE_NAME,
-  E2E_AUTH_HEADER_NAME,
-} from '../../src/lib/e2e-auth';
+export {};
 
-jest.mock('../../src/lib/appwrite/server', () => ({
-  clearAppwriteSessionCookie: jest.fn(),
-  createAppwriteSessionAccount: jest.fn(),
-  getAppwriteSessionSecret: jest.fn(),
+const mockAuth = jest.fn();
+const mockCurrentUser = jest.fn();
+
+jest.mock('@clerk/nextjs/server', () => ({
+  auth: () => mockAuth(),
+  currentUser: () => mockCurrentUser(),
+}));
+
+jest.mock('../../src/lib/admin', () => ({
+  isAdminEmail: jest.fn(() => false),
+}));
+
+jest.mock('../../src/lib/e2e-auth', () => ({
+  getE2EAdminSession: jest.fn(() => null),
+  getE2EUserSession: jest.fn(() => null),
 }));
 
 jest.mock('next/server', () => ({
-  NextRequest: class NextRequest { },
+  NextRequest: class NextRequest {},
   NextResponse: {
-    json: (body: unknown, init?: { status?: number }) => ({
-      status: init?.status ?? 200,
-      json: async () => body,
-      cookies: {
-        set: jest.fn(),
-      },
-    }),
+    json: (body: unknown, init?: { status?: number }) => ({ status: (init && init.status) || 200, json: async () => body }),
   },
 }));
 
 describe('/api/auth/session route', () => {
-  const getUser = jest.fn();
-  const getSession = jest.fn();
-  let routeHandlers: typeof import('../../src/app/api/auth/session/route');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let routeHandlers: any;
 
-  const createRequest = () =>
-    ({
-      url: 'https://skillogue.test/api/auth/session',
-      headers: {
-        get: jest.fn((name: string) => (name === 'user-agent' ? 'jest-test' : null)),
-      },
-    }) as never;
+  const createRequest = () => ({
+    url: 'https://skillogue.test/api/auth/session',
+    headers: { get: jest.fn((name) => (name === 'user-agent' ? 'jest-test' : null)) },
+  });
 
   beforeAll(async () => {
     routeHandlers = await import('../../src/app/api/auth/session/route');
@@ -47,125 +39,45 @@ describe('/api/auth/session route', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    getUser.mockResolvedValue({
-      $id: 'user-123',
-      email: 'user@example.com',
-      name: 'User',
-      emailVerification: true,
-    });
-    getSession.mockResolvedValue({
-      expire: '2026-12-31T00:00:00.000Z',
-    });
-
-    (getAppwriteSessionSecret as jest.Mock).mockReturnValue('session-secret');
-    (createAppwriteSessionAccount as jest.Mock).mockReturnValue({
-      get: getUser,
-      getSession,
-    });
+    mockAuth.mockResolvedValue({ userId: null });
+    mockCurrentUser.mockResolvedValue(null);
   });
 
-  it('returns null when no session cookie is present', async () => {
-    (getAppwriteSessionSecret as jest.Mock).mockReturnValue(undefined);
-
+  it('returns null session when not authenticated', async () => {
     const response = await routeHandlers.GET(createRequest());
-
-    expect(createAppwriteSessionAccount).not.toHaveBeenCalled();
+    const body = await response.json();
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ session: null });
+    expect(body.session).toBeNull();
   });
 
-  it('returns the e2e admin session for local allowlisted requests', async () => {
-    const response = await routeHandlers.GET({
-      url: 'http://localhost/api/auth/session',
-      headers: {
-        get: jest.fn((name: string) => {
-          if (name === 'user-agent') {
-            return 'jest-test';
-          }
-
-          if (name === E2E_AUTH_HEADER_NAME) {
-            return E2E_AUTH_ADMIN_COOKIE_VALUE;
-          }
-
-          return null;
-        }),
-      },
-      cookies: {
-        get: jest.fn((name: string) =>
-          name === E2E_AUTH_COOKIE_NAME
-            ? { value: E2E_AUTH_ADMIN_COOKIE_VALUE }
-            : undefined
-        ),
-      },
-    } as never);
-
-    expect(getAppwriteSessionSecret).not.toHaveBeenCalled();
-    expect(createAppwriteSessionAccount).not.toHaveBeenCalled();
-    await expect(response.json()).resolves.toEqual({
-      session: {
-        user: {
-          id: 'e2e-admin',
-          email: 'cata.walter@gmail.com',
-          name: 'E2E Admin',
-        },
-        expires: '2099-01-01T00:00:00.000Z',
-      },
+  it('returns session data when authenticated', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user-123' });
+    mockCurrentUser.mockResolvedValue({
+      id: 'user-123',
+      primaryEmailAddressId: 'email-1',
+      emailAddresses: [{ id: 'email-1', emailAddress: 'user@example.com' }],
+      firstName: 'John',
+      lastName: 'Doe',
     });
-  });
-
-  it('returns the session payload for verified users', async () => {
     const response = await routeHandlers.GET(createRequest());
-
-    expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', 'jest-test');
-    expect(clearAppwriteSessionCookie).not.toHaveBeenCalled();
-    await expect(response.json()).resolves.toEqual({
-      session: {
-        user: {
-          id: 'user-123',
-          email: 'user@example.com',
-          name: 'User',
-        },
-        expires: '2026-12-31T00:00:00.000Z',
-      },
-    });
+    const body = await response.json();
+    expect(body.session.user.id).toBe('user-123');
+    expect(body.session.user.name).toBe('John Doe');
   });
 
-  it('clears the local cookie when session restoration fails', async () => {
-    getUser.mockRejectedValueOnce(new Error('session expired'));
-
+  it('returns null session when userId exists but currentUser is null', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user-123' });
     const response = await routeHandlers.GET(createRequest());
-
-    expect(clearAppwriteSessionCookie).toHaveBeenCalledWith(response);
-    await expect(response.json()).resolves.toEqual({ session: null });
+    const body = await response.json();
+    expect(body.session).toBeNull();
   });
 
-  it('omits the optional name and passes an undefined user agent when both are missing', async () => {
-    getUser.mockResolvedValueOnce({
-      $id: 'user-123',
-      email: 'user@example.com',
-      name: null,
-    });
-
-    const request = {
-      url: 'https://skillogue.test/api/auth/session',
-      headers: {
-        get: jest.fn(() => null),
-      },
-    } as never;
-
-    const response = await routeHandlers.GET(request);
-
-    expect(createAppwriteSessionAccount).toHaveBeenCalledWith('session-secret', undefined);
-    await expect(response.json()).resolves.toEqual({
-      session: {
-        user: {
-          id: 'user-123',
-          email: 'user@example.com',
-          name: undefined,
-        },
-        expires: '2026-12-31T00:00:00.000Z',
-      },
-    });
+  it('returns e2e session when e2e header present', async () => {
+    const { getE2EAdminSession } = require('../../src/lib/e2e-auth');
+    getE2EAdminSession.mockReturnValueOnce({ user: { id: 'e2e-user', email: 'a@b.com', isAdmin: true }, expires: null });
+    const response = await routeHandlers.GET(createRequest());
+    const body = await response.json();
+    expect(body.session.user.id).toBe('e2e-user');
+    expect(mockAuth).not.toHaveBeenCalled();
   });
 });

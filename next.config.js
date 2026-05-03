@@ -27,14 +27,16 @@ const securityHeaders = [
       "default-src 'self'",
       // Next.js requires 'unsafe-inline' for its hydration scripts and the theme init script.
       // 'unsafe-eval' is only added in development (React needs it for call-stack reconstruction).
-      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com`,
       // Tailwind / CSS-in-JS inline styles
       "style-src 'self' 'unsafe-inline'",
-      // DiceBear avatars; data: for inline SVGs; blob: for generated content
-      "img-src 'self' data: blob: https://api.dicebear.com",
+      // DiceBear avatars; Clerk avatar CDN; data: for inline SVGs; blob: for generated content
+      "img-src 'self' data: blob: https://api.dicebear.com https://img.clerk.com",
       "font-src 'self'",
-      // Appwrite REST API + Realtime WebSocket
-      "connect-src 'self' https://*.appwrite.io wss://*.appwrite.io",
+      // Clerk API + hosted auth flows
+      "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com wss://*.clerk.accounts.dev",
+      // Clerk hosted sign-in/sign-up iframes
+      "frame-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com",
       // Service worker registration
       "worker-src 'self' blob:",
       "object-src 'none'",

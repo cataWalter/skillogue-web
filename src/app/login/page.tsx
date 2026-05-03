@@ -6,13 +6,12 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { OAuthProvider } from 'appwrite';
+import { useSignIn } from '@clerk/nextjs/legacy';
 import { authCopy } from '../../lib/app-copy';
 import FormCard from '../../components/FormCard';
 import Input from '../../components/Input';
 import { Button } from '../../components/Button';
 import Spinner from '../../components/Spinner';
-import { createAppwriteBrowserAccount } from '../../lib/appwrite/browser';
 
 const EMAIL_VERIFICATION_REQUIRED_FRAGMENT = 'Please verify your email before signing in';
 
@@ -28,6 +27,7 @@ const Login: React.FC = () => {
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const { signIn } = useAuth();
+    const { signIn: clerkSignIn } = useSignIn();
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -38,15 +38,14 @@ const Login: React.FC = () => {
         }
     }, [searchParams]);
 
-    const handleGoogleSignIn = () => {
+    const handleGoogleSignIn = async () => {
         setGoogleLoading(true);
         try {
-            const account = createAppwriteBrowserAccount();
-            account.createOAuth2Token(
-                OAuthProvider.Google,
-                `${window.location.origin}/api/auth/oauth/callback`,
-                `${window.location.origin}/login?error=oauth`,
-            );
+            await clerkSignIn?.authenticateWithRedirect({
+                strategy: 'oauth_google',
+                redirectUrl: `${window.location.origin}/sso-callback`,
+                redirectUrlComplete: '/dashboard',
+            });
         } catch (err) {
             console.error('[Google OAuth] sign-in error:', err);
             toast.error(authCopy.login.unexpectedError, { id: 'google-oauth-error' });

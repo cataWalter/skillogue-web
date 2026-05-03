@@ -1,282 +1,100 @@
-import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
-import { Client as AppwriteClient, Databases, Query, Users } from 'node-appwrite';
+import { createClient } from '@libsql/client';
 import type { Page } from '@playwright/test';
 import { test as base, expect } from './test';
+import {
+  E2E_AUTH_COOKIE_NAME,
+  E2E_AUTH_ALICE_COOKIE_VALUE,
+  E2E_AUTH_INCOMPLETE_COOKIE_VALUE,
+  E2E_ALICE_USER_ID,
+  E2E_INCOMPLETE_USER_ID,
+} from '../../../src/lib/e2e-auth';
 
 dotenv.config({ path: '.env', quiet: true });
 dotenv.config({ path: '.env.local', quiet: true });
 
-const getEnvValue = (...keys: string[]) => {
-  for (const key of keys) {
-    const value = process.env[key]?.trim();
-    if (value) {
-      return value;
-    }
-  }
-
-  return '';
+// ---------------------------------------------------------------------------
+// Turso seeding helpers (run once per worker via module-level promises)
+// ---------------------------------------------------------------------------
+const getTursoClient = () => {
+  const url = process.env.TURSO_DATABASE_URL?.trim() ?? '';
+  const authToken = process.env.TURSO_AUTH_TOKEN?.trim() ?? '';
+  if (!url) throw new Error('TURSO_DATABASE_URL is not set in .env.local');
+  return createClient({ url, authToken: authToken || undefined });
 };
 
-const toEnvKeySegment = (value: string) => value.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
-
-const getCollectionId = (name: string) =>
-  getEnvValue(`APPWRITE_COLLECTION_${toEnvKeySegment(name)}_ID`) || name;
-
-const appwriteEndpoint = getEnvValue('NEXT_PUBLIC_APPWRITE_ENDPOINT');
-const appwriteProjectId = getEnvValue('NEXT_PUBLIC_APPWRITE_PROJECT_ID');
-const appwriteDatabaseId = getEnvValue('NEXT_PUBLIC_APPWRITE_DATABASE_ID', 'APPWRITE_DATABASE_ID');
-const appwriteApiKey = getEnvValue('APPWRITE_API_KEY');
-const profilesCollectionId = getCollectionId('profiles');
-
-const getAdminClients = () => {
-  if (!appwriteEndpoint || !appwriteProjectId || !appwriteDatabaseId || !appwriteApiKey) {
-    throw new Error(
-      'Missing one or more required env vars: NEXT_PUBLIC_APPWRITE_ENDPOINT, NEXT_PUBLIC_APPWRITE_PROJECT_ID, NEXT_PUBLIC_APPWRITE_DATABASE_ID, APPWRITE_API_KEY'
-    );
-  }
-
-  const client = new AppwriteClient()
-    .setEndpoint(appwriteEndpoint)
-    .setProject(appwriteProjectId)
-    .setKey(appwriteApiKey);
-
-  return {
-    users: new Users(client),
-    databases: new Databases(client),
-  };
-};
-
-const findUserByEmail = async (email: string) => {
-  const { users } = getAdminClients();
-  const result = await users.list({
-    queries: [Query.equal('email', email)],
-    total: false,
+const ensureAliceProfile = async () => {
+  const client = getTursoClient();
+  const now = new Date().toISOString();
+  await client.execute({
+    sql: `
+      INSERT INTO profiles (id, first_name, last_name, about_me, gender, verified, created_at, updated_at)
+      VALUES (?, 'Alice', 'Johnson',
+        'Passionate about art and photography. Love exploring museums and capturing beautiful moments.',
+        'woman', 1, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        first_name = excluded.first_name,
+        last_name = excluded.last_name,
+        about_me = excluded.about_me,
+        updated_at = excluded.updated_at
+    `,
+    args: [E2E_ALICE_USER_ID, now, now],
   });
-
-  return result.users[0] || null;
+  await client.close();
 };
 
-const ensureUserEmailVerified = async (userId: string) => {
-  const { users } = getAdminClients();
-  await users.updateEmailVerification({
-    userId,
-    emailVerification: true,
+const ensureIncompleteProfile = async () => {
+  const client = getTursoClient();
+  // Remove any existing profile so the page redirects to onboarding
+  await client.execute({
+    sql: `DELETE FROM profiles WHERE id = ?`,
+    args: [E2E_INCOMPLETE_USER_ID],
   });
+  await client.close();
 };
 
-const deleteExistingProfiles = async (userId: string) => {
-  const { databases } = getAdminClients();
-  const documentIds = new Set<string>();
+// Seed once per worker process
+let aliceSeedPromise: Promise<void> | null = null;
+let incompleteSeedPromise: Promise<void> | null = null;
 
-  try {
-    const profile = await databases.getDocument(appwriteDatabaseId, profilesCollectionId, userId);
-    documentIds.add(profile.$id);
-  } catch (error) {
-    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 404) {
-      throw error;
-    }
+const getAliceSeed = () => {
+  if (!aliceSeedPromise) {
+    aliceSeedPromise = ensureAliceProfile().catch((e) => {
+      console.warn('[e2e] Failed to seed Alice profile:', e);
+    });
   }
+  return aliceSeedPromise;
+};
 
-  const matchingProfiles = await databases.listDocuments(appwriteDatabaseId, profilesCollectionId, [
-    Query.equal('id', [userId]),
-    Query.limit(100),
+const getIncompleteSeed = () => {
+  if (!incompleteSeedPromise) {
+    incompleteSeedPromise = ensureIncompleteProfile().catch((e) => {
+      console.warn('[e2e] Failed to clear incomplete profile:', e);
+    });
+  }
+  return incompleteSeedPromise;
+};
+
+// ---------------------------------------------------------------------------
+// Cookie helpers
+// ---------------------------------------------------------------------------
+const baseURL = process.env.BASE_URL || 'http://localhost:3000';
+const { hostname } = new URL(baseURL);
+
+const setE2ECookie = async (page: Page, value: string) => {
+  await page.context().addCookies([
+    {
+      name: E2E_AUTH_COOKIE_NAME,
+      value,
+      domain: hostname,
+      path: '/',
+    },
   ]);
-
-  for (const profile of matchingProfiles.documents) {
-    documentIds.add(profile.$id);
-  }
-
-  for (const documentId of documentIds) {
-    await databases.deleteDocument(appwriteDatabaseId, profilesCollectionId, documentId);
-  }
-};
-
-const upsertProfile = async (
-  userId: string,
-  profile: { firstName: string; lastName: string; aboutMe: string; age: number; gender: string }
-) => {
-  const { databases } = getAdminClients();
-  const payload = {
-    id: userId,
-    first_name: profile.firstName,
-    last_name: profile.lastName,
-    about_me: profile.aboutMe,
-    age: profile.age,
-    gender: profile.gender,
-    verified: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  try {
-    await databases.getDocument(appwriteDatabaseId, profilesCollectionId, userId);
-    await databases.updateDocument(appwriteDatabaseId, profilesCollectionId, userId, payload);
-  } catch (error) {
-    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 404) {
-      throw error;
-    }
-    await databases.createDocument(appwriteDatabaseId, profilesCollectionId, userId, payload);
-  }
-};
-
-const ensureAliceUser = async () => {
-  const email = 'alice@example.com';
-  const password = 'Test1234!';
-  const { users } = getAdminClients();
-
-  let user = await findUserByEmail(email);
-
-  if (!user) {
-    try {
-      user = await users.create({
-        userId: randomUUID(),
-        email,
-        password,
-        name: 'Alice Johnson',
-      });
-    } catch (error) {
-      if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 409) {
-        throw error;
-      }
-
-      user = await findUserByEmail(email);
-      if (!user) {
-        throw error;
-      }
-    }
-  }
-
-  await ensureUserEmailVerified(user.$id);
-
-  await upsertProfile(user.$id, {
-    firstName: 'Alice',
-    lastName: 'Johnson',
-    aboutMe: 'Passionate about art and photography. Love exploring museums and capturing beautiful moments.',
-    age: 28,
-    gender: 'Female',
-  });
-
-  return { id: user.$id, email, password };
-};
-
-const ensureIncompleteProfileUser = async () => {
-  const email = 'e2e.incomplete@example.com';
-  const password = 'TestPassword123!';
-  const { users } = getAdminClients();
-
-  let user = await findUserByEmail(email);
-
-  if (!user) {
-    try {
-      user = await users.create({
-        userId: randomUUID(),
-        email,
-        password,
-        name: 'E2E Incomplete Profile',
-      });
-    } catch (error) {
-      if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 409) {
-        throw error;
-      }
-
-      user = await findUserByEmail(email);
-      if (!user) {
-        throw error;
-      }
-    }
-  }
-
-  await ensureUserEmailVerified(user.$id);
-
-  await deleteExistingProfiles(user.$id);
-
-  return {
-    id: user.$id,
-    email,
-    password,
-  };
-};
-
-const signInThroughBrowserContext = async (page: Page, credentials: { email: string; password: string }) => {
-  await page.request.post('/api/auth/sign-out').catch(() => undefined);
-  await page.context().clearCookies();
-
-  let lastError: Error | undefined;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) {
-      await page.waitForTimeout(1000 * attempt);
-    }
-    try {
-      const response = await page.request.post('/api/auth/sign-in/email', {
-        data: credentials,
-      });
-
-      if (!response.ok()) {
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(payload?.message || `Failed to sign in via API (${response.status()}).`);
-      }
-      return;
-    } catch (e) {
-      lastError = e as Error;
-      if (!(e instanceof Error) || !e.message.includes('fetch failed')) {
-        throw e;
-      }
-    }
-  }
-  throw lastError;
-};
-
-// ---------------------------------------------------------------------------
-// Session state caches – populated once per worker process to avoid hitting
-// Appwrite's sign-in rate limit when running many authenticated tests.
-// ---------------------------------------------------------------------------
-import type { Cookie } from '@playwright/test';
-
-let cachedAliceStatePromise: Promise<Cookie[]> | null = null;
-let cachedIncompleteStatePromise: Promise<Cookie[]> | null = null;
-
-const getAliceCookies = (page: Page): Promise<Cookie[]> => {
-  if (!cachedAliceStatePromise) {
-    cachedAliceStatePromise = (async () => {
-      const user = await ensureAliceUser();
-      await signInThroughBrowserContext(page, { email: user.email, password: user.password });
-      return page.context().cookies();
-    })();
-  }
-  return cachedAliceStatePromise;
-};
-
-const getIncompleteCookies = (page: Page): Promise<Cookie[]> => {
-  if (!cachedIncompleteStatePromise) {
-    cachedIncompleteStatePromise = (async () => {
-      const user = await ensureIncompleteProfileUser();
-      await signInThroughBrowserContext(page, { email: user.email, password: user.password });
-      return page.context().cookies();
-    })();
-  }
-  return cachedIncompleteStatePromise;
 };
 
 /**
- * Restore a cached cookie state onto a fresh page context.
- * Falls back to a fresh sign-in if the cache is empty for this page.
- */
-const restoreOrSignIn = async (
-  page: Page,
-  getCookies: (page: Page) => Promise<Cookie[]>
-): Promise<void> => {
-  const cookies = await getCookies(page);
-  // If this context already ran the sign-in, its cookies are already set;
-  // otherwise inject the cached cookies into the fresh context.
-  const existing = await page.context().cookies();
-  if (existing.length === 0) {
-    await page.context().addCookies(cookies);
-  }
-};
-
-/**
- * Custom test fixture that provides authenticated user functionality
+ * Custom test fixture that provides authenticated user functionality.
+ * Uses a lightweight E2E cookie bypass instead of real Clerk auth.
  */
 export const test = base.extend<{
   authenticatedPage: Page;
@@ -284,51 +102,20 @@ export const test = base.extend<{
   createTestUser: () => Promise<{ email: string; password: string; id: string }>;
 }>({
   authenticatedPage: async ({ page }, providePage) => {
-    try {
-      await restoreOrSignIn(page, getAliceCookies);
-    } catch (e) {
-      console.log('Could not authenticate:', e);
-      throw e;
-    }
-
+    await getAliceSeed();
+    await setE2ECookie(page, E2E_AUTH_ALICE_COOKIE_VALUE);
     await providePage(page);
   },
 
   incompleteProfilePage: async ({ page }, providePage) => {
-    try {
-      await restoreOrSignIn(page, getIncompleteCookies);
-    } catch (e) {
-      console.log('Could not authenticate incomplete profile user:', e);
-      throw e;
-    }
-
+    await getIncompleteSeed();
+    await setE2ECookie(page, E2E_AUTH_INCOMPLETE_COOKIE_VALUE);
     await providePage(page);
   },
 
   createTestUser: async () => {
-    const testEmail = `test_${Date.now()}@example.com`;
-    const testPassword = 'TestPassword123!';
-
-    try {
-      const { users } = getAdminClients();
-      const user = await users.create({
-        userId: randomUUID(),
-        email: testEmail,
-        password: testPassword,
-        name: testEmail.split('@')[0],
-      });
-
-      await ensureUserEmailVerified(user.$id);
-
-      return {
-        email: testEmail,
-        password: testPassword,
-        id: user.$id,
-      };
-    } catch (e) {
-      console.log('Error creating test user:', e);
-      throw e;
-    }
+    // Not used in current tests; kept for API compatibility
+    return { email: 'test@example.com', password: 'TestPassword123!', id: 'e2e-test-user' };
   },
 });
 

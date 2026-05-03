@@ -1,32 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import { useSignIn } from '@clerk/nextjs/legacy';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
 import { authCopy } from '../../lib/app-copy';
 import FormCard from '../../components/FormCard';
 import Input from '../../components/Input';
 import { Button } from '../../components/Button';
 
-import ForgotPassword from '../forgot-password/page';
-
 const ResetPassword = () => {
+    const [code, setCode] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [confirmPassword, setConfirmPassword] = useState<string>('');
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [showSuccess, setShowSuccess] = useState<boolean>(false);
     const router = useRouter();
-    const searchParams = useSearchParams();
-
-    const appwriteUserId = searchParams.get('userId');
-    const appwriteSecret = searchParams.get('secret');
-
-    // If missing tokens, we ask them to request a new link
-    if (!appwriteUserId || !appwriteSecret) {
-        return <ForgotPassword />;
-    }
+    const { signIn, setActive, isLoaded } = useSignIn();
 
     const isPasswordValid = (): boolean => {
         const checks = {
@@ -43,7 +35,7 @@ const ResetPassword = () => {
         setError('');
         setLoading(true);
 
-        if (!password || !confirmPassword) {
+        if (!code || !password || !confirmPassword) {
             setError(authCopy.resetPassword.emptyFieldsError);
             setLoading(false);
             return;
@@ -62,30 +54,21 @@ const ResetPassword = () => {
         }
 
         try {
-            if (!appwriteUserId || !appwriteSecret) {
-                throw new Error(authCopy.resetPassword.invalidLink);
-            }
+            if (!isLoaded || !signIn) throw new Error(authCopy.resetPassword.invalidLink);
 
-            const response = await fetch('/api/auth/reset-password', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: appwriteUserId,
-                    secret: appwriteSecret,
-                    password,
-                }),
+            const result = await signIn.attemptFirstFactor({
+                strategy: 'reset_password_email_code',
+                code,
+                password,
             });
 
-            if (!response.ok) {
-                const payload = await response.json().catch(() => null);
-                throw new Error(payload?.message || authCopy.resetPassword.submitError);
+            if (result.status === 'complete') {
+                await setActive({ session: result.createdSessionId });
+                setShowSuccess(true);
+                setTimeout(() => router.push('/dashboard'), 2000);
+            } else {
+                throw new Error(authCopy.resetPassword.submitError);
             }
-
-            setShowSuccess(true);
-
-            setTimeout(() => {
-                router.push('/login');
-            }, 2000);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : authCopy.resetPassword.submitError;
             setError(message);
@@ -114,6 +97,18 @@ const ResetPassword = () => {
     return (
         <FormCard title={authCopy.resetPassword.title} subtitle={authCopy.resetPassword.subtitle}>
             <form onSubmit={handleReset} className="space-y-6">
+                <Input
+                    id="reset-code"
+                    name="code"
+                    type="text"
+                    inputMode="numeric"
+                    label="Verification Code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="Enter the code from your email"
+                    autoComplete="one-time-code"
+                />
+
                 <div>
                     <Input
                         id="new-password"

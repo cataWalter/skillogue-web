@@ -1,301 +1,84 @@
-import { proxy } from '../src/proxy';
+import { proxy as _proxy } from '../src/proxy';
 
-jest.mock('../src/lib/appwrite/config', () => ({
-  getAppwriteSessionCookieName: jest.fn(() => 'a_session_skillogue'),
-  getAppwriteEndpoint: jest.fn(() => 'https://appwrite.example.com/v1'),
-  getAppwriteProjectId: jest.fn(() => 'test-project'),
-  getAppwriteDatabaseId: jest.fn(() => 'test-db'),
-  getAppwriteCollectionId: jest.fn(() => 'test-collection'),
+type MockResponse = { kind: string; status: number; url?: string };
+const proxy = _proxy as unknown as (req: unknown) => Promise<MockResponse>;
+
+const mockAuth = jest.fn();
+
+jest.mock('@clerk/nextjs/server', () => ({
+  clerkMiddleware: (fn: (auth: unknown, req: unknown) => unknown) =>
+    (req: unknown) => fn(() => mockAuth(), req),
 }));
 
-const mockAccountGet = jest.fn();
-const mockListDocuments = jest.fn();
-
-const mockClient = {
-  setEndpoint: jest.fn().mockReturnThis(),
-  setProject: jest.fn().mockReturnThis(),
-  setSession: jest.fn().mockReturnThis(),
-};
-
-jest.mock('appwrite', () => ({
-  Client: jest.fn(() => mockClient),
-  Account: jest.fn(() => ({ get: mockAccountGet })),
-  Databases: jest.fn(() => ({ listDocuments: mockListDocuments })),
-  Query: {
-    equal: jest.fn((field: string, value: string) => `equal:${field}:${value}`),
-    limit: jest.fn((value: number) => `limit:${value}`),
-  },
+jest.mock('../src/lib/e2e-auth', () => ({
+  getE2EAdminSession: jest.fn(() => null),
+  getE2EUserSession: jest.fn(() => null),
 }));
 
 jest.mock('next/server', () => ({
   NextResponse: {
-    redirect: (url: URL) => ({
-      kind: 'redirect',
-      status: 307,
-      url: url.toString(),
-    }),
-    next: () => ({
-      kind: 'next',
-      status: 200,
-    }),
+    redirect: (url: URL) => ({ kind: 'redirect', status: 307, url: url.toString() }),
+    next: () => ({ kind: 'next', status: 200 }),
   },
 }));
 
 describe('proxy', () => {
-  const createRequest = (
-    pathname: string,
-    sessionToken?: string,
-    options?: {
-      extraCookies?: Record<string, string>;
-      extraHeaders?: Record<string, string>;
-      host?: string;
-      userAgent?: string | null;
-    }
-  ) => {
+  const createRequest = (pathname: string, options?: { host?: string }) => {
     const host = options?.host ?? 'skillogue.test';
-    const cookies = new Map<string, string>();
-
-    if (sessionToken) {
-      cookies.set('a_session_skillogue', sessionToken);
-    }
-
-    for (const [name, value] of Object.entries(options?.extraCookies ?? {})) {
-      cookies.set(name, value);
-    }
-
+    const baseUrl = 'https://' + host + pathname;
     return {
-      cookies: {
-        get: jest.fn((name: string) => {
-          const value = cookies.get(name);
-          return value ? { value } : undefined;
-        }),
-      },
-      headers: {
-        get: jest.fn((name: string) => {
-          if (name === 'cookie') {
-            return cookies.size > 0
-              ? Array.from(cookies.entries())
-                .map(([cookieName, cookieValue]) => `${cookieName}=${cookieValue}`)
-                .join('; ')
-              : null;
-          }
-
-          if (name === 'user-agent') {
-            return options?.userAgent === undefined ? 'jest-test' : options.userAgent;
-          }
-
-          return options?.extraHeaders?.[name] ?? null;
-        }),
-      },
       nextUrl: {
-        hostname: host,
         pathname,
-        clone: () => new URL(`https://${host}${pathname}`),
+        clone: () => {
+          const u = { pathname, _host: host };
+          Object.defineProperty(u, 'pathname', { writable: true, value: pathname });
+          return {
+            get pathname() { return (u as any)._pathname || pathname; },
+            set pathname(v: string) { (u as any)._pathname = v; },
+            toString() { return 'https://' + host + ((u as any)._pathname || pathname); },
+          };
+        },
       },
-      url: `https://${host}${pathname}`,
+      url: baseUrl,
+      headers: { get: jest.fn() },
     } as never;
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAccountGet.mockReset();
-    mockListDocuments.mockReset();
+    mockAuth.mockResolvedValue({ userId: null });
   });
 
-  it('redirects protected routes to login when there is no session cookie', async () => {
+  it('redirects unauthenticated users away from protected routes', async () => {
+    mockAuth.mockResolvedValue({ userId: null });
     const response = await proxy(createRequest('/dashboard'));
-
-    expect(mockAccountGet).not.toHaveBeenCalled();
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/login',
-    });
+    expect(response!.kind).toBe('redirect');
+    expect(response!.url).toContain('/login');
   });
 
-  it('redirects admin, favorites, and notifications routes to login when there is no session cookie', async () => {
-    const adminResponse = await proxy(createRequest('/admin/verification'));
-    const favoritesResponse = await proxy(createRequest('/favorites'));
-    const notificationsResponse = await proxy(createRequest('/notifications'));
-
-    expect(mockAccountGet).not.toHaveBeenCalled();
-    expect(adminResponse).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/login',
-    });
-    expect(favoritesResponse).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/login',
-    });
-    expect(notificationsResponse).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/login',
-    });
+  it('redirects authenticated users away from auth routes', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user-123' });
+    const response = await proxy(createRequest('/login'));
+    expect(response!.kind).toBe('redirect');
+    expect(response!.url).toContain('/dashboard');
   });
 
-  it('redirects protected routes to login when the session is unverified', async () => {
-    mockAccountGet.mockRejectedValue(new Error('no session'));
-
-    const response = await proxy(createRequest('/settings', 'session-secret'));
-
-    expect(mockAccountGet).toHaveBeenCalled();
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/login',
-    });
+  it('redirects authenticated users away from the home route', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user-123' });
+    const response = await proxy(createRequest('/'));
+    expect(response!.kind).toBe('redirect');
+    expect(response!.url).toContain('/dashboard');
   });
 
-  it('allows auth routes when a session cookie exists but the session is unverified', async () => {
-    mockAccountGet.mockRejectedValue(new Error('no session'));
-
-    const response = await proxy(createRequest('/login', 'session-secret'));
-
-    expect(response).toEqual({
-      kind: 'next',
-      status: 200,
-    });
+  it('allows unauthenticated access to public routes', async () => {
+    mockAuth.mockResolvedValue({ userId: null });
+    const response = await proxy(createRequest('/faq'));
+    expect(response!.kind).toBe('next');
   });
 
-  it('redirects auth routes away only for verified sessions', async () => {
-    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
-    mockListDocuments.mockResolvedValue({
-      documents: [{ id: 'user-123', first_name: 'Ada' }],
-    });
-
-    const response = await proxy(createRequest('/login', 'session-secret'));
-
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/dashboard',
-    });
-  });
-
-  it('redirects the home route to dashboard for verified sessions', async () => {
-    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
-    mockListDocuments.mockResolvedValue({
-      documents: [{ id: 'user-123', first_name: 'Ada' }],
-    });
-
-    const response = await proxy(createRequest('/', 'session-secret'));
-
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/dashboard',
-    });
-  });
-
-  it('redirects protected routes to onboarding when the logged-in profile is incomplete', async () => {
-    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
-    mockListDocuments.mockResolvedValue({ documents: [] });
-
-    const response = await proxy(createRequest('/messages', 'session-secret'));
-
-    expect(mockListDocuments).toHaveBeenCalled();
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/onboarding',
-    });
-  });
-
-  it('redirects favorites to onboarding when the logged-in profile is incomplete', async () => {
-    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
-    mockListDocuments.mockResolvedValue({ documents: [] });
-
-    const response = await proxy(createRequest('/favorites', 'session-secret'));
-
-    expect(mockListDocuments).toHaveBeenCalled();
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/onboarding',
-    });
-  });
-
-  it('allows onboarding for logged-in users with incomplete profiles', async () => {
-    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
-    mockListDocuments.mockResolvedValue({
-      documents: [{ id: 'user-123', first_name: '' }],
-    });
-
-    const response = await proxy(createRequest('/onboarding', 'session-secret'));
-
-    expect(response).toEqual({
-      kind: 'next',
-      status: 200,
-    });
-  });
-
-  it('redirects auth routes to onboarding when the logged-in profile is incomplete', async () => {
-    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
-    mockListDocuments.mockResolvedValue({
-      documents: [{ id: 'user-123', first_name: null }],
-    });
-
-    const response = await proxy(createRequest('/login', 'session-secret'));
-
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/onboarding',
-    });
-  });
-
-  it('redirects the home route to onboarding when the logged-in profile is incomplete', async () => {
-    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
-    mockListDocuments.mockResolvedValue({
-      documents: [{ id: 'user-123', first_name: null }],
-    });
-
-    const response = await proxy(createRequest('/', 'session-secret'));
-
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://skillogue.test/onboarding',
-    });
-  });
-
-  it('allows protected routes when profile completion cannot be determined', async () => {
-    mockAccountGet.mockResolvedValue({ $id: 'user-123', email: 'ada@example.com' });
-    mockListDocuments.mockRejectedValueOnce(new Error('repository unavailable'));
-
-    const response = await proxy(
-      createRequest('/dashboard', 'session-secret', {
-        userAgent: null,
-      })
-    );
-
-    expect(response).toEqual({
-      kind: 'next',
-      status: 200,
-    });
-  });
-
-  it('treats local e2e admin sessions as authenticated without user lookup', async () => {
-    const response = await proxy(
-      createRequest('/login', undefined, {
-        host: 'localhost',
-        extraCookies: {
-          skillogue_e2e_auth: 'admin',
-        },
-        extraHeaders: {
-          'x-skillogue-e2e-auth': 'admin',
-        },
-      })
-    );
-
-    expect(mockAccountGet).not.toHaveBeenCalled();
-    expect(response).toEqual({
-      kind: 'redirect',
-      status: 307,
-      url: 'https://localhost/dashboard',
-    });
+  it('allows authenticated access to protected routes', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user-123' });
+    const response = await proxy(createRequest('/dashboard'));
+    expect(response!.kind).toBe('next');
   });
 });

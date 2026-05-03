@@ -47,6 +47,7 @@ describe('e2e auth helpers', () => {
 				id: 'e2e-admin',
 				email: 'cata.walter@gmail.com',
 				name: 'E2E Admin',
+				isAdmin: true,
 			},
 			expires: '2099-01-01T00:00:00.000Z',
 		});
@@ -103,6 +104,7 @@ describe('e2e auth helpers', () => {
 				id: 'e2e-admin',
 				email: 'cata.walter@gmail.com',
 				name: 'E2E Admin',
+				isAdmin: true,
 			},
 			expires: '2099-01-01T00:00:00.000Z',
 		});

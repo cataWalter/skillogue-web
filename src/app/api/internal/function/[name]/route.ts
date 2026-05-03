@@ -1,5 +1,5 @@
+import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAppwriteSessionSecret } from '@/lib/appwrite/server';
 import { AppDataService } from '@/lib/server/app-data-service';
 
 export async function POST(
@@ -7,16 +7,17 @@ export async function POST(
   { params }: { params: Promise<{ name: string }> }
 ) {
   try {
+    const { userId } = await auth();
     const payload = await request.json();
     const { name } = await params;
-    const service = new AppDataService(
-      getAppwriteSessionSecret(request),
-      request.headers.get('user-agent') ?? undefined
-    );
+    const service = new AppDataService(userId);
     const result = await service.invokeCompatFunction(name, payload.body ?? {});
 
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
