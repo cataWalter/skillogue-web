@@ -415,15 +415,13 @@ describe('UserProfile', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
-  it('redirects to login when no session is available', async () => {
+  it('shows a sign-in prompt when no session is available', async () => {
     (appClient.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null }, error: null });
 
-    await renderUserProfilePage();
+    await renderLoadedUserProfilePage();
 
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/login');
-    });
-    expect(screen.getByText('You must be logged in to view profiles.')).toBeInTheDocument();
+    expect(mockPush).not.toHaveBeenCalledWith('/login');
+    expect(screen.getByRole('link', { name: /sign in to connect/i })).toHaveAttribute('href', '/login');
   });
 
   it('shows the missing user id state without redirecting', async () => {

@@ -1,4 +1,4 @@
-import { test } from './fixtures/auth';
+import { test, expect } from './fixtures/auth';
 import { expectLoginRedirect, expectOnboardingRedirect } from './utils/navigation';
 
 test.describe('Messages', () => {
@@ -22,123 +22,35 @@ test.describe('Messages', () => {
     });
   });
 
-  test.describe('Messages Page Structure', () => {
-    test('should keep the messages page protected until authentication', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
+  test.describe('Messages Page - Authenticated', () => {
+    test('should load the messages page when authenticated', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/messages');
+
+      await expect(authenticatedPage.getByRole('heading', { name: /^messages$/i })).toBeVisible({ timeout: 15000 });
     });
 
-    test('should have conversation list section', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
+    test('should show the empty state title when there are no conversations', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/messages');
+
+      await expect(
+        authenticatedPage.getByText(/no conversations yet/i).first()
+      ).toBeVisible({ timeout: 15000 });
     });
 
-    test('should have chat section for selected conversation', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
+    test('should have a Find People link in the empty conversations state', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/messages');
+
+      await expect(authenticatedPage.getByRole('link', { name: /find people/i })).toBeVisible({ timeout: 15000 });
     });
 
-    test('should have message input field', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
+    test('should show the conversation selection prompt when no chat is selected', async ({ authenticatedPage }, testInfo) => {
+      test.skip(testInfo.project.name.toLowerCase().includes('mobile'), 'Selection prompt panel is hidden on mobile viewports (hidden md:flex)');
 
-    test('should have send button', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-  });
+      await authenticatedPage.goto('/messages');
 
-  test.describe('Messages UI Elements', () => {
-    test('should display conversation items', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should display message bubbles', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should have back button for mobile view', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should have user avatar in conversations', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should show unread message indicator', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-  });
-
-  test.describe('Messages Functionality', () => {
-    test('should be able to select a conversation', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should display message input when conversation is selected', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages?conversation=test-id');
-    });
-
-    test('should have scrollable message history', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should show loading state', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-  });
-
-  test.describe('Messages URL Parameters', () => {
-    test('should handle conversation query parameter', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages?conversation=user123');
-    });
-
-    test('should handle empty conversation list', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-  });
-
-  test.describe('Messages Navigation', () => {
-    test('should navigate to messages from dashboard', async ({ page }) => {
-      await expectLoginRedirect(page, '/dashboard');
-    });
-
-    test('should navigate to messages from navbar', async ({ page }) => {
-      await page.goto('/');
-      await page.waitForTimeout(2000);
-      // Just verify page loads
-    });
-
-    test('should navigate to specific conversation from dashboard', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages?conversation=test-id');
-    });
-  });
-
-  test.describe('Messages Interaction', () => {
-    test('should have report button for conversations', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should have block user option', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should have report modal', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-  });
-
-  test.describe('Messages Edge Cases', () => {
-    test('should handle very long messages', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should handle special characters in messages', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should handle empty message input', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
-    });
-
-    test('should show timestamp for messages', async ({ page }) => {
-      await expectLoginRedirect(page, '/messages');
+      await expect(
+        authenticatedPage.getByText(/select a conversation to start chatting/i)
+      ).toBeVisible({ timeout: 15000 });
     });
   });
 });

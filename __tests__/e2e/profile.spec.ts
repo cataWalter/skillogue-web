@@ -1,58 +1,54 @@
-import { test, expect } from './fixtures/test';
+import { test, expect } from './fixtures/auth';
 import { expectLoginRedirect } from './utils/navigation';
 
 test.describe('Profile Pages', () => {
-  test.describe('View Profile Page', () => {
+  test.describe('Unauthenticated Access', () => {
     test('should redirect to login when accessing profile without authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/profile');
     });
 
-    test('should keep the profile page protected until authentication', async ({ page }) => {
-      await expectLoginRedirect(page, '/profile');
-    });
-  });
-
-  test.describe('Edit Profile Page', () => {
     test('should redirect to login when accessing edit-profile without authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/edit-profile');
     });
 
-    test('should keep edit-profile protected until authentication', async ({ page }) => {
-      await expectLoginRedirect(page, '/edit-profile');
-    });
-  });
-
-  test.describe('User Profile Page ([id])', () => {
     test('should redirect to login when accessing user profile without authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/user/some-user-id');
     });
+  });
 
-    test('should keep user profile routes protected until authentication', async ({ page }) => {
-      await expectLoginRedirect(page, '/user/some-user-id');
+  test.describe('Profile Page - Authenticated', () => {
+    test('should display the authenticated user profile', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/profile');
+
+      // Alice's profile has first_name "Alice" and last_name "Johnson"; the page renders an h1
+      await expect(authenticatedPage.getByRole('heading', { name: /alice/i, level: 1 })).toBeVisible({ timeout: 15000 });
     });
 
-    test('should redirect invalid user profile routes to login when unauthenticated', async ({ page }) => {
-      await expectLoginRedirect(page, '/user/invalid-user-id-123');
+    test('should have an edit profile button', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/profile');
+
+      await expect(authenticatedPage.getByRole('link', { name: /edit profile/i })).toBeVisible({ timeout: 15000 });
+    });
+
+    test('should navigate to edit-profile when clicking Edit Profile', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/profile');
+      await authenticatedPage.getByRole('link', { name: /edit profile/i }).click();
+
+      await expect(authenticatedPage).toHaveURL(/\/edit-profile/, { timeout: 10000 });
     });
   });
 
-  test.describe('Profile Card Component', () => {
-    test('should have edit profile button link', async ({ page }) => {
-      await expectLoginRedirect(page, '/profile');
-    });
+  test.describe('Edit Profile - Authenticated', () => {
+    test('should display the edit profile form', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/edit-profile');
 
-    test('should display avatar element', async ({ page }) => {
-      await expectLoginRedirect(page, '/profile');
+      await expect(authenticatedPage.getByRole('main')).toBeVisible({ timeout: 15000 });
     });
   });
 });
 
 test.describe('Onboarding', () => {
   test('should redirect to login when accessing onboarding without authentication', async ({ page }) => {
-    await expectLoginRedirect(page, '/onboarding');
-  });
-
-  test('should keep onboarding behind authentication before profile completion checks', async ({ page }) => {
     await expectLoginRedirect(page, '/onboarding');
   });
 });
@@ -62,16 +58,7 @@ test.describe('Static Pages', () => {
     test('should display contact page', async ({ page }) => {
       await page.goto('/contact');
 
-      // Check for heading
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    });
-
-    test('should have contact form', async ({ page }) => {
-      await page.goto('/contact');
-
-      // Check for form elements
-      // At least one should be visible or page should load
-      await page.waitForTimeout(500);
     });
   });
 
@@ -79,14 +66,12 @@ test.describe('Static Pages', () => {
     test('should display privacy policy page', async ({ page }) => {
       await page.goto('/privacy-policy');
 
-      // Check for heading
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     });
 
     test('should have privacy policy content', async ({ page }) => {
       await page.goto('/privacy-policy');
 
-      // Check for privacy policy heading (avoiding strict mode violation)
       await expect(page.locator('h1').getByText(/privacy/i)).toBeVisible();
     });
   });
@@ -95,73 +80,29 @@ test.describe('Static Pages', () => {
     test('should display terms of service page', async ({ page }) => {
       await page.goto('/terms-of-service');
 
-      // Check for heading
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     });
 
     test('should have terms of service content', async ({ page }) => {
       await page.goto('/terms-of-service');
 
-      // Check for terms heading (avoiding strict mode violation)
       await expect(page.locator('h1').getByText(/terms/i)).toBeVisible();
     });
   });
-});
 
-test.describe('Profile Navigation Flow', () => {
-  test('should navigate from dashboard to profile', async ({ page }) => {
-    await expectLoginRedirect(page, '/dashboard');
+  test.describe('FAQ Page', () => {
+    test('should display the FAQ page', async ({ page }) => {
+      await page.goto('/faq');
+
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    });
   });
 
-  test('should navigate from profile to edit-profile', async ({ page }) => {
-    await expectLoginRedirect(page, '/profile');
-  });
+  test.describe('Cookies Policy Page', () => {
+    test('should display the cookies page', async ({ page }) => {
+      await page.goto('/cookies');
 
-  test('should navigate from settings to profile', async ({ page }) => {
-    await expectLoginRedirect(page, '/settings');
-  });
-});
-
-test.describe('User Profile Links', () => {
-  test('should have message button on user profile', async ({ page }) => {
-    await expectLoginRedirect(page, '/user/test-user-id');
-  });
-
-  test('should have favorite button on user profile', async ({ page }) => {
-    await expectLoginRedirect(page, '/user/test-user-id');
-  });
-
-  test('should have report button on user profile', async ({ page }) => {
-    await expectLoginRedirect(page, '/user/test-user-id');
-  });
-});
-
-test.describe('Profile Form Validation', () => {
-  test('should validate required fields on edit-profile', async ({ page }) => {
-    await expectLoginRedirect(page, '/edit-profile');
-  });
-
-  test('should have first name input', async ({ page }) => {
-    await expectLoginRedirect(page, '/edit-profile');
-  });
-
-  test('should have last name input', async ({ page }) => {
-    await expectLoginRedirect(page, '/edit-profile');
-  });
-
-  test('should have about me textarea', async ({ page }) => {
-    await expectLoginRedirect(page, '/edit-profile');
-  });
-
-  test('should have passion selection', async ({ page }) => {
-    await expectLoginRedirect(page, '/edit-profile');
-  });
-
-  test('should have language selection', async ({ page }) => {
-    await expectLoginRedirect(page, '/edit-profile');
-  });
-
-  test('should have location inputs', async ({ page }) => {
-    await expectLoginRedirect(page, '/edit-profile');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    });
   });
 });

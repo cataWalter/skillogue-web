@@ -1,9 +1,9 @@
-import { test } from './fixtures/auth';
+import { test, expect } from './fixtures/auth';
 import { expectLoginRedirect, expectOnboardingRedirect } from './utils/navigation';
 
 test.describe('Favorites', () => {
   test.describe('Unauthenticated Access', () => {
-    test('should handle unauthenticated access to favorites', async ({ page }) => {
+    test('should redirect to login when accessing favorites without authentication', async ({ page }) => {
       await expectLoginRedirect(page, '/favorites');
     });
   });
@@ -14,63 +14,30 @@ test.describe('Favorites', () => {
     });
   });
 
-  test.describe('Favorites Page Structure', () => {
-    test('should handle unauthenticated favorites page access', async ({ page }) => {
-      await expectLoginRedirect(page, '/favorites');
-    });
-  });
+  test.describe('Favorites Page - Authenticated', () => {
+    test('should display the favorites heading when authenticated', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/favorites');
 
-  test.describe('Favorites List', () => {
-    test('should handle unauthenticated favorites list access', async ({ page }) => {
-      await expectLoginRedirect(page, '/favorites');
-    });
-  });
-
-  test.describe('Favorites Actions', () => {
-    test('should handle unauthenticated favorites actions access', async ({ page }) => {
-      await expectLoginRedirect(page, '/favorites');
-    });
-  });
-
-  test.describe('Favorites UI Elements', () => {
-    test('should handle unauthenticated favorites UI access', async ({ page }) => {
-      await expectLoginRedirect(page, '/favorites');
-    });
-  });
-
-  test.describe('Favorites Navigation', () => {
-    test('should handle unauthenticated dashboard access', async ({ page }) => {
-      await expectLoginRedirect(page, '/dashboard');
+      await expect(authenticatedPage.getByRole('heading', { name: /favorite profiles/i, level: 1 })).toBeVisible({ timeout: 15000 });
     });
 
-    test('should handle unauthenticated search access', async ({ page }) => {
-      await expectLoginRedirect(page, '/search');
+    test('should show the empty state when the user has no favorites', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/favorites');
+
+      await expect(authenticatedPage.getByText(/you haven't saved any profiles yet/i)).toBeVisible({ timeout: 15000 });
     });
-  });
 
-  test.describe('Favorites Functionality', () => {
-    test('should handle unauthenticated favorites functionality access', async ({ page }) => {
-      await expectLoginRedirect(page, '/favorites');
+    test('should have a Find People link in the empty state', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/favorites');
+
+      await expect(authenticatedPage.getByRole('link', { name: /find people/i })).toBeVisible({ timeout: 15000 });
     });
-  });
 
-  test.describe('Favorites Edge Cases', () => {
-    test('should handle edge cases for unauthenticated access', async ({ page }) => {
-      await expectLoginRedirect(page, '/favorites');
+    test('should navigate to search from the empty state Find People link', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/favorites');
+
+      await authenticatedPage.getByRole('link', { name: /find people/i }).click();
+      await expect(authenticatedPage).toHaveURL(/\/search/, { timeout: 10000 });
     });
-  });
-});
-
-test.describe('Add to Favorites', () => {
-  test('should handle search page access', async ({ page }) => {
-    await expectLoginRedirect(page, '/search');
-  });
-
-  test('should handle user profile access', async ({ page }) => {
-    await expectLoginRedirect(page, '/user/test-id');
-  });
-
-  test('should handle favorites page access', async ({ page }) => {
-    await expectLoginRedirect(page, '/favorites');
   });
 });

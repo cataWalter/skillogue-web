@@ -30,6 +30,16 @@ jest.mock('../../src/hooks/useTheme', () => ({
   useTheme: () => ['dark', mockToggleTheme],
 }));
 
+jest.mock('../../src/context/NotificationContext', () => ({
+  useNotifications: () => ({
+    unreadCount: 0,
+    notifications: [],
+    loading: false,
+    markAsRead: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
 describe('Navbar', () => {
   beforeEach(() => {
     jest.clearAllMocks();

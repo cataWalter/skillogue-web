@@ -604,6 +604,8 @@ const Messages: React.FC = () => {
             appClient.functions.invoke('send-push', {
                 body: {
                     receiver_id: activeChatId,
+                    actor_id: userId,
+                    notification_type: 'new_message',
                     title: 'New Message',
                     body: content,
                     url: `/messages?conversation=${userId}`

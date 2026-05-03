@@ -31,6 +31,10 @@ jest.mock('../../src/lib/appwrite/server', () => ({
 	setAppwriteSessionCookie: jest.fn(),
 }));
 
+jest.mock('../../src/lib/rate-limit', () => ({
+	checkRateLimit: jest.fn(() => null),
+}));
+
 jest.mock('next/server', () => ({
 	NextRequest: class NextRequest { },
 	NextResponse: {
@@ -63,6 +67,7 @@ describe('/api/auth/[...all] route', () => {
 				get: jest.fn((name: string) => (name === 'user-agent' ? userAgent : null)),
 			},
 			json: jest.fn().mockResolvedValue(body),
+			nextUrl: { pathname: '/api/auth/test' },
 		}) as never;
 
 	const routeParams = (route: string) => ({

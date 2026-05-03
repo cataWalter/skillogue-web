@@ -52,6 +52,11 @@ export function checkRateLimit(
     request: NextRequest,
     options: RateLimitOptions
 ): NextResponse | null {
+    // Skip rate limiting outside of production (dev server, CI, test runs).
+    if (process.env.NODE_ENV !== 'production') {
+        return null;
+    }
+
     const { limit, windowMs } = options;
     const now = Date.now();
     cleanExpiredEntries(now);

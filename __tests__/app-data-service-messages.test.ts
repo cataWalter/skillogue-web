@@ -351,7 +351,7 @@ describe('AppDataService messaging compatibility', () => {
       payload: {
         receiver_id: 'user-1',
         actor_id: 'me',
-        type: 'message',
+        type: 'new_message',
         read: false,
         title: 'New Message',
         body: 'Hello there',

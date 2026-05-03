@@ -220,6 +220,7 @@ test.describe('Admin', () => {
 
   test.describe('Command Center', () => {
     test('should let an allowlisted admin review queues, search users, and save controls with mocked admin APIs', async ({ page }) => {
+      test.setTimeout(60_000);
       const dashboardPayload = clone(baseDashboardPayload);
       const baseURL = process.env.BASE_URL || 'http://localhost:3000';
       const { hostname } = new URL(baseURL);

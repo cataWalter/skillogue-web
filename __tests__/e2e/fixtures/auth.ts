@@ -92,6 +92,74 @@ const deleteExistingProfiles = async (userId: string) => {
   }
 };
 
+const upsertProfile = async (
+  userId: string,
+  profile: { firstName: string; lastName: string; aboutMe: string; age: number; gender: string }
+) => {
+  const { databases } = getAdminClients();
+  const payload = {
+    id: userId,
+    first_name: profile.firstName,
+    last_name: profile.lastName,
+    about_me: profile.aboutMe,
+    age: profile.age,
+    gender: profile.gender,
+    verified: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    await databases.getDocument(appwriteDatabaseId, profilesCollectionId, userId);
+    await databases.updateDocument(appwriteDatabaseId, profilesCollectionId, userId, payload);
+  } catch (error) {
+    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 404) {
+      throw error;
+    }
+    await databases.createDocument(appwriteDatabaseId, profilesCollectionId, userId, payload);
+  }
+};
+
+const ensureAliceUser = async () => {
+  const email = 'alice@example.com';
+  const password = 'Test1234!';
+  const { users } = getAdminClients();
+
+  let user = await findUserByEmail(email);
+
+  if (!user) {
+    try {
+      user = await users.create({
+        userId: randomUUID(),
+        email,
+        password,
+        name: 'Alice Johnson',
+      });
+    } catch (error) {
+      if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 409) {
+        throw error;
+      }
+
+      user = await findUserByEmail(email);
+      if (!user) {
+        throw error;
+      }
+    }
+  }
+
+  await ensureUserEmailVerified(user.$id);
+
+  await upsertProfile(user.$id, {
+    firstName: 'Alice',
+    lastName: 'Johnson',
+    aboutMe: 'Passionate about art and photography. Love exploring museums and capturing beautiful moments.',
+    age: 28,
+    gender: 'Female',
+  });
+
+  return { id: user.$id, email, password };
+};
+
 const ensureIncompleteProfileUser = async () => {
   const email = 'e2e.incomplete@example.com';
   const password = 'TestPassword123!';
@@ -159,6 +227,54 @@ const signInThroughBrowserContext = async (page: Page, credentials: { email: str
   throw lastError;
 };
 
+// ---------------------------------------------------------------------------
+// Session state caches – populated once per worker process to avoid hitting
+// Appwrite's sign-in rate limit when running many authenticated tests.
+// ---------------------------------------------------------------------------
+import type { Cookie } from '@playwright/test';
+
+let cachedAliceStatePromise: Promise<Cookie[]> | null = null;
+let cachedIncompleteStatePromise: Promise<Cookie[]> | null = null;
+
+const getAliceCookies = (page: Page): Promise<Cookie[]> => {
+  if (!cachedAliceStatePromise) {
+    cachedAliceStatePromise = (async () => {
+      const user = await ensureAliceUser();
+      await signInThroughBrowserContext(page, { email: user.email, password: user.password });
+      return page.context().cookies();
+    })();
+  }
+  return cachedAliceStatePromise;
+};
+
+const getIncompleteCookies = (page: Page): Promise<Cookie[]> => {
+  if (!cachedIncompleteStatePromise) {
+    cachedIncompleteStatePromise = (async () => {
+      const user = await ensureIncompleteProfileUser();
+      await signInThroughBrowserContext(page, { email: user.email, password: user.password });
+      return page.context().cookies();
+    })();
+  }
+  return cachedIncompleteStatePromise;
+};
+
+/**
+ * Restore a cached cookie state onto a fresh page context.
+ * Falls back to a fresh sign-in if the cache is empty for this page.
+ */
+const restoreOrSignIn = async (
+  page: Page,
+  getCookies: (page: Page) => Promise<Cookie[]>
+): Promise<void> => {
+  const cookies = await getCookies(page);
+  // If this context already ran the sign-in, its cookies are already set;
+  // otherwise inject the cached cookies into the fresh context.
+  const existing = await page.context().cookies();
+  if (existing.length === 0) {
+    await page.context().addCookies(cookies);
+  }
+};
+
 /**
  * Custom test fixture that provides authenticated user functionality
  */
@@ -168,21 +284,8 @@ export const test = base.extend<{
   createTestUser: () => Promise<{ email: string; password: string; id: string }>;
 }>({
   authenticatedPage: async ({ page }, providePage) => {
-    const testEmail = 'alice@example.com';
-    const testPassword = 'Test1234!';
-
     try {
-      const user = await findUserByEmail(testEmail);
-      if (!user) {
-        throw new Error(`Missing Playwright fixture user: ${testEmail}`);
-      }
-
-      await ensureUserEmailVerified(user.$id);
-
-      await signInThroughBrowserContext(page, {
-        email: testEmail,
-        password: testPassword,
-      });
+      await restoreOrSignIn(page, getAliceCookies);
     } catch (e) {
       console.log('Could not authenticate:', e);
       throw e;
@@ -193,11 +296,7 @@ export const test = base.extend<{
 
   incompleteProfilePage: async ({ page }, providePage) => {
     try {
-      const user = await ensureIncompleteProfileUser();
-      await signInThroughBrowserContext(page, {
-        email: user.email,
-        password: user.password,
-      });
+      await restoreOrSignIn(page, getIncompleteCookies);
     } catch (e) {
       console.log('Could not authenticate incomplete profile user:', e);
       throw e;

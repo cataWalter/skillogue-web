@@ -19,8 +19,8 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight />);
 
     await waitFor(() => {
-      expect(screen.getByText('Add a few passions to your profile to get more relevant suggestions on the dashboard.')).toBeInTheDocument();
-      expect(screen.getByText('Complete your passions →')).toBeInTheDocument();
+      expect(screen.getByText('Add passions to your profile to unlock personalized suggestions here.')).toBeInTheDocument();
+      expect(screen.getByText('Add your passions')).toBeInTheDocument();
     });
   });
 
@@ -53,7 +53,7 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Find people with this passion →')).toBeInTheDocument();
+      expect(screen.getByText('Find people who love this')).toBeInTheDocument();
     });
   });
 
@@ -63,7 +63,8 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} userId="user-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(hasExactParagraphText('Your passion for Coding'))).toBeInTheDocument();
+      expect(screen.getByText(hasExactParagraphText("You're passionate about"))).toBeInTheDocument();
+      expect(screen.getByText('Coding')).toBeInTheDocument();
     });
   });
 
@@ -73,9 +74,8 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(hasExactParagraphText('Connect with others who share your love for Coding'))
-      ).toBeInTheDocument();
+      expect(screen.getByText(hasExactParagraphText("You're passionate about"))).toBeInTheDocument();
+      expect(screen.getByText('Coding')).toBeInTheDocument();
     });
   });
 
@@ -88,12 +88,9 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      const text = screen.getByText(
-        (_content, element) =>
-          element?.tagName.toLowerCase() === 'p' &&
-          /Connect with others who share your love for (Coding|Music)/.test(element.textContent ?? '')
-      );
-      expect(text).toBeInTheDocument();
+      expect(screen.getByText(hasExactParagraphText("You're passionate about"))).toBeInTheDocument();
+      const passionName = screen.getByText(/^(Coding|Music)$/);
+      expect(passionName).toBeInTheDocument();
     });
   });
 
@@ -103,9 +100,8 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(hasExactParagraphText('Connect with others who share your love for Coding'))
-      ).toBeInTheDocument();
+      expect(screen.getByText(hasExactParagraphText("You're passionate about"))).toBeInTheDocument();
+      expect(screen.getByText('Coding')).toBeInTheDocument();
     });
   });
 
@@ -115,7 +111,7 @@ describe('PassionSpotlight Component', () => {
     render(<PassionSpotlight userPassions={userPassions} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Add a few passions to your profile to get more relevant suggestions on the dashboard.')).toBeInTheDocument();
+      expect(screen.getByText('Add passions to your profile to unlock personalized suggestions here.')).toBeInTheDocument();
     });
   });
 });

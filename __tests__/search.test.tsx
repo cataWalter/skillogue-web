@@ -52,6 +52,10 @@ jest.mock('../src/components/MultiSelect', () => ({
   ),
 }));
 
+jest.mock('../src/hooks/useProfileGate', () => ({
+  useProfileGate: () => undefined,
+}));
+
 jest.mock('../src/components/SearchSkeleton', () => ({
   __esModule: true,
   default: () => <div data-testid="search-skeleton">Skeleton</div>,

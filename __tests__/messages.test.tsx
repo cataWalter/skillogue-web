@@ -1184,9 +1184,7 @@ describe('Messages Page', () => {
 
   it('refreshes conversations and appends realtime messages from channel callbacks', async () => {
     const conversationCallbacks: Array<() => void> = [];
-    let realtimeCallback:
-      | ((payload: { new: { sender_id: string; id: number } }) => void)
-      | undefined;
+    const realtimeCallbacks: Array<(payload: { new: { sender_id: string; receiver_id?: string; id: number } }) => void> = [];
     const realtimeMessage = createPersistedMessage({
       id: 777,
       sender_id: 'user-1',
@@ -1204,7 +1202,7 @@ describe('Messages Page', () => {
           }
 
           if (name === 'chat:user-1' && event === 'postgres_changes') {
-            realtimeCallback = callback as (payload: { new: { sender_id: string; id: number } }) => void;
+            realtimeCallbacks.push(callback as (payload: { new: { sender_id: string; receiver_id?: string; id: number } }) => void);
           }
 
           return channelMock;
@@ -1262,7 +1260,7 @@ describe('Messages Page', () => {
 
     await act(async () => {
       conversationCallbacks.forEach((callback) => callback());
-      realtimeCallback?.({ new: { sender_id: 'user-1', id: 777 } });
+      realtimeCallbacks.forEach((callback) => callback({ new: { sender_id: 'user-1', id: 777 } }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -1552,6 +1550,8 @@ describe('Messages Page', () => {
       expect(appClient.functions.invoke).toHaveBeenCalledWith('send-push', {
         body: {
           receiver_id: 'user-1',
+          actor_id: 'me-123',
+          notification_type: 'new_message',
           title: 'New Message',
           body: 'New message',
           url: '/messages?conversation=me-123',

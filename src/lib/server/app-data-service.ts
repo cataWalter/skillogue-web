@@ -1366,7 +1366,7 @@ export class AppDataService {
         payload: {
           receiver_id: payload.receiver_id,
           actor_id: payload.actor_id,
-          type: payload.notification_type,
+          type: payload.notification_type === 'message' ? 'new_message' : payload.notification_type,
           read: false,
           title: payload.title,
           body: payload.body,
